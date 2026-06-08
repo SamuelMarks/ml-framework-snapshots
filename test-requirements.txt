@@ -1,0 +1,6 @@
+pytest
+pytest-cov
+pytest-mock
+pydantic
+scikit-learn
+ml-switcheroo-ir @ file:///Users/samuel/repos/ml-switcheroo-ir

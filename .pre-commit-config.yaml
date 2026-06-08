@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=2000']
+      - id: pretty-format-json
+        args: ["--autofix", "--indent=2"]
+        files: ^snapshots/.*\.json$
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        args: [ --fix ]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        additional_dependencies: ["pydantic", "griffe", "cdd-python"]
+        args: ["--ignore-missing-imports"]
+        exclude: ^(tests/|scripts/)
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest --cov=src/ml_framework_snapshots
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: update-shields
+        name: update-shields
+        entry: python3 scripts/update_shields.py
+        language: system
+        pass_filenames: false
+        always_run: true

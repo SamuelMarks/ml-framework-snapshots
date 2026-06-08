@@ -1,0 +1,40 @@
+name: "Generate ML Snapshots"
+description: "Generates JSON API snapshots for ML frameworks and optionally creates a PR."
+
+inputs:
+  frameworks:
+    description: "Comma-separated list of frameworks to scan (e.g., 'torch,jax')."
+    required: true
+    default: "torch,jax,tensorflow,keras,mlx,flax"
+  out-dir:
+    description: "Output directory for snapshots."
+    required: true
+    default: "./snapshots"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.9"
+
+    - name: Install ml-framework-snapshots
+      shell: bash
+      run: |
+        pip install .
+
+    - name: Install Frameworks
+      shell: bash
+      run: |
+        # Parse comma separated list and install them
+        FRAMEWORKS=$(echo "${{ inputs.frameworks }}" | tr ',' ' ')
+        for fw in $FRAMEWORKS; do
+          pip install "$fw" || echo "Failed to install $fw, skipping."
+        done
+
+    - name: Generate Snapshots
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.out-dir }}"
+        ml-snapshots capture --out-dir "${{ inputs.out-dir }}"
