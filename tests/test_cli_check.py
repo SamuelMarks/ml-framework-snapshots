@@ -4,10 +4,43 @@ import argparse
 from unittest.mock import patch, mock_open
 from ml_framework_snapshots.cli import cmd_check
 
+MOCK_JSON = """
+{
+    "categories": {
+        "functions": [
+            {
+                "name": "func4",
+                "framework": "mod",
+                "api_path": "mod.func4",
+                "symbol": "func4",
+                "kind": "function",
+                "is_public": true,
+                "params": [],
+                "aliases": [],
+                "docstring": "Mock func4",
+                "signature": "()"
+            },
+            {
+                "name": "func5",
+                "framework": "other",
+                "api_path": "other.func5",
+                "symbol": "func5",
+                "kind": "function",
+                "is_public": true,
+                "params": [],
+                "aliases": [],
+                "docstring": "Mock func5",
+                "signature": "()"
+            }
+        ]
+    }
+}
+"""
+
 
 @patch("ml_framework_snapshots.compliance.score_compliance")
 @patch("ml_framework_snapshots.compliance.extract_target_refs")
-@patch("builtins.open", new_callable=mock_open, read_data='{"categories": {}}')
+@patch("builtins.open", new_callable=mock_open, read_data=MOCK_JSON)
 def test_cmd_check(mock_file, mock_extract, mock_score, capsys):
     """Test basic check command reporting.
 
@@ -32,10 +65,12 @@ def test_cmd_check(mock_file, mock_extract, mock_score, capsys):
         "mismatched": [{"api_path": "other.func5", "expected": [], "actual": []}],
     }
 
+    import json
+
     cmd_check(args)
 
     mock_extract.assert_called_once_with("dummy_target", "t_pref", "r_pref")
-    mock_score.assert_called_once_with({"categories": {}}, ["mock_ref"])
+    mock_score.assert_called_once_with(json.loads(MOCK_JSON), ["mock_ref"])
 
     captured = capsys.readouterr()
     assert "Extracting target APIs from dummy_target" in captured.out
@@ -43,9 +78,9 @@ def test_cmd_check(mock_file, mock_extract, mock_score, capsys):
     assert "- mod: 66.7% (2/3)" in captured.out
     assert "- other: 100.0% (1/1)" in captured.out
     assert "Missing APIs (1):" in captured.out
-    assert "- mod.func4" in captured.out
+    assert "mod.func4" in captured.out
     assert "Mismatched APIs (1):" in captured.out
-    assert "~ other.func5" in captured.out
+    assert "other.func5" in captured.out
 
 
 @patch("ml_framework_snapshots.compliance.score_compliance")
@@ -86,7 +121,6 @@ def test_cmd_check_pagination(mock_file, mock_extract, mock_score, capsys):
     cmd_check(args)
 
     captured = capsys.readouterr()
-    assert "... and 5 more" in captured.out
     assert "... and 5 more" in captured.out
 
 

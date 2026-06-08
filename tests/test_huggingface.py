@@ -44,9 +44,12 @@ def test_collect_transformers():
         "DummyModel",
     ]
 
-    with patch("importlib.import_module", return_value=mock_mod), patch(
-        "ml_framework_snapshots.frameworks.huggingface.GhostInspector"
-    ) as MockInspector:
+    with (
+        patch("importlib.import_module", return_value=mock_mod),
+        patch(
+            "ml_framework_snapshots.frameworks.huggingface.GhostInspector"
+        ) as MockInspector,
+    ):
         from ml_switcheroo_ir.schema.ghost import GhostRef
 
         MockInspector.return_value.inspect.side_effect = lambda obj, path: GhostRef(
@@ -88,9 +91,12 @@ def test_collect_diffusers():
     mock_mod.DummyScheduler = DummyScheduler
     mock_mod.__dir__ = lambda self: ["DummyScheduler"]
 
-    with patch("importlib.import_module", return_value=mock_mod), patch(
-        "ml_framework_snapshots.frameworks.huggingface.GhostInspector"
-    ) as MockInspector:
+    with (
+        patch("importlib.import_module", return_value=mock_mod),
+        patch(
+            "ml_framework_snapshots.frameworks.huggingface.GhostInspector"
+        ) as MockInspector,
+    ):
         from ml_switcheroo_ir.schema.ghost import GhostRef
 
         MockInspector.return_value.inspect.side_effect = lambda obj, path: GhostRef(
@@ -118,9 +124,12 @@ def test_collect_tokenizers():
     mock_mod.DummyTokenizer = DummyTokenizer
     mock_mod.__dir__ = lambda self: ["DummyTokenizer"]
 
-    with patch("importlib.import_module", return_value=mock_mod), patch(
-        "ml_framework_snapshots.frameworks.huggingface.GhostInspector"
-    ) as MockInspector:
+    with (
+        patch("importlib.import_module", return_value=mock_mod),
+        patch(
+            "ml_framework_snapshots.frameworks.huggingface.GhostInspector"
+        ) as MockInspector,
+    ):
         from ml_switcheroo_ir.schema.ghost import GhostRef
 
         MockInspector.return_value.inspect.side_effect = lambda obj, path: GhostRef(

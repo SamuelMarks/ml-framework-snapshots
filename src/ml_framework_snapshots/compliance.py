@@ -15,7 +15,9 @@ import griffe
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
-def get_module_info_from_path(file_path: str) -> Tuple[str, str]:
+def get_module_info_from_path(
+    file_path: str, target_prefix: str = ""
+) -> Tuple[str, str]:
     """Resolve a file path to a root search path and a module name.
 
     This function ascends the directory tree starting from the given path
@@ -25,6 +27,7 @@ def get_module_info_from_path(file_path: str) -> Tuple[str, str]:
 
     Args:
         file_path: The path to a Python file or directory.
+        target_prefix: Optional module prefix to use as fallback.
 
     Returns:
         A tuple containing:
@@ -61,12 +64,17 @@ def get_module_info_from_path(file_path: str) -> Tuple[str, str]:
         mod_name = ".".join(parts)
 
     if not mod_name:
-        raise ValueError(f"Could not derive module name from path: {file_path}")
+        if target_prefix:
+            mod_name = target_prefix.split(".")[0]
+            if (Path(search_path) / "src").is_dir():
+                search_path = str(Path(search_path) / "src")
+        else:
+            raise ValueError(f"Could not derive module name from path: {file_path}")
 
     return search_path, mod_name
 
 
-def extract_target_ast(file_path: str) -> Any:
+def extract_target_ast(file_path: str, target_prefix: str = "") -> Any:
     """Extract the Griffe AST for an arbitrary target path.
 
     This function dynamically determines the module name and search path
@@ -74,12 +82,13 @@ def extract_target_ast(file_path: str) -> Any:
 
     Args:
         file_path: The path to a Python file or directory.
+        target_prefix: The prefix of the target module.
 
     Returns:
         The extracted Griffe module AST.
 
     """
-    search_path, mod_name = get_module_info_from_path(file_path)
+    search_path, mod_name = get_module_info_from_path(file_path, target_prefix)
     return griffe.load(mod_name, search_paths=[search_path])
 
 
@@ -127,7 +136,7 @@ def extract_target_refs(
     """
     from ml_framework_snapshots.models import GhostInspector
 
-    search_path, mod_name = get_module_info_from_path(file_path)
+    search_path, mod_name = get_module_info_from_path(file_path, target_prefix)
 
     if search_path not in sys.path:
         sys.path.insert(0, search_path)

@@ -1,0 +1,47 @@
+name: Release Snapshots
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install ml-framework-snapshots
+        run: pip install .
+
+      - name: Install Frameworks
+        run: |
+          for fw in tensorflow keras torch jax paxml flax numpy mlx; do
+            pip install "$fw" || echo "Failed to install $fw, skipping."
+          done
+
+      - name: Generate Snapshots
+        run: |
+          mkdir -p ./snapshots
+          ml_framework_snapshots capture tensorflow keras pytorch jax pax flax numpy mlx --out-dir ./snapshots
+
+      - name: Upload (Upsert) to Latest Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Try to create 'latest' tag/release if it doesn't exist
+          gh release create latest --title "Latest Snapshots" --notes "Automatically updated ML framework snapshots." || true
+
+          # Upload assets and clobber (upsert)
+          gh release upload latest ./snapshots/* --clobber

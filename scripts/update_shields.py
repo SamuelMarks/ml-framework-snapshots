@@ -4,9 +4,11 @@ import subprocess
 
 def get_test_coverage():
     result = subprocess.run(
-        ["pytest", "--cov=src/ml_framework_snapshots"], capture_output=True, text=True
+        ["pytest", "--cov=src/ml_framework_snapshots", "--cov-branch"],
+        capture_output=True,
+        text=True,
     )
-    match = re.search(r"TOTAL\s+\d+\s+\d+\s+(\d+)%", result.stdout)
+    match = re.search(r"TOTAL\s+.*\s+(\d+)%", result.stdout)
     if match:
         return match.group(1)
     return "unknown"

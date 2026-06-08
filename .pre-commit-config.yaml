@@ -15,9 +15,17 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.4.4
     hooks:
-      - id: ruff
-        args: [ --fix ]
+      # Code formatting (auto-fix)
       - id: ruff-format
+        name: Ruff Format (Auto-Fix)
+      # Check code formatting (recheck)
+      - id: ruff-format
+        name: Ruff Format (Check)
+        args: ["--check"]
+      # Lint (auto-fix)
+      - id: ruff
+        name: Ruff Lint
+        args: ["--fix"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
@@ -29,14 +37,21 @@ repos:
 
   - repo: local
     hooks:
+      - id: build
+        name: Build
+        entry: python3 -m build
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: pytest
-        name: pytest
-        entry: pytest --cov=src/ml_framework_snapshots
+        name: Test (Pytest)
+        entry: pytest --cov=src/ml_framework_snapshots --cov-branch
         language: system
         types: [python]
         pass_filenames: false
+        always_run: true
       - id: update-shields
-        name: update-shields
+        name: Update Shields
         entry: python3 scripts/update_shields.py
         language: system
         pass_filenames: false

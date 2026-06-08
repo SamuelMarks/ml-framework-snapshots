@@ -208,12 +208,62 @@ def cmd_check(args: argparse.Namespace) -> None:
 
     missing = results.get("missing", [])
     if missing:
-        print(f"\nMissing APIs ({len(missing)}):")
-        # Just show top 10 to not spam, or maybe all
-        for api_path in sorted(missing)[:20]:
-            print(f"  - {api_path}")
-        if len(missing) > 20:
-            print(f"  - ... and {len(missing) - 20} more")
+        print(f"\nMissing APIs ({len(missing)}):\n")
+
+        # Build reference map to get docstrings and signatures
+        from ml_switcheroo_ir.schema.ghost import GhostRef
+
+        ref_map = {}
+        for cat, items in reference_snapshot.get("categories", {}).items():
+            for item in items:
+                ref = GhostRef.model_validate(item)
+                ref_map[ref.api_path] = ref
+                for alias in ref.aliases:
+                    ref_map[alias] = ref
+
+        print("|   | Framework | Namespace | Symbol | FQN | Signature | Docstring |")
+        print("|---|---|---|---|---|---|---|")
+
+        for fqn in sorted(missing):
+            ref = ref_map.get(fqn)
+            if not ref:
+                continue
+
+            parts = fqn.split(".")
+            framework = parts[0]
+            symbol = parts[-1]
+            namespace = ".".join(parts[:-1])
+
+            # Signature
+            if ref.kind == "MODULE":
+                sig = "module"
+            else:
+                sig_parts = []
+                for p in ref.params:
+                    p_str = p.name
+                    if p.annotation:
+                        p_str += f": {p.annotation}"
+                    if p.default:
+                        p_str += f"={p.default}"
+                    sig_parts.append(p_str)
+                sig = f"({', '.join(sig_parts)})"
+                if ref.returns_type:
+                    sig += f" -> {ref.returns_type}"
+
+            # Docstring
+            doc = ref.docstring or ""
+            if doc:
+                doc = (
+                    doc.strip().split("\n\n")[0].replace("\n", " ").replace("|", "\\|")
+                )
+                if len(doc) > 100:
+                    doc = doc[:97] + "..."
+            else:
+                doc = "No docstring available."
+
+            print(
+                f"| [ ] | {framework} | {namespace} | {symbol} | {fqn} | `{sig}` | {doc} |"
+            )
 
     mismatched = results.get("mismatched", [])
     if mismatched:

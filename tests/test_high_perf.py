@@ -65,9 +65,12 @@ def test_onnx_collect():
 
     mock_onnx.InferenceSession = InferenceSession
 
-    with patch("importlib.import_module", return_value=mock_onnx), patch(
-        "ml_framework_snapshots.frameworks.onnxruntime.GhostInspector"
-    ) as MockInspector:
+    with (
+        patch("importlib.import_module", return_value=mock_onnx),
+        patch(
+            "ml_framework_snapshots.frameworks.onnxruntime.GhostInspector"
+        ) as MockInspector,
+    ):
         from ml_switcheroo_ir.schema.ghost import GhostRef
 
         MockInspector.return_value.inspect.side_effect = lambda obj, path: GhostRef(
@@ -95,9 +98,12 @@ def test_ds_collect():
 
     mock_ds.initialize = initialize
 
-    with patch("importlib.import_module", return_value=mock_ds), patch(
-        "ml_framework_snapshots.frameworks.deepspeed.GhostInspector"
-    ) as MockInspector:
+    with (
+        patch("importlib.import_module", return_value=mock_ds),
+        patch(
+            "ml_framework_snapshots.frameworks.deepspeed.GhostInspector"
+        ) as MockInspector,
+    ):
         from ml_switcheroo_ir.schema.ghost import GhostRef
 
         MockInspector.return_value.inspect.side_effect = lambda obj, path: GhostRef(

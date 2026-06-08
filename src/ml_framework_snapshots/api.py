@@ -105,6 +105,10 @@ def get_pkg_version(package_name: str) -> str:
             package_name = "flax"
         elif package_name == "sklearn":
             package_name = "scikit-learn"
+        elif package_name == "pytorch":
+            package_name = "torch"
+        elif package_name == "pax":
+            package_name = "paxml"
         return importlib.metadata.version(package_name)
     except Exception:
         return "unknown"
