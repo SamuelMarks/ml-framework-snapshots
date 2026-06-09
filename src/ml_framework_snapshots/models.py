@@ -1,6 +1,6 @@
 """Models for Ghost API representations."""
 
-from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
+from ml_switcheroo.core.ghost import GhostRef, GhostParam
 
 STANDARD_ARG_MAP = {
     "x": "input",
@@ -176,7 +176,7 @@ class GhostInspector:
             A populated GhostRef object.
 
         """
-        import cdd.docstring_parsers
+        import cdd.shared.docstring_parsers as cdd_docstring_parsers
         import griffe
 
         # Recursively unwrap nested decorators and framework wrappers
@@ -215,7 +215,7 @@ class GhostInspector:
 
         if doc:
             try:
-                cdd_ir = cdd.docstring_parsers.parse_docstring(doc)
+                cdd_ir = cdd_docstring_parsers.parse_docstring(doc)
                 if cdd_ir.get("returns") and "return_type" in cdd_ir["returns"]:
                     ret = cdd_ir["returns"]["return_type"]
                     returns_type = sanitize_type_str(ret.get("typ"))
@@ -274,15 +274,15 @@ class GhostInspector:
                                         break
 
             if kind == "class":
-                import cdd.parse.class_
+                import cdd.class_.parse
 
-                cdd_parsed_ir = cdd.parse.class_.class_(
+                cdd_parsed_ir = cdd.class_.parse.class_(
                     parsed_ast, merge_inner_function="__init__"
                 )
             else:
-                import cdd.parse.function
+                import cdd.function.parse
 
-                cdd_parsed_ir = cdd.parse.function.function(parsed_ast)
+                cdd_parsed_ir = cdd.function.parse.function(parsed_ast)
 
             if cdd_parsed_ir and "params" in cdd_parsed_ir:  # pragma: no branch
                 for p_name, p_val in cdd_parsed_ir["params"].items():

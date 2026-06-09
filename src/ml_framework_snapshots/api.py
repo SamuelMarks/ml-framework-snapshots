@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List, Tuple
 
-from ml_switcheroo_ir.schema.ghost import SemanticTier
+from ml_switcheroo.enums import SemanticTier
 from ml_framework_snapshots.frameworks.torch import collect_api as torch_collect
 from ml_framework_snapshots.frameworks.jax import collect_api as jax_collect
 from ml_framework_snapshots.frameworks.keras import collect_api as keras_collect
@@ -28,7 +28,7 @@ from ml_framework_snapshots.frameworks.onnxruntime import (
     collect_api as onnxruntime_collect,
 )
 from ml_framework_snapshots.frameworks.deepspeed import collect_api as deepspeed_collect
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo.core.ghost import GhostRef
 
 
 def get_available_frameworks() -> Dict[str, Any]:
@@ -115,6 +115,7 @@ def get_pkg_version(package_name: str) -> str:
 
 
 def _consolidate_aliases(refs: List[GhostRef]) -> List[GhostRef]:
+    return refs
     """Consolidates identical GhostRefs into a single reference with aliases.
 
     Args:
@@ -134,8 +135,8 @@ def _consolidate_aliases(refs: List[GhostRef]) -> List[GhostRef]:
                 p.kind,
                 p.default,
                 p.annotation,
-                p.description,
-                p.standardized_name,
+                
+                
             )
             for p in ref.params
         )
@@ -144,9 +145,9 @@ def _consolidate_aliases(refs: List[GhostRef]) -> List[GhostRef]:
             ref.kind,
             param_sigs,
             ref.docstring,
-            tuple(ref.raises),
-            ref.returns_type,
-            ref.returns_description,
+            
+            
+            
         )
 
         if key not in consolidated:

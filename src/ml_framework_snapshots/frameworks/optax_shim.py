@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover
     optax = None
 
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo.core.ghost import GhostRef
 
 
 class OptaxScanner:

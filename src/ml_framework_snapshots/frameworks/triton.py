@@ -2,9 +2,9 @@
 
 import importlib
 from typing import List, Any
-from ml_switcheroo_ir.schema.ghost import SemanticTier
+from ml_switcheroo.enums import SemanticTier
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo.core.ghost import GhostRef
 
 
 def _extract_triton_kernel(

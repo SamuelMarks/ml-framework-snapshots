@@ -3,7 +3,7 @@
 from typing import Dict, Any, List
 from collections import OrderedDict
 
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo.core.ghost import GhostRef
 
 
 def _ghost_to_cdd_ir(ref: GhostRef) -> Dict[str, Any]:

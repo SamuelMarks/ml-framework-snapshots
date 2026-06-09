@@ -2,8 +2,8 @@
 
 import inspect
 from typing import Dict, List, Any
-from ml_switcheroo_ir.schema.ghost import SemanticTier
-from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
+from ml_switcheroo.enums import SemanticTier
+from ml_switcheroo.core.ghost import GhostRef, GhostParam
 from ml_framework_snapshots.models import GhostInspector, sanitize_type_str
 
 

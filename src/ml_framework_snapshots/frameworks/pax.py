@@ -1,6 +1,7 @@
 import inspect
 from typing import List
-from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
+from ml_switcheroo.core.ghost import GhostRef
+from ml_switcheroo.enums import SemanticTier
 from ml_framework_snapshots.models import GhostInspector
 from ml_framework_snapshots.utils import get_all_members
 
@@ -21,13 +22,14 @@ def collect_api(
     if not layers:
         return results
 
-    if category == SemanticTier.LAYER:
+    if category == SemanticTier.NEURAL:
         try:
             for name, obj in get_all_members(layers):
                 if not include_nonpublic and name.startswith("_"):
                     continue
                 if inspect.isclass(obj):
                     results.append(GhostInspector.inspect(obj, f"praxis.layers.{name}"))
-        except Exception:
+        except Exception as e:
+            print("PAX ERROR:", e)
             pass
     return results

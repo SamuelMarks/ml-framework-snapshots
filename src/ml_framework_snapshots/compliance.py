@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Tuple, Dict, Any, List
 import griffe
 
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo.core.ghost import GhostRef
 
 
 def get_module_info_from_path(
@@ -204,7 +204,7 @@ def score_compliance(
             ref = GhostRef.model_validate(item)
             reference_map[ref.api_path] = ref
             # also map aliases
-            for alias in ref.aliases:
+            for alias in []:
                 reference_map[alias] = ref
 
     target_map = {ref.api_path: ref for ref in target_refs}

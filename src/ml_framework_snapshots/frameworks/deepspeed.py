@@ -2,9 +2,9 @@
 
 import importlib
 from typing import List
-from ml_switcheroo_ir.schema.ghost import SemanticTier
+from ml_switcheroo.enums import SemanticTier
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo.core.ghost import GhostRef
 
 
 def collect_api(
@@ -55,7 +55,7 @@ def collect_api(
                         # Map distributed configuration dictionaries into structured elements.
                         has_config = any(p.name == "config_params" for p in ref.params)
                         if not has_config:  # pragma: no branch
-                            from ml_switcheroo_ir.schema.ghost import GhostParam
+                            from ml_switcheroo.core.ghost import GhostParam
 
                             ref.params.append(
                                 GhostParam(

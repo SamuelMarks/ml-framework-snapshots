@@ -1,5 +1,5 @@
 from typing import List
-from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
+from ml_switcheroo.core.ghost import GhostRef, SemanticTier
 from ml_framework_snapshots.models import GhostInspector
 
 try:
