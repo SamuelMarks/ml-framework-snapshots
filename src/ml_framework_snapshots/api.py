@@ -81,6 +81,7 @@ def get_available_frameworks() -> Dict[str, Any]:
         "triton": triton_collect,
         "onnxruntime": onnxruntime_collect,
         "deepspeed": deepspeed_collect,
+        "orbax": __import__("ml_framework_snapshots.frameworks.orbax_checkpoint").frameworks.orbax_checkpoint.collect_api,
     }
 
     collectors.update(legacy)
@@ -109,6 +110,9 @@ def get_pkg_version(package_name: str) -> str:
             package_name = "torch"
         elif package_name == "pax":
             package_name = "paxml"
+        elif package_name == "orbax":
+            package_name = "orbax-checkpoint"
+
         return importlib.metadata.version(package_name)
     except Exception:
         return "unknown"

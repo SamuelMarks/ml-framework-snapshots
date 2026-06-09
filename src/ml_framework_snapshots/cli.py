@@ -14,7 +14,7 @@ from ml_framework_snapshots.api import (
 )
 from ml_framework_snapshots.diff import diff_snapshots, generate_changelog
 from ml_framework_snapshots.stubs import generate_stubs
-from ml_switcheroo.core.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
 def resolve_snapshot_path(path: str) -> str:
@@ -253,7 +253,7 @@ def cmd_check(args: argparse.Namespace) -> None:
         print(f"\nMissing APIs ({len(missing)}):\n")
 
         # Build reference map to get docstrings and signatures
-        from ml_switcheroo.core.ghost import GhostRef
+        from ml_switcheroo_ir.schema.ghost import GhostRef
 
         ref_map = {}
         for cat, items in reference_snapshot.get("categories", {}).items():

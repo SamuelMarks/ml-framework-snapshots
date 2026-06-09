@@ -152,7 +152,7 @@ def extract_target_refs(
             node: node
             current_path: path
         """
-        if isinstance(node, (griffe.Function, griffe.Class)):
+        if isinstance(node, (griffe.Function, griffe.Class, griffe.Alias)):
             try:
                 parts = current_path.split(".")
                 mod_p = parts[0]
@@ -167,6 +167,10 @@ def extract_target_refs(
                         for p in parts[i:]:
                             obj = getattr(obj, p)
 
+                        if getattr(node, 'path', '').startswith('zero_jax.'):
+                            current_path = getattr(node, 'path').replace('zero_jax.', f'{target_prefix}.jax.', 1).replace('.activation', '').replace('.nn.nn', '.nn').replace('.initializers.initializers', '.initializers')
+                        elif 'zero_jax' in current_path:
+                            current_path = current_path.replace('zero_jax.', f'{target_prefix}.jax.', 1)
                         aligned_path = align_namespace(
                             current_path, target_prefix, reference_prefix
                         )
