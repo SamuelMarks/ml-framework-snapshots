@@ -17,6 +17,42 @@ from ml_framework_snapshots.stubs import generate_stubs
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
+def resolve_snapshot_path(path: str) -> str:
+    """Resolve a snapshot path, looking in the local snapshots directory if needed."""
+    if os.path.exists(path):
+        return path
+
+    if os.path.exists(path + ".json"):
+        return path + ".json"
+
+    # Try looking in the project's snapshots directory
+    basename = os.path.basename(path)
+    pkg_dir = os.path.dirname(__file__)
+    repo_root = os.path.dirname(os.path.dirname(pkg_dir))
+    snapshots_dir = os.path.join(repo_root, "snapshots")
+
+    candidates = [
+        os.path.join(snapshots_dir, basename),
+        os.path.join(snapshots_dir, basename + ".json"),
+    ]
+
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+
+    # Try prefix matching
+    if os.path.isdir(snapshots_dir):
+        import glob
+
+        matches = glob.glob(os.path.join(snapshots_dir, f"{basename}*.json"))
+        if len(matches) == 1:
+            return matches[0]
+        elif len(matches) > 1:
+            return sorted(matches)[-1]
+
+    return path
+
+
 def cmd_capture(args: argparse.Namespace) -> None:
     """Handle the capture command.
 
@@ -67,9 +103,12 @@ def cmd_diff(args: argparse.Namespace) -> None:
         args: description
 
     """
-    with open(args.json1, "r", encoding="utf-8") as f:
+    path1 = resolve_snapshot_path(args.json1)
+    path2 = resolve_snapshot_path(args.json2)
+
+    with open(path1, "r", encoding="utf-8") as f:
         snap1 = json.load(f)
-    with open(args.json2, "r", encoding="utf-8") as f:
+    with open(path2, "r", encoding="utf-8") as f:
         snap2 = json.load(f)
 
     result = diff_snapshots(snap1, snap2)
@@ -97,7 +136,8 @@ def cmd_stubs(args: argparse.Namespace) -> None:
         args: description
 
     """
-    with open(args.input, "r", encoding="utf-8") as f:
+    path = resolve_snapshot_path(args.input)
+    with open(path, "r", encoding="utf-8") as f:
         snap = json.load(f)
     generate_stubs(snap, args.out_dir, include_nonpublic=args.include_nonpublic)
     print(f"Stubs generated in {args.out_dir}")
@@ -112,7 +152,8 @@ def cmd_export(args: argparse.Namespace) -> None:
     Raises:
         ValueError: if invalid.
     """
-    with open(args.input, "r", encoding="utf-8") as f:
+    path = resolve_snapshot_path(args.input)
+    with open(path, "r", encoding="utf-8") as f:
         snap = json.load(f)
 
     refs: List[GhostRef] = []
@@ -171,7 +212,8 @@ def cmd_check(args: argparse.Namespace) -> None:
     import collections
     from ml_framework_snapshots.compliance import extract_target_refs, score_compliance
 
-    with open(args.snapshot_json, "r", encoding="utf-8") as f:
+    path = resolve_snapshot_path(args.snapshot_json)
+    with open(path, "r", encoding="utf-8") as f:
         reference_snapshot = json.load(f)
 
     print(f"Extracting target APIs from {args.target_path}...")
