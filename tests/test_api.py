@@ -1,3 +1,4 @@
+from typing import Any
 """Module docstring."""
 
 import os
@@ -14,7 +15,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
-def test_get_all_members():
+def test_get_all_members() -> None:
     """Function docstring."""
 
     class LazyModule:
@@ -53,7 +54,7 @@ def test_get_all_members():
     assert members["hidden_func"]() == 42
 
 
-def test_get_pkg_version(mocker):
+def test_get_pkg_version(mocker) -> None:
     """Function docstring."""
     mocker.patch("importlib.metadata.version", return_value="1.2.3")
     assert get_pkg_version("torch") == "1.2.3"
@@ -64,7 +65,7 @@ def test_get_pkg_version(mocker):
     assert get_pkg_version("missing_pkg") == "unknown"
 
 
-def test_extract_snapshot(mocker):
+def test_extract_snapshot(mocker) -> None:
     """Function docstring."""
     # unknown framework
     assert extract_snapshot("nonexistent") == {}
@@ -113,7 +114,7 @@ def test_extract_snapshot(mocker):
     assert extract_snapshot("torch") == {}
 
 
-def test_extract_all_snapshots(mocker):
+def test_extract_all_snapshots(mocker) -> None:
     """Function docstring."""
     mocker.patch(
         "ml_framework_snapshots.api.extract_snapshot",
@@ -126,7 +127,7 @@ def test_extract_all_snapshots(mocker):
     assert "jax" not in res
 
 
-def test_write_snapshot(tmp_path):
+def test_write_snapshot(tmp_path: Any) -> None:
     """Function docstring."""
     data = {"version": "2.0.0+cpu", "categories": {}}
     out_dir = tmp_path / "out"
@@ -359,3 +360,15 @@ def test_consolidate_aliases_same_length() -> None:
     assert len(res) == 1
     assert res[0].api_path == "a.func"
     assert "b.func" in res[0].aliases
+
+
+def test_api_version_aliases(mocker) -> None:
+    import ml_framework_snapshots.api as api
+
+    mocker.patch("importlib.metadata.version", return_value="1.2.3")
+    assert api.get_pkg_version("pytorch") == "1.2.3"
+    assert api.get_pkg_version("pax") == "1.2.3"
+    assert api.get_pkg_version("orbax") == "1.2.3"
+
+    mocker.patch("importlib.metadata.version", side_effect=Exception)
+    assert api.get_pkg_version("unknown") == "unknown"

@@ -3,7 +3,7 @@
 from ml_framework_snapshots.models import GhostInspector
 
 
-def dummy_decorator(func):
+def dummy_decorator(func) -> None:
     """Function docstring.
 
     Args:
@@ -23,7 +23,7 @@ def dummy_decorator(func):
     return wrapper
 
 
-def tf_function_mock(func):
+def tf_function_mock(func) -> None:
     """Function docstring.
 
     Args:
@@ -44,7 +44,7 @@ def tf_function_mock(func):
     return TFFunction(func)
 
 
-def test_unwrap_standard_decorator():
+def test_unwrap_standard_decorator() -> None:
     """Function docstring."""
 
     @dummy_decorator
@@ -63,7 +63,7 @@ def test_unwrap_standard_decorator():
     assert ref.params[0].annotation == "int"
 
 
-def test_unwrap_tf_decorator():
+def test_unwrap_tf_decorator() -> None:
     """Function docstring."""
 
     @tf_function_mock
@@ -81,7 +81,7 @@ def test_unwrap_tf_decorator():
     assert ref.has_arg("training")
 
 
-def test_unwrap_generic_decorator():
+def test_unwrap_generic_decorator() -> None:
     """Function docstring."""
 
     def generic_dec(func):
@@ -113,7 +113,7 @@ def test_unwrap_generic_decorator():
     assert ref.has_arg("a")
 
 
-def test_unwrap_variant_decorator():
+def test_unwrap_variant_decorator() -> None:
     """Function docstring."""
 
     def variant_dec(func):

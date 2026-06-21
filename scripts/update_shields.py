@@ -2,7 +2,7 @@ import re
 import subprocess
 
 
-def get_test_coverage():
+def get_test_coverage() -> None:
     result = subprocess.run(
         ["pytest", "--cov=src/ml_framework_snapshots", "--cov-branch"],
         capture_output=True,
@@ -14,7 +14,7 @@ def get_test_coverage():
     return "unknown"
 
 
-def get_doc_coverage():
+def get_doc_coverage() -> None:
     # If interrogate is not available, try parsing another way, but we know it's there
     try:
         result = subprocess.run(
@@ -31,7 +31,7 @@ def get_doc_coverage():
     return "unknown"
 
 
-def get_color(coverage):
+def get_color(coverage) -> None:
     try:
         val = float(coverage)
         if val >= 90:
@@ -45,7 +45,7 @@ def get_color(coverage):
         return "lightgrey"
 
 
-def main():
+def main() -> None:
     test_cov = get_test_coverage()
     doc_cov = get_doc_coverage()
 

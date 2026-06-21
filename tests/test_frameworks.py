@@ -5,7 +5,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
-def create_module(name, attrs):
+def create_module(name, attrs) -> None:
     """Function docstring.
 
     Args:
@@ -18,7 +18,7 @@ def create_module(name, attrs):
     return mod
 
 
-def test_torch_collect(mocker):
+def test_torch_collect(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import torch as torch_fw
 
@@ -240,7 +240,7 @@ def test_torch_collect(mocker):
     assert torch_fw.collect_api("unknown") == []
 
 
-def test_torch_import_error(mocker):
+def test_torch_import_error(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import torch as torch_fw
 
@@ -257,7 +257,7 @@ def test_torch_import_error(mocker):
     assert torch_fw.collect_api(SemanticTier.DATALOADER) == []
 
 
-def test_torch_typeerror(mocker):
+def test_torch_typeerror(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import torch as torch_fw
 
@@ -286,7 +286,7 @@ def test_torch_typeerror(mocker):
     assert torch_fw.collect_api("unknown") == []
 
 
-def test_tensorflow_collect(mocker):
+def test_tensorflow_collect(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import tensorflow as tf_fw
 
@@ -423,7 +423,7 @@ def test_tensorflow_collect(mocker):
     assert tf_fw.collect_api(SemanticTier.LOSS) == []
 
 
-def test_keras_collect(mocker):
+def test_keras_collect(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import keras as keras_fw
 
@@ -534,7 +534,7 @@ def test_keras_collect(mocker):
     assert keras_fw.collect_api(SemanticTier.LOSS) == []
 
 
-def test_mlx_collect(mocker):
+def test_mlx_collect(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import mlx as mlx_fw
 
@@ -599,7 +599,7 @@ def test_mlx_collect(mocker):
     assert mlx_fw.collect_api(SemanticTier.LAYER) == []
 
 
-def test_jax_collect(mocker):
+def test_jax_collect(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import jax as jax_fw
     from ml_framework_snapshots.frameworks.optax_shim import OptaxScanner
@@ -673,7 +673,7 @@ def test_jax_collect(mocker):
     assert jax_fw.collect_api(SemanticTier.INITIALIZER) == []
 
 
-def test_flax_nnx_collect(mocker):
+def test_flax_nnx_collect(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import flax_nnx as flax_fw
 
@@ -729,7 +729,7 @@ def test_flax_nnx_collect(mocker):
     assert flax_fw.collect_api(SemanticTier.LAYER) == []
 
 
-def test_optax_shim_collect(mocker):
+def test_optax_shim_collect(mocker) -> None:
     """Function docstring."""
     import ml_framework_snapshots.frameworks.optax_shim as o_shim
 
@@ -838,7 +838,7 @@ def test_optax_shim_collect(mocker):
     assert o_shim.OptaxScanner.scan_schedulers() == []
 
 
-def test_sklearn_collect(mocker):
+def test_sklearn_collect(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import sklearn as sklearn_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -922,7 +922,7 @@ def test_sklearn_collect(mocker):
     assert empty == []
 
 
-def test_sklearn_import_error(mocker):
+def test_sklearn_import_error(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import sklearn as sklearn_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -933,7 +933,7 @@ def test_sklearn_import_error(mocker):
     assert layers == []
 
 
-def test_sklearn_module_import_error(mocker):
+def test_sklearn_module_import_error(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import sklearn as sklearn_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -966,7 +966,7 @@ def test_sklearn_module_import_error(mocker):
     assert metrics == []
 
 
-def test_sklearn_scan_module_edge_cases(mocker):
+def test_sklearn_scan_module_edge_cases(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks.sklearn import _scan_module
     import types
@@ -1012,7 +1012,7 @@ def test_sklearn_scan_module_edge_cases(mocker):
     assert _scan_module(mock_mod2, "prefix", block_list={"blocked"}) == []
 
 
-def test_sklearn_scan_module_branches(mocker):
+def test_sklearn_scan_module_branches(mocker) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks.sklearn import _scan_module
     import types
@@ -1046,3 +1046,291 @@ def test_sklearn_scan_module_branches(mocker):
 
     res = _scan_module(mock_mod, "prefix", kind="function")
     assert len(res) == 1
+
+
+def test_numpy_collect(mocker) -> None:
+    """Function docstring."""
+    import ml_framework_snapshots.frameworks.numpy as np_shim
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+    from ml_framework_snapshots.models import GhostInspector
+
+    def tanh():
+        pass
+
+    def exp():
+        pass
+
+    fake_np = create_module(
+        "numpy",
+        {
+            "tanh": tanh,
+            "exp": exp,
+            "maximum": 123,
+            "minimum": lambda: None,
+            "not_callable": 123,
+        },
+    )
+    mocker.patch.object(np_shim, "np", fake_np)
+
+    original_inspect = GhostInspector.inspect
+
+    def mock_inspect(obj, api_path, **kwargs):
+        if "minimum" in api_path:
+            raise ValueError("mock error")
+        return original_inspect(obj, api_path, **kwargs)
+
+    mocker.patch(
+        "ml_framework_snapshots.frameworks.numpy.GhostInspector.inspect",
+        side_effect=mock_inspect,
+    )
+
+    res = np_shim.collect_api(SemanticTier.ACTIVATION)
+    names = [x.name for x in res]
+    assert "tanh" in names
+    assert "exp" in names
+    assert "not_callable" not in names
+
+    # Empty
+    res2 = np_shim.collect_api(SemanticTier.LAYER)
+    assert not res2
+
+    # Import error
+    mocker.patch.object(np_shim, "np", None)
+    assert not np_shim.collect_api(SemanticTier.ACTIVATION)
+
+
+def test_orbax_collect(mocker) -> None:
+    """Function docstring."""
+    import ml_framework_snapshots.frameworks.orbax_checkpoint as ocp_shim
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+    from ml_framework_snapshots.models import GhostInspector
+
+    def checkpoint():
+        pass
+
+    def _priv():
+        pass
+
+    class Checkpointer:
+        pass
+
+    def error_func():
+        pass
+
+    fake_ocp = create_module(
+        "orbax.checkpoint",
+        {
+            "checkpoint": checkpoint,
+            "_priv": _priv,
+            "Checkpointer": Checkpointer,
+            "error_func": error_func,
+            "not_callable": 123,
+        },
+    )
+    mocker.patch.object(ocp_shim, "ocp", fake_ocp)
+
+    original_inspect = GhostInspector.inspect
+
+    def mock_inspect(obj, api_path, **kwargs):
+        if "error_func" in api_path:
+            raise ValueError("mock error")
+        return original_inspect(obj, api_path, **kwargs)
+
+    mocker.patch(
+        "ml_framework_snapshots.frameworks.orbax_checkpoint.GhostInspector.inspect",
+        side_effect=mock_inspect,
+    )
+
+    res = ocp_shim.collect_api(SemanticTier.ARRAY_API)
+    names = [x.name for x in res]
+    assert "checkpoint" in names
+    assert "Checkpointer" in names
+    assert "_priv" not in names
+
+    # Include non-public
+    res_all = ocp_shim.collect_api(SemanticTier.ARRAY_API, include_nonpublic=True)
+    names_all = [x.name for x in res_all]
+    assert "_priv" in names_all
+
+    # Empty
+    res2 = ocp_shim.collect_api(SemanticTier.LAYER)
+    assert not res2
+
+    # Import error
+    mocker.patch.object(ocp_shim, "ocp", None)
+    assert not ocp_shim.collect_api(SemanticTier.ARRAY_API)
+
+
+def test_pax_collect(mocker) -> None:
+    """Function docstring."""
+    import ml_framework_snapshots.frameworks.pax as pax_shim
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+    from ml_framework_snapshots.models import GhostInspector
+
+    class Linear:
+        pass
+
+    class _PrivLayer:
+        pass
+
+    def not_a_class():
+        pass
+
+    class ErrorClass:
+        pass
+
+    fake_layers = create_module(
+        "praxis.layers",
+        {
+            "Linear": Linear,
+            "_PrivLayer": _PrivLayer,
+            "not_a_class": not_a_class,
+            "ErrorClass": ErrorClass,
+            "num": 123,
+        },
+    )
+    mocker.patch.object(pax_shim, "layers", fake_layers)
+
+    original_inspect = GhostInspector.inspect
+
+    def mock_inspect(obj, api_path, **kwargs):
+        if "ErrorClass" in api_path:
+            raise ValueError("mock error")
+        return original_inspect(obj, api_path, **kwargs)
+
+    mocker.patch(
+        "ml_framework_snapshots.frameworks.pax.GhostInspector.inspect",
+        side_effect=mock_inspect,
+    )
+
+    res = pax_shim.collect_api(SemanticTier.NEURAL)
+    names = [x.name for x in res]
+    assert "Linear" in names
+    assert "_PrivLayer" not in names
+
+    # Empty
+    res2 = pax_shim.collect_api(SemanticTier.ACTIVATION)
+    assert not res2
+
+    # Import error
+    mocker.patch.object(pax_shim, "layers", None)
+    assert not pax_shim.collect_api(SemanticTier.NEURAL)
+
+
+def test_triton_collect(mocker) -> None:
+    """Function docstring."""
+    import ml_framework_snapshots.frameworks.triton as triton_shim
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+    import importlib
+
+    def cdiv():
+        pass
+
+    fake_triton = create_module("triton", {"cdiv": cdiv, "_priv": lambda: None})
+    fake_tl = create_module("triton.language", {"cdiv": cdiv, "_priv": lambda: None})
+
+    original_import = importlib.import_module
+
+    def mock_import(name, *args, **kwargs):
+        if name == "triton":
+            return fake_triton
+        elif name == "triton.language":
+            return fake_tl
+        elif name == "triton_fail":
+            raise ImportError("mock error")
+        return original_import(name, *args, **kwargs)
+
+    mocker.patch("importlib.import_module", side_effect=mock_import)
+
+    res = triton_shim.collect_api(SemanticTier.UTIL)
+    assert "cdiv" in [x.name for x in res]
+
+    # Import error
+    mocker.patch("importlib.import_module", side_effect=ImportError)
+    assert not triton_shim.collect_api(SemanticTier.UTIL)
+
+
+def test_deepspeed_collect(mocker) -> None:
+    """Function docstring."""
+    import ml_framework_snapshots.frameworks.deepspeed as ds_shim
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+    import importlib
+
+    def initialize():
+        pass
+
+    fake_ds = create_module("deepspeed", {"initialize": initialize})
+    original_import = importlib.import_module
+
+    def mock_import(name, *args, **kwargs):
+        if name == "deepspeed":
+            return fake_ds
+        return original_import(name, *args, **kwargs)
+
+    mocker.patch("importlib.import_module", side_effect=mock_import)
+    res = ds_shim.collect_api(SemanticTier.MODEL)
+    assert "initialize" in [x.name for x in res]
+
+    mocker.patch("importlib.import_module", side_effect=ImportError)
+    assert not ds_shim.collect_api(SemanticTier.MODEL)
+
+
+def test_onnxruntime_collect(mocker) -> None:
+    """Function docstring."""
+    import ml_framework_snapshots.frameworks.onnxruntime as ort_shim
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+    import importlib
+
+    class InferenceSession:
+        pass
+
+    fake_ort = create_module("onnxruntime", {"InferenceSession": InferenceSession})
+    original_import = importlib.import_module
+
+    def mock_import(name, *args, **kwargs):
+        if name == "onnxruntime":
+            return fake_ort
+        return original_import(name, *args, **kwargs)
+
+    mocker.patch("importlib.import_module", side_effect=mock_import)
+    res = ort_shim.collect_api(SemanticTier.MODEL)
+    assert "InferenceSession" in [x.name for x in res]
+
+    mocker.patch("importlib.import_module", side_effect=ImportError)
+    assert not ort_shim.collect_api(SemanticTier.MODEL)
+
+
+def test_huggingface_collect(mocker) -> None:
+    """Function docstring."""
+    import ml_framework_snapshots.frameworks.huggingface as hf_shim
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+    import importlib
+
+    class PreTrainedModel:
+        pass
+
+    class Trainer:
+        pass
+
+    fake_transformers = create_module(
+        "transformers", {"PreTrainedModel": PreTrainedModel, "Trainer": Trainer}
+    )
+
+    original_import = importlib.import_module
+
+    def mock_import(name, *args, **kwargs):
+        if name == "transformers":
+            return fake_transformers
+        return original_import(name, *args, **kwargs)
+
+    mocker.patch("importlib.import_module", side_effect=mock_import)
+
+    res = hf_shim.collect_transformers(SemanticTier.MODEL)
+    names = [x.name for x in res]
+    assert "PreTrainedModel" in names
+
+    res2 = hf_shim.collect_transformers(SemanticTier.UTIL)
+    assert "Trainer" in [x.name for x in res2]
+
+    mocker.patch("importlib.import_module", side_effect=ImportError)
+    assert not hf_shim.collect_transformers(SemanticTier.MODEL)

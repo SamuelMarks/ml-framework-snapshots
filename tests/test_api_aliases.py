@@ -5,7 +5,7 @@ from ml_switcheroo_ir.schema.ghost import GhostParam
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
-def test_consolidate_aliases():
+def test_consolidate_aliases() -> None:
     """Function docstring."""
     ref1 = GhostRef(
         name="relu",

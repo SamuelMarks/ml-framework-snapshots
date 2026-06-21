@@ -2,9 +2,9 @@
 
 import importlib
 from typing import List
-from ml_switcheroo.enums import SemanticTier
+from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo.core.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
 def collect_api(
@@ -53,7 +53,7 @@ def collect_api(
                         # Ensure 'providers' is in parameters
                         has_providers = any(p.name == "providers" for p in ref.params)
                         if not has_providers:  # pragma: no branch
-                            from ml_switcheroo.core.ghost import GhostParam
+                            from ml_switcheroo_ir.schema.ghost import GhostParam
 
                             ref.params.append(
                                 GhostParam(

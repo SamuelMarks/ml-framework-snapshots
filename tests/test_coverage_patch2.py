@@ -1,3 +1,4 @@
+from typing import Any
 """Module docstring."""
 
 from unittest.mock import patch, MagicMock
@@ -5,7 +6,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 
 
 # --- DIFF ---
-def test_diff_branches():
+def test_diff_branches() -> None:
     """Function docstring."""
     from ml_framework_snapshots.diff import diff_snapshots
 
@@ -51,7 +52,7 @@ def test_diff_branches():
 
 
 # --- EXPORT ---
-def test_export_branches():
+def test_export_branches() -> None:
     """Function docstring."""
     from ml_framework_snapshots.export import (
         _py_type_to_proto,
@@ -100,7 +101,7 @@ def test_export_branches():
 # --- FRAMEWORKS ---
 
 
-def test_deepspeed_missing():
+def test_deepspeed_missing() -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks.deepspeed import collect_api
 
@@ -143,7 +144,7 @@ def test_deepspeed_missing():
             collect_api(SemanticTier.MODEL)
 
 
-def test_onnxruntime_missing():
+def test_onnxruntime_missing() -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks.onnxruntime import collect_api
 
@@ -186,7 +187,7 @@ def test_onnxruntime_missing():
             collect_api(SemanticTier.MODEL)
 
 
-def test_triton_missing():
+def test_triton_missing() -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks.triton import collect_api
 
@@ -241,7 +242,7 @@ def test_triton_missing():
             collect_api(SemanticTier.UTIL)
 
 
-def test_sklearn_missing():
+def test_sklearn_missing() -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks.sklearn import collect_api
 
@@ -253,7 +254,7 @@ def test_sklearn_missing():
         assert res == []
 
 
-def test_huggingface_missing():
+def test_huggingface_missing() -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks.huggingface import (
         _extract_generation_kwargs,

@@ -1,8 +1,9 @@
+from typing import Any
 from unittest.mock import patch
 from ml_framework_snapshots.cli import resolve_snapshot_path
 
 
-def test_resolve_snapshot_path_existing_file(tmp_path):
+def test_resolve_snapshot_path_existing_file(tmp_path: Any) -> None:
     file_path = tmp_path / "my_snapshot.json"
     file_path.touch()
 
@@ -10,7 +11,7 @@ def test_resolve_snapshot_path_existing_file(tmp_path):
     assert resolved == str(file_path)
 
 
-def test_resolve_snapshot_path_append_json(tmp_path):
+def test_resolve_snapshot_path_append_json(tmp_path: Any) -> None:
     file_path = tmp_path / "my_snapshot.json"
     file_path.touch()
 
@@ -20,7 +21,7 @@ def test_resolve_snapshot_path_append_json(tmp_path):
     assert resolved == str(file_path)
 
 
-def test_resolve_snapshot_path_fallback_to_repo(tmp_path):
+def test_resolve_snapshot_path_fallback_to_repo(tmp_path: Any) -> None:
     # Mock __file__ so repo root points to our temp directory
     pkg_dir = tmp_path / "src" / "ml_framework_snapshots"
     pkg_dir.mkdir(parents=True)
@@ -49,8 +50,20 @@ def test_resolve_snapshot_path_fallback_to_repo(tmp_path):
         assert resolved == str(target_file)
 
 
-def test_resolve_snapshot_path_not_found(tmp_path):
+def test_resolve_snapshot_path_not_found(tmp_path: Any) -> None:
     # Should just return the input path if nothing works
     with patch("ml_framework_snapshots.cli.__file__", "/tmp/does_not_exist/cli.py"):
         resolved = resolve_snapshot_path("missing_framework")
         assert resolved == "missing_framework"
+
+
+def test_resolve_multiple_matches(mocker) -> None:
+    from ml_framework_snapshots.cli import resolve_snapshot_path
+
+    mocker.patch("pathlib.Path.is_file", side_effect=lambda x: str(x) == "torch")
+    mocker.patch(
+        "glob.glob",
+        return_value=["snapshots/torch-1.12.json", "snapshots/torch-2.0.json"],
+    )
+    res = resolve_snapshot_path("torch")
+    assert res == "snapshots/torch-2.0.json"

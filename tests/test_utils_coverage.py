@@ -21,7 +21,7 @@ class NoAllModule:
     a = 1
 
 
-def test_get_all_members_exception():
+def test_get_all_members_exception() -> None:
     """Function docstring."""
     members = get_all_members(FaultyModule())
     assert dict(members)["good"] == 1
@@ -31,7 +31,7 @@ def test_get_all_members_exception():
     assert dict(members2)["a"] == 1
 
 
-def test_extract_c_ext_coverage():
+def test_extract_c_ext_coverage() -> None:
     """Function docstring."""
 
     def empty_doc():

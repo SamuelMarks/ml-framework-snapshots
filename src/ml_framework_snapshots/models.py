@@ -1,6 +1,6 @@
 """Models for Ghost API representations."""
 
-from ml_switcheroo.core.ghost import GhostRef, GhostParam
+from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
 
 STANDARD_ARG_MAP = {
     "x": "input",
@@ -334,6 +334,15 @@ class GhostInspector:
         # 3. Parameter Extraction Strategy (CDD -> Griffe -> Standard -> C-Extension Fallback)
         extracted_params = []
 
+        griffe_params = None
+        has_griffe_params = False
+        try:
+            griffe_params = getattr(griffe_node, "parameters", None)
+            if griffe_params and len(griffe_params) > 0:
+                has_griffe_params = True
+        except Exception:
+            pass
+
         if cdd_ast_params:
             # Use CDD AST parser
             for p_name, p_info in cdd_ast_params.items():
@@ -373,8 +382,8 @@ class GhostInspector:
                 extracted_params.append((p_name, p_kind_str, default_val, anno_val))
 
             # Fallback to Griffe to find VAR_POSITIONAL / VAR_KEYWORD which CDD drops
-            if griffe_node and hasattr(griffe_node, "parameters"):
-                for param in griffe_node.parameters:
+            if has_griffe_params and griffe_params is not None:
+                for param in griffe_params:
                     if param.name == "self":
                         continue  # pragma: no cover
                     if param.name not in cdd_ast_params:
@@ -441,13 +450,9 @@ class GhostInspector:
                 except Exception:  # pragma: no cover
                     pass
 
-        elif (
-            griffe_node
-            and hasattr(griffe_node, "parameters")
-            and len(griffe_node.parameters) > 0
-        ):
+        elif has_griffe_params and griffe_params is not None:
             # Use Griffe for parameters
-            for param in griffe_node.parameters:
+            for param in griffe_params:
                 if param.name == "self":
                     continue
 
@@ -614,8 +619,17 @@ class GhostInspector:
 
         # Extract overloads via Griffe
         overloads_refs = []
-        if griffe_node and hasattr(griffe_node, "overloads") and griffe_node.overloads:
-            for overload in griffe_node.overloads:
+        has_griffe_overloads = False
+        griffe_overloads = None
+        try:
+            griffe_overloads = getattr(griffe_node, "overloads", None)
+            if griffe_overloads:
+                has_griffe_overloads = True
+        except Exception:
+            pass
+
+        if has_griffe_overloads and griffe_overloads is not None:
+            for overload in griffe_overloads:
                 if isinstance(overload, str):
                     continue
                 # Construct a partial GhostRef for each overload

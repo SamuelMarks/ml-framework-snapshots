@@ -10,14 +10,14 @@ from ml_framework_snapshots.utils import get_all_members
 from typing import List
 
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo.core.ghost import GhostRef
-from ml_switcheroo.enums import SemanticTier
+from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_framework_snapshots.frameworks.jax import collect_api as jax_collect_api
 
 try:
     import flax.nnx as nnx
 except ImportError:  # pragma: no cover
-    nnx = None
+    nnx = None  # type: ignore
 
 
 def _scan_nnx_layers(include_nonpublic: bool) -> List[GhostRef]:

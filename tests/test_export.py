@@ -1,3 +1,4 @@
+from typing import Any
 """Module docstring."""
 
 import pytest
@@ -14,7 +15,7 @@ from ml_framework_snapshots.export import (
 
 
 @pytest.fixture
-def sample_ghost_ref():
+def sample_ghost_ref() -> None:
     """Function docstring."""
     return GhostRef(
         name="Linear",
@@ -48,7 +49,7 @@ def sample_ghost_ref():
     )
 
 
-def test_ghost_to_cdd_ir(sample_ghost_ref):
+def test_ghost_to_cdd_ir(sample_ghost_ref) -> None:
     """Function docstring.
 
     Args:
@@ -79,7 +80,7 @@ def test_ghost_to_cdd_ir(sample_ghost_ref):
     assert returns["return_type"]["doc"] == "A tensor of shape"
 
 
-def test_to_json_schema(sample_ghost_ref):
+def test_to_json_schema(sample_ghost_ref) -> None:
     """Function docstring.
 
     Args:
@@ -99,7 +100,7 @@ def test_to_json_schema(sample_ghost_ref):
     assert "bias" in properties
 
 
-def test_to_openapi(sample_ghost_ref):
+def test_to_openapi(sample_ghost_ref) -> None:
     """Function docstring.
 
     Args:
@@ -117,7 +118,7 @@ def test_to_openapi(sample_ghost_ref):
     assert "Linear" in schemas
 
 
-def test_to_pydantic(sample_ghost_ref):
+def test_to_pydantic(sample_ghost_ref) -> None:
     """Function docstring.
 
     Args:
@@ -139,7 +140,7 @@ def test_to_pydantic(sample_ghost_ref):
     assert "args" not in code  # VAR_POSITIONAL skipped
 
 
-def test_to_pydantic_empty():
+def test_to_pydantic_empty() -> None:
     """Function docstring."""
     ref = GhostRef(name="Empty", api_path="a.Empty", kind="class", params=[])
     code = to_pydantic(ref)
@@ -147,7 +148,7 @@ def test_to_pydantic_empty():
     assert "pass" in code
 
 
-def test_to_protobuf(sample_ghost_ref):
+def test_to_protobuf(sample_ghost_ref) -> None:
     """Function docstring.
 
     Args:
@@ -162,7 +163,7 @@ def test_to_protobuf(sample_ghost_ref):
     assert "args" not in code
 
 
-def test_to_protobuf_types():
+def test_to_protobuf_types() -> None:
     """Function docstring."""
     ref = GhostRef(
         name="Types",

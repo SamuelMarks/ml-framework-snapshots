@@ -1,9 +1,10 @@
+from typing import Any
 """Module docstring."""
 
 from ml_framework_snapshots.models import GhostInspector
 
 
-def test_ghost_inspector_overloads():
+def test_ghost_inspector_overloads() -> None:
     """Function docstring."""
     # We write it out to a file so Griffe can load it properly
     import pathlib

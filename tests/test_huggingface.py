@@ -9,7 +9,7 @@ from ml_framework_snapshots.frameworks.huggingface import (
 )
 
 
-def test_collect_transformers():
+def test_collect_transformers() -> None:
     """Function docstring."""
     mock_mod = MagicMock()
 
@@ -79,7 +79,7 @@ def test_collect_transformers():
         assert dummy_params["max_length"].annotation == "int"
 
 
-def test_collect_diffusers():
+def test_collect_diffusers() -> None:
     """Function docstring."""
     mock_mod = MagicMock()
 
@@ -112,7 +112,7 @@ def test_collect_diffusers():
         assert res[0].name == "DummyScheduler"
 
 
-def test_collect_tokenizers():
+def test_collect_tokenizers() -> None:
     """Function docstring."""
     mock_mod = MagicMock()
 
@@ -149,7 +149,7 @@ from ml_framework_snapshots.frameworks.huggingface import _parse_pretrained_conf
 from ml_switcheroo_ir.schema.ghost import GhostRef  # noqa: E402
 
 
-def test_parse_pretrained_config_with_empty_annotations():
+def test_parse_pretrained_config_with_empty_annotations() -> None:
     ref = GhostRef(name="MyConfig", api_path="pkg.MyConfig", kind="class")
 
     class DummyConfig:

@@ -260,7 +260,7 @@ def cmd_check(args: argparse.Namespace) -> None:
             for item in items:
                 ref = GhostRef.model_validate(item)
                 ref_map[ref.api_path] = ref
-                for alias in []:
+                for alias in ref.aliases:
                     ref_map[alias] = ref
 
         print("|   | Framework | Namespace | Symbol | FQN | Signature | Docstring |")
@@ -311,7 +311,9 @@ def cmd_check(args: argparse.Namespace) -> None:
     if mismatched:
         print(f"\nMismatched APIs ({len(mismatched)}):")
         for item in sorted(mismatched, key=lambda x: x["api_path"])[:20]:
-            print(f"  ~ {item['api_path']}")
+            print(
+                f"  ~ {item['api_path']}\n    Expected: {item.get('expected')}\n    Actual:   {item.get('actual')}"
+            )
         if len(mismatched) > 20:
             print(f"  ~ ... and {len(mismatched) - 20} more")
 
@@ -387,7 +389,10 @@ def main() -> None:
         "snapshot_json", type=str, help="Reference snapshot JSON file"
     )
     parser_check.add_argument(
-        "target_path", type=str, help="Target implementation file or directory"
+        "target_path",
+        type=str,
+        nargs="+",
+        help="Target implementation file or directory",
     )
     parser_check.add_argument(
         "--target-prefix",

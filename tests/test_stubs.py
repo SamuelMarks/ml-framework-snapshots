@@ -1,9 +1,10 @@
+from typing import Any
 """Module docstring."""
 
 from ml_framework_snapshots.stubs import generate_stubs
 
 
-def test_generate_stubs(tmp_path):
+def test_generate_stubs(tmp_path: Any) -> None:
     """Function docstring."""
     snap = {
         "categories": {
@@ -93,14 +94,14 @@ def test_generate_stubs(tmp_path):
     assert "def varargs_func(x: Any, *args: Any) -> Any: ..." in content
 
 
-def test_generate_stubs_empty(tmp_path):
+def test_generate_stubs_empty(tmp_path: Any) -> None:
     """Function docstring."""
     out_dir = tmp_path / "stubs"
     generate_stubs({}, str(out_dir))
     assert not (out_dir / "test_fw").exists()
 
 
-def test_generate_stubs_default_vals(tmp_path):
+def test_generate_stubs_default_vals(tmp_path: Any) -> None:
     """Function docstring."""
     snap = {
         "categories": {
@@ -128,7 +129,7 @@ def test_generate_stubs_default_vals(tmp_path):
     assert "def __init__(self, in_features: int = 10) -> Any: ..." in content
 
 
-def test_generate_stubs_no_module(tmp_path):
+def test_generate_stubs_no_module(tmp_path: Any) -> None:
     """Function docstring."""
     data = {
         "categories": {
@@ -148,7 +149,7 @@ def test_generate_stubs_no_module(tmp_path):
     assert not list(tmp_path.glob("**/*.pyi"))
 
 
-def test_generate_stubs_include_nonpublic(tmp_path):
+def test_generate_stubs_include_nonpublic(tmp_path: Any) -> None:
     """Function docstring."""
     snap = {
         "categories": {

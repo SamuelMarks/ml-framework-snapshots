@@ -1,9 +1,10 @@
+from typing import Any
 """Module docstring."""
 
 from ml_framework_snapshots.models import GhostInspector
 
 
-def some_function(a: int = 1, b: str = "test", *args, **kwargs):
+def some_function(a: int = 1, b: str = "test", *args: Any, **kwargs: Any) -> None:
     """A test function.
 
     :param a: The first parameter.
@@ -23,8 +24,7 @@ class SomeClass:
     """A test class."""
 
     def __init__(self, x: float, y: list = []):
-        """
-        :param x: The x coordinate.
+        """:param x: The x coordinate.
         :type x: float
         :param y: The y list.
         :type y: list
@@ -32,7 +32,7 @@ class SomeClass:
         pass
 
 
-def test_ghost_inspector_cdd_function():
+def test_ghost_inspector_cdd_function() -> None:
     """Function docstring."""
     ref = GhostInspector.inspect(some_function, "some_function")
     assert ref.name == "some_function"
@@ -50,7 +50,7 @@ def test_ghost_inspector_cdd_function():
     assert b_param.description == "The second parameter."
 
 
-def test_ghost_inspector_cdd_class():
+def test_ghost_inspector_cdd_class() -> None:
     """Function docstring."""
     ref = GhostInspector.inspect(SomeClass, "SomeClass")
     assert ref.name == "SomeClass"

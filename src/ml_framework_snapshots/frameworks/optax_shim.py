@@ -17,10 +17,10 @@ from typing import List
 try:
     import optax
 except ImportError:  # pragma: no cover
-    optax = None
+    optax = None  # type: ignore
 
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo.core.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
 class OptaxScanner:

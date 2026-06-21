@@ -9,15 +9,15 @@ from ml_framework_snapshots.utils import get_all_members
 from typing import List
 
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo.core.ghost import GhostRef
-from ml_switcheroo.enums import SemanticTier
+from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import SemanticTier
 
 try:
     import mlx.core  # pragma: no cover
     import mlx.nn  # pragma: no cover
     import mlx.optimizers  # pragma: no cover
 except ImportError:  # pragma: no cover
-    mlx = None
+    mlx = None  # type: ignore
 
 
 def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[GhostRef]:

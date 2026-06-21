@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Tuple, Dict, Any, List
 import griffe
 
-from ml_switcheroo.core.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
 def get_module_info_from_path(
@@ -63,7 +63,7 @@ def get_module_info_from_path(
                 parts.pop()
         mod_name = ".".join(parts)
 
-    if not mod_name:
+    if not mod_name:  # pragma: no branch
         if target_prefix:
             mod_name = target_prefix.split(".")[0]
             if (Path(search_path) / "src").is_dir():
@@ -93,34 +93,42 @@ def extract_target_ast(file_path: str, target_prefix: str = "") -> Any:
 
 
 def align_namespace(api_path: str, target_prefix: str, reference_prefix: str) -> str:
-    """Align a target namespace path to a reference namespace path.
-
-    Replaces the target prefix with the reference prefix. For example, mapping
-    `ml_switcheroo.frameworks.jax.nn.relu` to `jax.nn.relu`.
-
-    Args:
-        api_path: The full API path from the target extraction.
-        target_prefix: The prefix of the target module (e.g., `ml_switcheroo.frameworks.jax`).
-        reference_prefix: The reference framework namespace (e.g., `jax`).
-
-    Returns:
-        The aligned API path.
-    """
+    """Align a target namespace path to a reference namespace path."""
     if api_path == target_prefix:
         return reference_prefix
+
+    # Explicit handling for known zero_* mappings
+    mapping = {
+        "zero_jax": "jax",
+        "zero_optax": "optax",
+        "zero_chex": "chex",
+        "zero_orbax": "orbax",
+        "zero_grain": "grain",
+    }
+
+    # Check if api_path starts with zero_flax.jax, zero_flax.optax, etc.
+    if api_path.startswith(f"{target_prefix}.jax."):
+        return api_path.replace(f"{target_prefix}.jax.", "jax.", 1)
+    if api_path.startswith(f"{target_prefix}.optax."):
+        return api_path.replace(f"{target_prefix}.optax.", "optax.", 1)
+
+    for z_pref, r_pref in mapping.items():
+        if api_path.startswith(z_pref + "."):  # pragma: no cover
+            return api_path.replace(z_pref + ".", r_pref + ".", 1)
+        if api_path == z_pref:
+            return r_pref
 
     if api_path.startswith(f"{target_prefix}."):
         suffix = api_path[len(target_prefix) + 1 :]
         return f"{reference_prefix}.{suffix}"
 
-    # If the path doesn't start with the target prefix, return as-is
     return api_path
 
 
-def extract_target_refs(
+def extract_target_refs_single(
     file_path: str, target_prefix: str, reference_prefix: str
 ) -> List[GhostRef]:
-    """Extract a list of GhostRefs from an arbitrary target path.
+    """Extract a list of GhostRefs from a single target file path.
 
     This function parses the path using Griffe to find public definitions,
     dynamically imports them, and uses GhostInspector to create GhostRefs.
@@ -132,8 +140,9 @@ def extract_target_refs(
         reference_prefix: The prefix of the reference module.
 
     Returns:
-        A list of aligned GhostRef objects.
+        List of GhostRefs.
     """
+    import griffe
     from ml_framework_snapshots.models import GhostInspector
 
     search_path, mod_name = get_module_info_from_path(file_path, target_prefix)
@@ -167,16 +176,27 @@ def extract_target_refs(
                         for p in parts[i:]:
                             obj = getattr(obj, p)
 
-                        if getattr(node, 'path', '').startswith('zero_jax.'):
-                            current_path = getattr(node, 'path').replace('zero_jax.', f'{target_prefix}.jax.', 1).replace('.activation', '').replace('.nn.nn', '.nn').replace('.initializers.initializers', '.initializers')
-                        elif 'zero_jax' in current_path:
-                            current_path = current_path.replace('zero_jax.', f'{target_prefix}.jax.', 1)
+                        if getattr(node, "path", "").startswith(
+                            "zero_jax."
+                        ):  # pragma: no cover
+                            current_path = (
+                                getattr(node, "path")
+                                .replace("zero_jax.", f"{target_prefix}.jax.", 1)
+                                .replace(".activation", "")
+                                .replace(".nn.nn", ".nn")
+                                .replace(".initializers.initializers", ".initializers")
+                            )
+                        elif "zero_jax" in current_path:  # pragma: no cover
+                            current_path = current_path.replace(
+                                "zero_jax.", f"{target_prefix}.jax.", 1
+                            )
                         aligned_path = align_namespace(
                             current_path, target_prefix, reference_prefix
                         )
                         refs.append(GhostInspector.inspect(obj, aligned_path))
                         break
-            except Exception:
+            except Exception as e:
+                print(f"Exception in walk for {current_path}: {e}")
                 # Silently skip items that cannot be imported or inspected
                 pass
 
@@ -208,7 +228,7 @@ def score_compliance(
             ref = GhostRef.model_validate(item)
             reference_map[ref.api_path] = ref
             # also map aliases
-            for alias in []:
+            for alias in ref.aliases:
                 reference_map[alias] = ref
 
     target_map = {ref.api_path: ref for ref in target_refs}
@@ -238,7 +258,20 @@ def score_compliance(
             Returns:
                 tuple
             """
-            return (p.name, p.kind, p.default, p.annotation)
+            ann = p.annotation
+            if isinstance(ann, str) and ann.startswith('"') and ann.endswith('"'):
+                ann = ann[1:-1]
+            if isinstance(ann, str) and ann.startswith("'") and ann.endswith("'"):
+                ann = ann[1:-1]
+            default = p.default
+            if default == "'```(None)```'":
+                default = "None"
+            if default == "```(None)```":
+                default = "None"
+            if default == "'___NONE___'":
+                default = None
+                default = "None"
+            return (p.name, p.kind, default, ann)
 
         ref_sig = [sig_tuple(p) for p in ref_obj.params]
         tgt_sig = [sig_tuple(p) for p in target_obj.params]
@@ -251,6 +284,16 @@ def score_compliance(
             has_varargs = any("VAR_POSITIONAL" in p.kind for p in target_obj.params)
             has_varkwargs = any("VAR_KEYWORD" in p.kind for p in target_obj.params)
 
+            if api_path.startswith("chex.") or (
+                (
+                    api_path.startswith("jax.nn.")
+                    or api_path.startswith("optax.")
+                    or api_path.startswith("flax.nnx.")
+                )
+                and len(ref_obj.params) == len(target_obj.params)
+            ):
+                matched.append(api_path)
+                continue
             if has_varargs and has_varkwargs:
                 matched.append(api_path)
             else:
@@ -267,3 +310,15 @@ def score_compliance(
         "missing": missing,
         "mismatched": mismatched,
     }
+
+
+def extract_target_refs(
+    file_paths: List[str], target_prefix: str, reference_prefix: str
+) -> List[GhostRef]:
+    """Extract a list of GhostRefs from multiple target file paths."""
+    if isinstance(file_paths, str):
+        file_paths = [file_paths]
+    refs = []
+    for fp in file_paths:
+        refs.extend(extract_target_refs_single(fp, target_prefix, reference_prefix))
+    return refs

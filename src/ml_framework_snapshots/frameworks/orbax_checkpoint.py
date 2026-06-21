@@ -5,13 +5,13 @@ from ml_framework_snapshots.utils import get_all_members
 from typing import List
 
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo.core.ghost import GhostRef
-from ml_switcheroo.enums import SemanticTier
+from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import SemanticTier
 
 try:
     import orbax.checkpoint as ocp
 except ImportError:  # pragma: no cover
-    ocp = None
+    ocp = None  # type: ignore
 
 
 def _scan_orbax_checkpoint(include_nonpublic: bool) -> List[GhostRef]:
@@ -33,7 +33,9 @@ def _scan_orbax_checkpoint(include_nonpublic: bool) -> List[GhostRef]:
                 continue
             if inspect.isclass(obj) or inspect.isfunction(obj):
                 try:
-                    found.append(GhostInspector.inspect(obj, f"orbax.checkpoint.{name}"))
+                    found.append(
+                        GhostInspector.inspect(obj, f"orbax.checkpoint.{name}")
+                    )
                 except Exception:
                     pass
     except Exception:  # pragma: no cover

@@ -3,7 +3,7 @@
 from ml_framework_snapshots.models import GhostInspector
 
 
-def torch_compile_mock(func):
+def torch_compile_mock(func) -> None:
     """Function docstring.
 
     Args:
@@ -24,7 +24,7 @@ def torch_compile_mock(func):
     return Compiled(func)
 
 
-def test_unwrap_torch_compile():
+def test_unwrap_torch_compile() -> None:
     """Function docstring."""
 
     @torch_compile_mock

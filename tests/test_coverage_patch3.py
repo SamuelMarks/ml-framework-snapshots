@@ -2,7 +2,7 @@
 """Module docstring."""
 
 
-def test_diff_branches_more():
+def test_diff_branches_more() -> None:
     """Function docstring."""
     from ml_framework_snapshots.diff import diff_snapshots
 
@@ -49,7 +49,7 @@ def test_diff_branches_more():
 
 
 # --- EXPORT ---
-def test_export_branches_more():
+def test_export_branches_more() -> None:
     """Function docstring."""
     from ml_framework_snapshots.export import (
         to_pydantic,
@@ -97,7 +97,7 @@ def test_export_branches_more():
 
 
 # --- MODELS ---
-def test_models_branches():
+def test_models_branches() -> None:
     """Function docstring."""
     from ml_framework_snapshots.models import sanitize_type_str
 
@@ -106,7 +106,7 @@ def test_models_branches():
 
 
 # --- UTILS ---
-def test_utils_branches():
+def test_utils_branches() -> None:
     """Function docstring."""
     from ml_framework_snapshots.utils import (
         extract_c_extension_signature,

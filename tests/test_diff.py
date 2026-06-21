@@ -3,7 +3,7 @@
 from ml_framework_snapshots.diff import diff_snapshots, generate_changelog
 
 
-def test_diff_snapshots():
+def test_diff_snapshots() -> None:
     """Function docstring."""
     snap1 = {
         "categories": {
@@ -186,7 +186,7 @@ def test_diff_snapshots():
     assert not res2.signature_changed
 
 
-def test_diff_empty():
+def test_diff_empty() -> None:
     """Function docstring."""
     res = diff_snapshots({}, {})
     assert not res.added
@@ -194,7 +194,7 @@ def test_diff_empty():
     assert not res.signature_changed
 
 
-def test_generate_changelog():
+def test_generate_changelog() -> None:
     """Function docstring."""
     snap1 = {
         "categories": {
@@ -249,14 +249,14 @@ def test_generate_changelog():
     assert "- `a.non_breaking`" in changelog
 
 
-def test_generate_changelog_empty():
+def test_generate_changelog_empty() -> None:
     """Function docstring."""
     res = diff_snapshots({}, {})
     changelog = generate_changelog(res)
     assert "No changes detected." in changelog
 
 
-def test_changelog_combinations():
+def test_changelog_combinations() -> None:
     """Function docstring."""
     from ml_framework_snapshots.diff import DiffResult
 

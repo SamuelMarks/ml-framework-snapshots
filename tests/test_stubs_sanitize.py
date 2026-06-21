@@ -3,7 +3,7 @@
 from ml_framework_snapshots.stubs import _sanitize_default
 
 
-def test_sanitize_default():
+def test_sanitize_default() -> None:
     """Function docstring."""
     assert _sanitize_default("<unrepresentable>") == "..."
     assert _sanitize_default("'linear'") == "'linear'"

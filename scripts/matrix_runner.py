@@ -70,7 +70,7 @@ def build_and_run(framework: str, version: str, output_dir: Path) -> Path:
         return out_path
 
 
-def upload_to_s3(directory: Path, bucket: str):
+def upload_to_s3(directory: Path, bucket: str) -> None:
     try:
         import boto3
 
@@ -89,7 +89,7 @@ def upload_to_s3(directory: Path, bucket: str):
         print(f"Failed to upload to S3: {e}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Multi-Version Matrix Runner")
     parser.add_argument(
         "--matrix", type=str, help="Path to JSON matrix config", default=None

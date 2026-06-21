@@ -22,7 +22,7 @@ def forward(x: "TensorRef") -> "TensorRef":
 sys.modules[__name__].TensorRef = TensorRef  # type: ignore
 
 
-def test_resolve_forward_ref():
+def test_resolve_forward_ref() -> None:
     """Function docstring."""
     ref = GhostInspector.inspect(forward, "forward")
     assert ref.has_arg("x")

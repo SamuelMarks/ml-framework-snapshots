@@ -1,10 +1,11 @@
+from typing import Any
 """Module docstring."""
 
 from ml_framework_snapshots.cli import main
 from unittest.mock import mock_open
 
 
-def test_cli_capture(mocker, capsys):
+def test_cli_capture(mocker, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch("sys.argv", ["ml-snapshots", "capture", "--out-dir", "test_out"])
 
@@ -37,7 +38,7 @@ def test_cli_capture(mocker, capsys):
     assert "Skipping jax, not installed" in captured.out
 
 
-def test_cli_diff(mocker, capsys):
+def test_cli_diff(mocker, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch("sys.argv", ["ml-snapshots", "diff", "1.json", "2.json"])
 
@@ -59,7 +60,7 @@ def test_cli_diff(mocker, capsys):
     assert "~ c" in captured.out
 
 
-def test_cli_diff_changelog(mocker, capsys):
+def test_cli_diff_changelog(mocker, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv", ["ml-snapshots", "diff", "1.json", "2.json", "--changelog"]
@@ -85,7 +86,7 @@ def test_cli_diff_changelog(mocker, capsys):
     assert "## Changelog Mock" in captured.out
 
 
-def test_cli_stubs(mocker, capsys):
+def test_cli_stubs(mocker, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -102,7 +103,7 @@ def test_cli_stubs(mocker, capsys):
     assert "Stubs generated in out" in captured.out
 
 
-def test_cli_export_openapi(mocker, capsys):
+def test_cli_export_openapi(mocker, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -145,7 +146,7 @@ def test_cli_export_openapi(mocker, capsys):
     assert "Exported OpenAPI spec to out/openapi.json" in captured.out
 
 
-def test_cli_export_json_schema(mocker, capsys):
+def test_cli_export_json_schema(mocker, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -188,7 +189,7 @@ def test_cli_export_json_schema(mocker, capsys):
     assert "Exported 1 JSON schemas to out" in captured.out
 
 
-def test_cli_export_pydantic(mocker, capsys):
+def test_cli_export_pydantic(mocker, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -231,7 +232,7 @@ def test_cli_export_pydantic(mocker, capsys):
     assert "Exported 1 Pydantic models to out" in captured.out
 
 
-def test_cli_export_protobuf(mocker, capsys):
+def test_cli_export_protobuf(mocker, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -274,7 +275,7 @@ def test_cli_export_protobuf(mocker, capsys):
     assert "Exported 1 Protobuf definitions to out" in captured.out
 
 
-def test_cli_export_unknown_format(mocker, capsys):
+def test_cli_export_unknown_format(mocker, capsys: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.cli import cmd_export
     import pytest
@@ -308,7 +309,7 @@ def test_cli_export_unknown_format(mocker, capsys):
         main()
 
 
-def test_cmd_capture_wildcard(capsys) -> None:
+def test_cmd_capture_wildcard(capsys: Any) -> None:
     """Test function."""
     from ml_framework_snapshots.cli import cmd_capture
     import argparse
@@ -328,7 +329,7 @@ def test_cmd_capture_wildcard(capsys) -> None:
     assert "Saved snapshot to out.json" in captured.out
 
 
-def test_cmd_capture_unsupported(capsys) -> None:
+def test_cmd_capture_unsupported(capsys: Any) -> None:
     """Test function."""
     from ml_framework_snapshots.cli import cmd_capture
     import argparse
@@ -349,7 +350,7 @@ def test_cmd_capture_unsupported(capsys) -> None:
     assert "Skipping torch" in captured.out
 
 
-def test_cmd_capture_all(capsys) -> None:
+def test_cmd_capture_all(capsys: Any) -> None:
     """Test function."""
     from ml_framework_snapshots.cli import cmd_capture
     import argparse
@@ -373,7 +374,7 @@ def test_cmd_capture_all(capsys) -> None:
     assert "Saved snapshot to out.json" in captured.out
 
 
-def test_cmd_capture_missing(capsys) -> None:
+def test_cmd_capture_missing(capsys: Any) -> None:
     """Test function."""
     from ml_framework_snapshots.cli import cmd_capture
     import argparse

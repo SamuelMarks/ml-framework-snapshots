@@ -1,3 +1,4 @@
+from typing import Any
 """Module docstring."""
 
 from ml_framework_snapshots.models import GhostInspector
@@ -5,7 +6,7 @@ from ml_switcheroo_ir.schema.ghost import GhostRef
 import sys
 
 
-def test_ghostref_env_tags():
+def test_ghostref_env_tags() -> None:
     """Function docstring."""
     ref = GhostRef(
         name="test",
@@ -17,7 +18,7 @@ def test_ghostref_env_tags():
     assert "cpu" in ref.environment_tags
 
 
-def test_ghostinspector_env_tags():
+def test_ghostinspector_env_tags() -> None:
     """Function docstring."""
 
     def dummy():
@@ -29,7 +30,7 @@ def test_ghostinspector_env_tags():
     assert "cpu" in ref.environment_tags or "cuda" in ref.environment_tags
 
 
-def test_ghostinspector_env_tags_no_torch(monkeypatch):
+def test_ghostinspector_env_tags_no_torch(monkeypatch: Any) -> None:
     """Function docstring."""
     import sys
 
@@ -43,7 +44,7 @@ def test_ghostinspector_env_tags_no_torch(monkeypatch):
     assert "cpu" in ref.environment_tags
 
 
-def test_ghostinspector_env_tags_cuda_true(mocker, monkeypatch):
+def test_ghostinspector_env_tags_cuda_true(mocker, monkeypatch: Any) -> None:
     """Function docstring."""
     import sys
 

@@ -2,8 +2,8 @@
 
 import inspect
 from typing import Dict, List, Any
-from ml_switcheroo.enums import SemanticTier
-from ml_switcheroo.core.ghost import GhostRef, GhostParam
+from ml_switcheroo_ir.schema.ghost import SemanticTier
+from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
 from ml_framework_snapshots.models import GhostInspector, sanitize_type_str
 
 
@@ -137,7 +137,7 @@ def collect_huggingface(
         if obj is None:
             continue
 
-        obj_cat = None
+        obj_cat = None  # type: ignore
         if "Config" in name:
             obj_cat = SemanticTier.MODEL
         elif "Model" in name or "Pipeline" in name or "Tokenizer" in name:

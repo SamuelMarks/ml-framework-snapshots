@@ -7,7 +7,7 @@ from ml_framework_snapshots.frameworks.onnxruntime import collect_api as onnx_co
 from ml_framework_snapshots.frameworks.deepspeed import collect_api as ds_collect
 
 
-def test_triton_collect():
+def test_triton_collect() -> None:
     """Function docstring."""
     mock_tl = MagicMock()
     mock_tl.__dir__ = lambda self: ["constexpr", "tensor"]
@@ -53,7 +53,7 @@ def test_triton_collect():
             assert len(res) == 2
 
 
-def test_onnx_collect():
+def test_onnx_collect() -> None:
     """Function docstring."""
     mock_onnx = MagicMock()
     mock_onnx.__dir__ = lambda self: ["InferenceSession", "utils"]
@@ -87,7 +87,7 @@ def test_onnx_collect():
         assert any(p.name == "providers" for p in res[0].params)
 
 
-def test_ds_collect():
+def test_ds_collect() -> None:
     """Function docstring."""
     mock_ds = MagicMock()
     mock_ds.__dir__ = lambda self: ["initialize", "utils"]

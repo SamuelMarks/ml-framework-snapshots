@@ -1,3 +1,4 @@
+from typing import Any
 """Module docstring."""
 
 import inspect
@@ -5,7 +6,7 @@ from unittest.mock import patch
 from ml_framework_snapshots.models import GhostInspector
 
 
-def dummy_c_ext():
+def dummy_c_ext() -> None:
     """dummy_c_ext(input: Tensor, *, out: Optional[Tensor] = None) -> Tensor"""
     pass
 
@@ -13,7 +14,7 @@ def dummy_c_ext():
 original_sig = inspect.signature
 
 
-def patched_sig(target, *args, **kwargs):
+def patched_sig(target, *args: Any, **kwargs: Any) -> None:
     """Function docstring.
 
     Args:
@@ -26,7 +27,7 @@ def patched_sig(target, *args, **kwargs):
     return original_sig(target, *args, **kwargs)
 
 
-def test_c_extension_signature_fallback():
+def test_c_extension_signature_fallback() -> None:
     """Function docstring."""
     with patch("inspect.signature", side_effect=patched_sig):
         inspector = GhostInspector()

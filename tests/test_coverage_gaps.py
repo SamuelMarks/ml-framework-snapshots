@@ -3,9 +3,8 @@
 from ml_framework_snapshots.models import GhostInspector
 
 
-def dummy_func_with_docstring(x: int):
-    """
-    Dummy function.
+def dummy_func_with_docstring(x: int) -> None:
+    """Dummy function.
 
     Args:
         x (int): The x value.
@@ -19,9 +18,8 @@ def dummy_func_with_docstring(x: int):
     pass
 
 
-def dummy_func_sphinx_docstring(y):
-    """
-    Sphinx doc.
+def dummy_func_sphinx_docstring(y) -> None:
+    """Sphinx doc.
 
     :param y: The y value.
     :type y: int
@@ -30,7 +28,7 @@ def dummy_func_sphinx_docstring(y):
     pass
 
 
-def test_cdd_returns_and_params():
+def test_cdd_returns_and_params() -> None:
     """Function docstring."""
     ref = GhostInspector.inspect(
         dummy_func_with_docstring, "tests.dummy_func_with_docstring"
@@ -40,7 +38,7 @@ def test_cdd_returns_and_params():
     assert ref.params[0].description == "The x value."
 
 
-def test_cdd_sphinx_raises():
+def test_cdd_sphinx_raises() -> None:
     """Function docstring."""
     ref = GhostInspector.inspect(
         dummy_func_sphinx_docstring, "tests.dummy_func_sphinx_docstring"
@@ -48,7 +46,7 @@ def test_cdd_sphinx_raises():
     assert "TypeError" in ref.raises
 
 
-def test_griffe_parsing():
+def test_griffe_parsing() -> None:
     """Function docstring."""
     import urllib.parse
 
@@ -58,20 +56,20 @@ def test_griffe_parsing():
     assert ref.has_arg("url")
 
 
-def test_cdd_exception_handling(mocker):
+def test_cdd_exception_handling(mocker) -> None:
     """Function docstring."""
-    mocker.patch("cdd.docstring_parsers.parse_docstring", side_effect=ValueError)
+    mocker.patch("cdd.shared.docstring_parsers.parse_docstring", side_effect=ValueError)
     ref = GhostInspector.inspect(
         dummy_func_with_docstring, "tests.dummy_func_with_docstring"
     )
     assert ref.name == "dummy_func_with_docstring"
 
 
-def test_cdd_direct_raises(mocker):
+def test_cdd_direct_raises(mocker) -> None:
     """Function docstring."""
     # Mock cdd to return direct raises list
     mocker.patch(
-        "cdd.docstring_parsers.parse_docstring",
+        "cdd.shared.docstring_parsers.parse_docstring",
         return_value={"raises": [{"typ": "KeyError"}]},
     )
     ref = GhostInspector.inspect(
@@ -80,7 +78,7 @@ def test_cdd_direct_raises(mocker):
     assert "KeyError" in ref.raises
 
 
-def test_inspect_annotation_fallback():
+def test_inspect_annotation_fallback() -> None:
     """Function docstring."""
 
     class ForwardRefStr:
@@ -101,7 +99,7 @@ def test_inspect_annotation_fallback():
     assert "ForwardRefStr" in ref.params[0].annotation
 
 
-def test_griffe_self_skip():
+def test_griffe_self_skip() -> None:
     """Function docstring."""
 
     # griffe self skipping
@@ -126,9 +124,21 @@ def test_griffe_self_skip():
     assert ref.has_arg("payload")
 
 
-def test_griffe_varargs():
+def test_griffe_varargs() -> None:
     """Function docstring."""
     import subprocess
 
     ref = GhostInspector.inspect(subprocess.run, "subprocess.run")
     assert ref.has_varargs
+
+
+def test_models_raises_no_typ(mocker) -> None:
+    """Function docstring."""
+    mocker.patch(
+        "cdd.shared.docstring_parsers.parse_docstring",
+        return_value={"raises": [{"not_typ": "KeyError"}]},
+    )
+    ref = GhostInspector.inspect(
+        dummy_func_with_docstring, "tests.dummy_func_with_docstring"
+    )
+    assert not ref.raises

@@ -1,3 +1,4 @@
+from typing import Any
 """Test CLI check command."""
 
 import argparse
@@ -41,7 +42,7 @@ MOCK_JSON = """
 @patch("ml_framework_snapshots.compliance.score_compliance")
 @patch("ml_framework_snapshots.compliance.extract_target_refs")
 @patch("builtins.open", new_callable=mock_open, read_data=MOCK_JSON)
-def test_cmd_check(mock_file, mock_extract, mock_score, capsys):
+def test_cmd_check(mock_file, mock_extract, mock_score, capsys: Any) -> None:
     """Test basic check command reporting.
 
     Args:
@@ -86,7 +87,7 @@ def test_cmd_check(mock_file, mock_extract, mock_score, capsys):
 @patch("ml_framework_snapshots.compliance.score_compliance")
 @patch("ml_framework_snapshots.compliance.extract_target_refs")
 @patch("builtins.open", new_callable=mock_open, read_data='{"categories": {}}')
-def test_cmd_check_pagination(mock_file, mock_extract, mock_score, capsys):
+def test_cmd_check_pagination(mock_file, mock_extract, mock_score, capsys: Any) -> None:
     """Test pagination in check command reporting.
 
     Args:
@@ -127,7 +128,7 @@ def test_cmd_check_pagination(mock_file, mock_extract, mock_score, capsys):
 @patch("ml_framework_snapshots.compliance.score_compliance")
 @patch("ml_framework_snapshots.compliance.extract_target_refs")
 @patch("builtins.open", new_callable=mock_open, read_data='{"categories": {}}')
-def test_cmd_check_no_missing_mismatched(mock_file, mock_extract, mock_score, capsys):
+def test_cmd_check_no_missing_mismatched(mock_file, mock_extract, mock_score, capsys: Any) -> None:
     """Test check command with complete compliance.
 
     Args:
@@ -155,3 +156,68 @@ def test_cmd_check_no_missing_mismatched(mock_file, mock_extract, mock_score, ca
     captured = capsys.readouterr()
     assert "Missing APIs" not in captured.out
     assert "Mismatched APIs" not in captured.out
+
+
+def test_cmd_check_output_formatting(mocker, capsys: Any, tmp_path: Any) -> None:
+    from ml_framework_snapshots.cli import cmd_check
+    from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
+    import json
+
+    ref = GhostRef(
+        name="func",
+        api_path="torch.nn.func",
+        kind="FUNCTION",
+        params=[
+            GhostParam(
+                name="p1", kind="POSITIONAL_OR_KEYWORD", annotation="int", default="0"
+            ),
+            GhostParam(name="p2", kind="POSITIONAL_OR_KEYWORD"),
+        ],
+        returns_type="int",
+        docstring="Long docstring that is really long and should be truncated if it exceeds one hundred characters let us see if it is",
+        aliases=["torch.func"],
+    )
+
+    ref2 = GhostRef(
+        name="mod",
+        api_path="torch.nn.mod",
+        kind="MODULE",
+        params=[],
+        docstring="",
+        aliases=[],
+    )
+
+    snapshot = {"categories": {"LAYER": [ref.model_dump(), ref2.model_dump()]}}
+
+    snap_file = tmp_path / "snap.json"
+    snap_file.write_text(json.dumps(snapshot))
+
+    mocker.patch(
+        "ml_framework_snapshots.cli.resolve_snapshot_path", return_value=str(snap_file)
+    )
+    mocker.patch(
+        "ml_framework_snapshots.compliance.extract_target_refs", return_value=[]
+    )
+    mocker.patch(
+        "ml_framework_snapshots.compliance.score_compliance",
+        return_value={
+            "score_percentage": 0.0,
+            "missing": ["torch.nn.func", "torch.nn.mod", "torch.func"],
+        },
+    )
+
+    import argparse
+
+    args = argparse.Namespace(
+        snapshot_json="torch",
+        target_path="tests",
+        target_prefix="torch",
+        reference_prefix="torch",
+    )
+    cmd_check(args)
+    out, _ = capsys.readouterr()
+    assert "p1: int=0" in out
+    assert "-> int" in out
+    assert "..." in out
+    assert "No docstring available." in out
+    assert "module" in out

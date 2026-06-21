@@ -1,3 +1,4 @@
+from typing import Any
 """Tests for the compliance checking module."""
 
 from typing import Dict, Any
@@ -388,7 +389,7 @@ def test_extract_target_refs_catch_all_exception(tmp_path: Path) -> None:
     assert isinstance(refs, list)
 
 
-def test_extract_target_refs_catch_inner_exception(tmp_path) -> None:
+def test_extract_target_refs_catch_inner_exception(tmp_path: Any) -> None:
     """Test extracting target refs fails cleanly on inner node walk."""
     from ml_framework_snapshots.compliance import extract_target_refs
     from unittest.mock import patch
@@ -424,7 +425,7 @@ def test_extract_target_refs_catch_inner_exception(tmp_path) -> None:
         assert len(refs) == 1
 
 
-def test_extract_target_refs_no_parts(tmp_path) -> None:
+def test_extract_target_refs_no_parts(tmp_path: Any) -> None:
     """Test extracting target refs handles paths with no inner parts (just module)."""
     from ml_framework_snapshots.compliance import extract_target_refs
 
@@ -437,7 +438,7 @@ def test_extract_target_refs_no_parts(tmp_path) -> None:
     assert len(refs) == 1
 
 
-def test_extract_target_refs_break_loop(tmp_path) -> None:
+def test_extract_target_refs_break_loop(tmp_path: Any) -> None:
     """Test extracting target refs loop breaking logic."""
     from ml_framework_snapshots.compliance import extract_target_refs
 
@@ -454,7 +455,7 @@ def test_extract_target_refs_break_loop(tmp_path) -> None:
     assert len(refs) == 1
 
 
-def test_extract_target_refs_continue_loop(tmp_path) -> None:
+def test_extract_target_refs_continue_loop(tmp_path: Any) -> None:
     """Test extracting target refs handles the loop fully exiting."""
     from ml_framework_snapshots.compliance import extract_target_refs
 
@@ -470,3 +471,46 @@ def test_extract_target_refs_continue_loop(tmp_path) -> None:
     # without `break` and doesn't trigger `except ImportError`.
     # Let's ensure the `except ImportError` isn't required for correct execution.
     assert isinstance(refs, list)
+
+
+def test_derive_base_path_src(tmp_path: Any) -> None:
+    from ml_framework_snapshots.compliance import get_module_info_from_path
+    import os
+
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    setup_file = tmp_path / "setup.py"
+    setup_file.touch()
+
+    init_dir = tmp_path / "my_pkg"
+    init_dir.mkdir()
+    (init_dir / "__init__.py").touch()
+    py_file = init_dir / "my_mod.py"
+    py_file.touch()
+
+    orig = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        path, mod = get_module_info_from_path(str(tmp_path), "my_mod")
+        assert path == str(src_dir)
+        assert mod == "my_mod"
+
+        path, mod = get_module_info_from_path(str(py_file), "")
+        assert path == str(tmp_path)
+        assert mod == "my_pkg.my_mod"
+    finally:
+        os.chdir(orig)
+
+
+def test_map_target_to_reference_path_extra() -> None:
+    from ml_framework_snapshots.compliance import align_namespace
+
+    assert (
+        align_namespace("zero_torch.jax.numpy.array", "zero_torch", "torch")
+        == "jax.numpy.array"
+    )
+    assert (
+        align_namespace("zero_torch.optax.adam", "zero_torch", "torch") == "optax.adam"
+    )
+    assert align_namespace("zero_torch", "zero_torch", "torch") == "torch"
+    assert align_namespace("zero.array", "zero", "np") == "np.array"

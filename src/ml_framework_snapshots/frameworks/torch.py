@@ -8,17 +8,17 @@ import inspect
 from ml_framework_snapshots.utils import get_all_members
 from typing import List
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo.core.ghost import GhostRef
-from ml_switcheroo.enums import SemanticTier
+from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import SemanticTier
 
 try:
     import torch.nn as nn
     import torch.optim as optim  # pragma: no cover
     import torch.utils.data as data  # pragma: no cover
 except ImportError:  # pragma: no cover
-    nn = None
-    optim = None
-    data = None
+    nn = None  # type: ignore
+    optim = None  # type: ignore
+    data = None  # type: ignore
 
 
 def _scan_losses(include_nonpublic: bool) -> List[GhostRef]:

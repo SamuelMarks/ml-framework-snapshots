@@ -1,3 +1,4 @@
+from typing import Any
 """Module docstring."""
 
 from ml_framework_snapshots.models import GhostInspector
@@ -5,7 +6,7 @@ from ml_switcheroo_ir.schema.ghost import GhostParam
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
-def test_ghost_param():
+def test_ghost_param() -> None:
     """Function docstring."""
     param = GhostParam(
         name="x", kind="POSITIONAL_OR_KEYWORD", default="1", annotation="int"
@@ -16,7 +17,7 @@ def test_ghost_param():
     assert param.annotation == "int"
 
 
-def test_ghost_ref_has_arg():
+def test_ghost_ref_has_arg() -> None:
     """Function docstring."""
     params = [GhostParam(name="x", kind="POSITIONAL_OR_KEYWORD")]
     ref = GhostRef(
@@ -30,7 +31,7 @@ def test_ghost_ref_has_arg():
     assert ref.has_arg("y") is False
 
 
-def dummy_func(a: int, b=2, *args, **kwargs):
+def dummy_func(a: int, b=2, *args: Any, **kwargs: Any) -> None:
     """Docstring for dummy_func. a b args kwargs"""
     pass
 
@@ -43,13 +44,13 @@ class DummyClass:
         pass
 
 
-def dummy_c_extension(*args, **kwargs):
+def dummy_c_extension(*args: Any, **kwargs: Any) -> None:
     """Function docstring. args kwargs"""
     # simulate something that inspect.signature fails on
     pass
 
 
-def test_ghost_inspector_function():
+def test_ghost_inspector_function() -> None:
     """Function docstring."""
     ref = GhostInspector.inspect(dummy_func, "tests.dummy_func")
     assert ref.name == "dummy_func"
@@ -65,7 +66,7 @@ def test_ghost_inspector_function():
     assert ref.has_arg("b")
 
 
-def test_ghost_inspector_class():
+def test_ghost_inspector_class() -> None:
     """Function docstring."""
     ref = GhostInspector.inspect(DummyClass, "tests.DummyClass")
     assert ref.name == "DummyClass"
@@ -74,7 +75,7 @@ def test_ghost_inspector_class():
     assert ref.params[0].default == "'test'"
 
 
-def test_ghost_inspector_c_extension(mocker):
+def test_ghost_inspector_c_extension(mocker) -> None:
     """Function docstring."""
     # Mock inspect.signature to raise ValueError
     mocker.patch("inspect.signature", side_effect=ValueError)
@@ -86,7 +87,7 @@ def test_ghost_inspector_c_extension(mocker):
     assert ref.has_arg("kwargs")
 
 
-def test_ghost_inspector_hydrate():
+def test_ghost_inspector_hydrate() -> None:
     """Function docstring."""
     data = {
         "name": "foo",
@@ -100,7 +101,7 @@ def test_ghost_inspector_hydrate():
     assert ref.name == "foo"
 
 
-def test_unrepresentable_default():
+def test_unrepresentable_default() -> None:
     """Function docstring."""
 
     class Unrepresentable:
@@ -118,7 +119,7 @@ def test_unrepresentable_default():
     assert ref.params[0].default == "<unrepresentable>"
 
 
-def test_memory_address_default():
+def test_memory_address_default() -> None:
     """Function docstring."""
 
     class MemoryDefault:
@@ -134,7 +135,7 @@ def test_memory_address_default():
     assert ref.params[0].default is None
 
 
-def test_callable_default():
+def test_callable_default() -> None:
     """Function docstring."""
 
     def my_default():
@@ -149,7 +150,7 @@ def test_callable_default():
     assert ref.params[0].default is None
 
 
-def test_ghost_inspector_str_throws():
+def test_ghost_inspector_str_throws() -> None:
     """Function docstring."""
 
     class StrThrows:
@@ -171,7 +172,7 @@ def test_ghost_inspector_str_throws():
     assert ref.params[0].default == "<unrepresentable>"
 
 
-def test_ghost_inspector_c_extension_class(mocker):
+def test_ghost_inspector_c_extension_class(mocker) -> None:
     """Function docstring."""
     mocker.patch("inspect.signature", side_effect=ValueError)
 
@@ -187,7 +188,7 @@ def test_ghost_inspector_c_extension_class(mocker):
     assert len(ref.params) == 0
 
 
-def test_ghost_inspector_str_has_address():
+def test_ghost_inspector_str_has_address() -> None:
     """Function docstring."""
 
     class StrAddr:
@@ -209,7 +210,7 @@ def test_ghost_inspector_str_has_address():
     assert ref.params[0].default is None
 
 
-def test_ghost_inspector_cdd_raises_no_typ(mocker):
+def test_ghost_inspector_cdd_raises_no_typ(mocker) -> None:
     """Function docstring."""
     mocker.patch(
         "cdd.docstring_parsers.parse_docstring",
@@ -224,7 +225,7 @@ def test_ghost_inspector_cdd_raises_no_typ(mocker):
     assert ref.raises == []
 
 
-def test_ghost_inspector_is_public(mocker):
+def test_ghost_inspector_is_public(mocker) -> None:
     """Function docstring."""
     # test explicit override
     ref = GhostInspector.inspect(dummy_func, "tests.dummy_func", is_public=False)
@@ -256,7 +257,7 @@ def test_ghost_inspector_is_public(mocker):
     assert ref3.is_public is False
 
 
-def test_ghost_inspector_annotation_str():
+def test_ghost_inspector_annotation_str() -> None:
     """Function docstring."""
 
     def f(a: str):
@@ -267,14 +268,13 @@ def test_ghost_inspector_annotation_str():
     assert ref.params[0].annotation == "str"
 
 
-def test_ghost_inspector_cdd_fallback():
+def test_ghost_inspector_cdd_fallback() -> None:
     """Function docstring."""
 
     # Test when p_anno is missing but cdd has it
     def dummy_func_cdd(x):
-        """
-        Args:
-            x (int): The value.
+        """Args:
+        x (int): The value.
         """
         pass
 
@@ -282,7 +282,7 @@ def test_ghost_inspector_cdd_fallback():
     assert ref.params[0].annotation == "int"
 
 
-def test_ghost_inspector_annotation_name():
+def test_ghost_inspector_annotation_name() -> None:
     """Function docstring."""
 
     class MyType:
@@ -301,7 +301,7 @@ def test_ghost_inspector_annotation_name():
     pass
 
 
-def test_ghost_inspector_annotation_name_mock(mocker):
+def test_ghost_inspector_annotation_name_mock(mocker) -> None:
     """Function docstring."""
     # Mock get_type_hints to raise an Exception so it falls back to raw annotations
     mocker.patch("typing.get_type_hints", side_effect=Exception("Failed"))
@@ -319,7 +319,7 @@ def test_ghost_inspector_annotation_name_mock(mocker):
     assert ref.params[0].annotation == "MyType"
 
 
-def test_ghost_inspector_annotation_str_mock(mocker):
+def test_ghost_inspector_annotation_str_mock(mocker) -> None:
     """Function docstring."""
     mocker.patch("typing.get_type_hints", side_effect=Exception("Failed"))
 
@@ -331,14 +331,13 @@ def test_ghost_inspector_annotation_str_mock(mocker):
     assert ref.params[0].annotation == "str"
 
 
-def test_ghost_inspector_cdd_anno_fallback():
+def test_ghost_inspector_cdd_anno_fallback() -> None:
     """Function docstring."""
 
     # cdd_params gives 'typ' but inspect does not find it
     def dummy_func_no_anno(x):
-        """
-        Args:
-            x (int): The value.
+        """Args:
+        x (int): The value.
         """
         pass
 
@@ -347,7 +346,7 @@ def test_ghost_inspector_cdd_anno_fallback():
     assert ref.params[0].description == "The value."
 
 
-def test_ghost_inspector_return_type_hints():
+def test_ghost_inspector_return_type_hints() -> None:
     """Function docstring."""
 
     def dummy_func_ret() -> int:
@@ -358,7 +357,7 @@ def test_ghost_inspector_return_type_hints():
     assert ref.returns_type == "int"
 
 
-def test_ghost_inspector_griffe_params(mocker):
+def test_ghost_inspector_griffe_params(mocker) -> None:
     """Function docstring."""
 
     class FakeKind:
@@ -402,13 +401,13 @@ def test_ghost_inspector_griffe_params(mocker):
     assert ref.params[1].default == "10"
 
 
-def test_ghost_inspector_overloads_cdd():
+def test_ghost_inspector_overloads_cdd() -> None:
     """Function docstring."""
     # If griffe is unavailable, does it handle gracefully? Yes, it will just not have overloads.
     pass
 
 
-def test_ghost_inspector_griffe_overloads(mocker):
+def test_ghost_inspector_griffe_overloads(mocker) -> None:
     """Function docstring."""
 
     class FakeParam:

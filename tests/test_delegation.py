@@ -29,7 +29,7 @@ class SubLayer(BaseLayer):
         super().__init__(**kwargs)
 
 
-def test_delegation_tracing():
+def test_delegation_tracing() -> None:
     """Function docstring."""
     ref = GhostInspector.inspect(SubLayer, "SubLayer")
 

@@ -1,9 +1,10 @@
+from typing import Any
 """Module docstring."""
 
 from ml_framework_snapshots.models import sanitize_type_str
 
 
-def test_sanitize_type_str():
+def test_sanitize_type_str() -> None:
     """Function docstring."""
     assert sanitize_type_str(None) is None
     assert sanitize_type_str("<class 'list'>") == "list"
