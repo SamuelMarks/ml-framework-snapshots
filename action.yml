@@ -19,22 +19,13 @@ runs:
       with:
         python-version: "3.9"
 
-    - name: Install ml-framework-snapshots
+    - name: Install ml-framework-snapshots and frameworks
       shell: bash
       run: |
-        pip install .
-
-    - name: Install Frameworks
-      shell: bash
-      run: |
-        # Parse comma separated list and install them
-        FRAMEWORKS=$(echo "${{ inputs.frameworks }}" | tr ',' ' ')
-        for fw in $FRAMEWORKS; do
-          pip install "$fw" || echo "Failed to install $fw, skipping."
-        done
+        pip install ".[frameworks]"
 
     - name: Generate Snapshots
       shell: bash
       run: |
         mkdir -p "${{ inputs.out-dir }}"
-        ml-snapshots capture --out-dir "${{ inputs.out-dir }}"
+        ml_framework_snapshots capture --out-dir "${{ inputs.out-dir }}"

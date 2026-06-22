@@ -27,7 +27,7 @@ def build_and_run(framework: str, version: str, output_dir: Path) -> Path:
     RUN pip install -e .
 
     # Run the snapshot generation
-    CMD ["ml-snapshots", "capture", "--framework", "{framework}", "--output-dir", "/out"]
+    CMD ["ml_framework_snapshots", "capture", "--framework", "{framework}", "--output-dir", "/out"]
     """
 
     with tempfile.TemporaryDirectory() as tmpdir:

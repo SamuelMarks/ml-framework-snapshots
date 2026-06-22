@@ -22,14 +22,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install ml-framework-snapshots
-        run: pip install .
-
-      - name: Install Frameworks
-        run: |
-          for fw in tensorflow keras torch jax paxml flax numpy mlx; do
-            pip install "$fw" || echo "Failed to install $fw, skipping."
-          done
+      - name: Install ml-framework-snapshots with frameworks
+        run: pip install ".[frameworks]"
 
       - name: Generate Snapshots
         run: |

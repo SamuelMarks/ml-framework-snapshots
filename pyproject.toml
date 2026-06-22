@@ -4,28 +4,21 @@ version = "0.1.0"
 description = "Extracts API snapshots from ML frameworks for Ghost Mode operation"
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = [
-    "pydantic>=2.0.0",
-    "griffe>=1.0.0",
-    "cdd @ git+https://github.com/offscale/cdd-python.git@master",
-]
-
-[project.optional-dependencies]
-frameworks = [
-    "torch>=2.0.0",
-    "jax>=0.4.0",
-    "tensorflow>=2.10.0",
-    "keras>=3.0.0",
-    "mlx>=0.10.0",
-    "flax>=0.8.0",
-]
+dynamic = ["dependencies", "optional-dependencies"]
 
 [project.scripts]
 ml_framework_snapshots = "ml_framework_snapshots.cli:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-requirements-txt"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.txt"]
+
+[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
+frameworks = ["requirements-frameworks.txt"]
+test = ["test-requirements.txt"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
