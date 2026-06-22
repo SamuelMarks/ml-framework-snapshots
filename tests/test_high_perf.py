@@ -1,5 +1,8 @@
 """Module docstring."""
 
+from typing import Any
+
+
 from unittest.mock import patch, MagicMock
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_framework_snapshots.frameworks.triton import collect_api as triton_collect
@@ -10,16 +13,16 @@ from ml_framework_snapshots.frameworks.deepspeed import collect_api as ds_collec
 def test_triton_collect() -> None:
     """Function docstring."""
     mock_tl = MagicMock()
-    mock_tl.__dir__ = lambda self: ["constexpr", "tensor"]
+    mock_tl.__dir__ = lambda self: ["constexpr", "tensor"]  # type: ignore
 
-    def constexpr():
+    def constexpr() -> Any:
         """Function docstring."""
         pass
 
     constexpr.__module__ = "triton.language"
     constexpr.__name__ = "constexpr"
 
-    def tensor():
+    def tensor() -> Any:
         """Function docstring."""
         pass
 
@@ -31,7 +34,7 @@ def test_triton_collect() -> None:
 
     with patch("importlib.import_module") as mock_import:
 
-        def side_effect(name):
+        def side_effect(name: Any) -> Any:
             """Function docstring.
 
             Args:
@@ -56,7 +59,7 @@ def test_triton_collect() -> None:
 def test_onnx_collect() -> None:
     """Function docstring."""
     mock_onnx = MagicMock()
-    mock_onnx.__dir__ = lambda self: ["InferenceSession", "utils"]
+    mock_onnx.__dir__ = lambda self: ["InferenceSession", "utils"]  # type: ignore
 
     class InferenceSession:
         """Class docstring."""
@@ -90,9 +93,9 @@ def test_onnx_collect() -> None:
 def test_ds_collect() -> None:
     """Function docstring."""
     mock_ds = MagicMock()
-    mock_ds.__dir__ = lambda self: ["initialize", "utils"]
+    mock_ds.__dir__ = lambda self: ["initialize", "utils"]  # type: ignore
 
-    def initialize():
+    def initialize() -> Any:
         """Function docstring."""
         pass
 

@@ -1,5 +1,7 @@
-from typing import Any
 """Module docstring."""
+
+from typing import Any
+
 
 from ml_framework_snapshots.stubs import generate_stubs
 

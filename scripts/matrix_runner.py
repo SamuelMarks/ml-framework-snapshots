@@ -1,3 +1,5 @@
+"""Module docstring."""
+
 import argparse
 import subprocess
 import json
@@ -13,6 +15,7 @@ DEFAULT_MATRIX = {
 
 
 def build_and_run(framework: str, version: str, output_dir: Path) -> Path:
+    """Function docstring."""
     print(f"Running matrix for {framework}=={version}")
 
     # We create a simple Dockerfile
@@ -71,6 +74,7 @@ def build_and_run(framework: str, version: str, output_dir: Path) -> Path:
 
 
 def upload_to_s3(directory: Path, bucket: str) -> None:
+    """Function docstring."""
     try:
         import boto3
 
@@ -90,6 +94,7 @@ def upload_to_s3(directory: Path, bucket: str) -> None:
 
 
 def main() -> None:
+    """Function docstring."""
     parser = argparse.ArgumentParser(description="Multi-Version Matrix Runner")
     parser.add_argument(
         "--matrix", type=str, help="Path to JSON matrix config", default=None

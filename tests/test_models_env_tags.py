@@ -1,5 +1,7 @@
-from typing import Any
 """Module docstring."""
+
+from typing import Any
+
 
 from ml_framework_snapshots.models import GhostInspector
 from ml_switcheroo_ir.schema.ghost import GhostRef
@@ -21,7 +23,7 @@ def test_ghostref_env_tags() -> None:
 def test_ghostinspector_env_tags() -> None:
     """Function docstring."""
 
-    def dummy():
+    def dummy() -> Any:
         """Function docstring."""
         pass
 
@@ -36,7 +38,7 @@ def test_ghostinspector_env_tags_no_torch(monkeypatch: Any) -> None:
 
     monkeypatch.setitem(sys.modules, "torch", None)
 
-    def dummy():
+    def dummy() -> Any:
         """Function docstring."""
         pass
 
@@ -44,7 +46,7 @@ def test_ghostinspector_env_tags_no_torch(monkeypatch: Any) -> None:
     assert "cpu" in ref.environment_tags
 
 
-def test_ghostinspector_env_tags_cuda_true(mocker, monkeypatch: Any) -> None:
+def test_ghostinspector_env_tags_cuda_true(mocker: Any, monkeypatch: Any) -> None:
     """Function docstring."""
     import sys
 
@@ -52,7 +54,7 @@ def test_ghostinspector_env_tags_cuda_true(mocker, monkeypatch: Any) -> None:
         """Class docstring."""
 
         @staticmethod
-        def is_available():
+        def is_available() -> Any:
             """Function docstring."""
             return True
 
@@ -63,7 +65,7 @@ def test_ghostinspector_env_tags_cuda_true(mocker, monkeypatch: Any) -> None:
 
     monkeypatch.setitem(sys.modules, "torch", MockTorch())
 
-    def dummy():
+    def dummy() -> Any:
         """Function docstring."""
         pass
 

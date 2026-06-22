@@ -1,5 +1,7 @@
-from typing import Any
 """Module docstring."""
+
+from typing import Any
+
 
 from unittest.mock import patch, MagicMock
 from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -61,7 +63,7 @@ def test_export_branches() -> None:
         _ghost_to_cdd_ir,
     )
 
-    assert _py_type_to_proto(None) == "string"
+    assert _py_type_to_proto(None) == "string"  # type: ignore
     assert _py_type_to_proto("") == "string"
 
     from ml_switcheroo_ir.schema.ghost import GhostParam
@@ -112,15 +114,15 @@ def test_deepspeed_missing() -> None:
     class DeepspeedMock:
         """Class docstring."""
 
-        def __dir__(self):
+        def __dir__(self) -> Any:
             """Function docstring."""
             return ["_hidden", "initialize", "nothing"]
 
-        def initialize(self):
+        def initialize(self) -> Any:
             """Function docstring."""
             pass
 
-        def nothing(self):
+        def nothing(self) -> Any:
             """Function docstring."""
             pass
 
@@ -155,15 +157,15 @@ def test_onnxruntime_missing() -> None:
     class OnnxMock:
         """Class docstring."""
 
-        def __dir__(self):
+        def __dir__(self) -> Any:
             """Function docstring."""
             return ["_hidden", "InferenceSession", "nothing"]
 
-        def InferenceSession(self):
+        def InferenceSession(self) -> Any:
             """Function docstring."""
             pass
 
-        def nothing(self):
+        def nothing(self) -> Any:
             """Function docstring."""
             pass
 
@@ -199,9 +201,9 @@ def test_triton_missing() -> None:
     with patch.dict("sys.modules", {"triton": mock_mod}):
         collect_api(SemanticTier.UTIL)
 
-    mock_mod.__dir__ = lambda self: ["_hidden", "fn", "not_ref"]
+    mock_mod.__dir__ = lambda self: ["_hidden", "fn", "not_ref"]  # type: ignore
 
-    def fake_fn(a, b):
+    def fake_fn(a: Any, b: Any) -> Any:
         """Function docstring.
 
         Args:
@@ -267,7 +269,7 @@ def test_huggingface_missing() -> None:
     class M:
         """Class docstring."""
 
-        def generate(self, input, *args, **kwargs):
+        def generate(self, input: Any, *args: Any, **kwargs: Any) -> Any:
             """Function docstring.
 
             Args:
@@ -297,12 +299,12 @@ def test_huggingface_missing() -> None:
         """Class docstring."""
 
         @property
-        def bad(self):
+        def bad(self) -> Any:
             """Function docstring."""
             raise ValueError()
 
     mock_mod = MagicMock()
-    mock_mod.__dir__ = lambda self: [
+    mock_mod.__dir__ = lambda self: [  # type: ignore
         "_hidden",
         "DummyConfig",
         "AutoModel",
@@ -317,7 +319,7 @@ def test_huggingface_missing() -> None:
     class FakeMod:
         """Class docstring."""
 
-        def __dir__(self):
+        def __dir__(self) -> Any:
             """Function docstring."""
             return [
                 "_hidden",
@@ -335,58 +337,58 @@ def test_huggingface_missing() -> None:
             ]
 
         @property
-        def bad(self):
+        def bad(self) -> Any:
             """Function docstring."""
             raise ValueError()
 
         @property
-        def DummyConfig(self):
+        def DummyConfig(self) -> Any:
             """Function docstring."""
             return type("DummyConfig", (), {"__annotations__": {}})()
 
         @property
-        def EmptyConfig(self):
+        def EmptyConfig(self) -> Any:
             """Function docstring."""
             return type("EmptyConfig", (), {"__annotations__": {"a": int}})()
 
         @property
-        def EmptyConfigB(self):
+        def EmptyConfigB(self) -> Any:
             """Function docstring."""
             return type("EmptyConfigB", (), {"__annotations__": {"b": int}})()
 
         @property
-        def AutoModelA(self):
+        def AutoModelA(self) -> Any:
             """Function docstring."""
             return MagicMock()
 
         @property
-        def AutoModelB(self):
+        def AutoModelB(self) -> Any:
             """Function docstring."""
             return MagicMock()
 
         @property
-        def Other(self):
+        def Other(self) -> Any:
             """Function docstring."""
             return MagicMock()
 
         @property
-        def ThrowConfig(self):
+        def ThrowConfig(self) -> Any:
             """Function docstring."""
             return MagicMock()
 
         @property
-        def ReturnNone(self):
+        def ReturnNone(self) -> Any:
             """Function docstring."""
             return None
 
         @property
-        def GenModel(self):
+        def GenModel(self) -> Any:
             """Function docstring."""
 
             class M:
                 """Class docstring."""
 
-                def generate(self, input, *args, **kwargs):
+                def generate(self, input: Any, *args: Any, **kwargs: Any) -> Any:
                     """Function docstring.
 
                     Args:
@@ -399,11 +401,11 @@ def test_huggingface_missing() -> None:
             return M()
 
         @property
-        def RefNone(self):
+        def RefNone(self) -> Any:
             """Function docstring."""
             return MagicMock()
 
-    def mock_inspect(obj, name):
+    def mock_inspect(obj: Any, name: Any) -> Any:
         """Function docstring.
 
         Args:

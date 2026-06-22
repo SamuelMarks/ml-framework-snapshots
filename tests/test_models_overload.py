@@ -1,4 +1,3 @@
-from typing import Any
 """Module docstring."""
 
 from ml_framework_snapshots.models import GhostInspector

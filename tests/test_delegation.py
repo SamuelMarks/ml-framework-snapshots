@@ -1,12 +1,15 @@
 """Module docstring."""
 
+from typing import Any
+
+
 from ml_framework_snapshots.models import GhostInspector
 
 
 class BaseLayer:
     """Class docstring."""
 
-    def __init__(self, hidden_dim: int = 256, dropout: float = 0.1):
+    def __init__(self, hidden_dim: int = 256, dropout: float = 0.1) -> Any:  # type: ignore
         """Function docstring.
 
         Args:
@@ -19,7 +22,7 @@ class BaseLayer:
 class SubLayer(BaseLayer):
     """Class docstring."""
 
-    def __init__(self, name: str, **kwargs):
+    def __init__(self, name: str, **kwargs: Any) -> Any:  # type: ignore
         """Function docstring.
 
         Args:

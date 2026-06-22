@@ -1,8 +1,13 @@
+"""Module docstring."""
+
+from typing import Any
+
 import re
 import subprocess
 
 
 def get_test_coverage() -> None:
+    """Function docstring."""
     result = subprocess.run(
         ["pytest", "--cov=src/ml_framework_snapshots", "--cov-branch"],
         capture_output=True,
@@ -15,6 +20,7 @@ def get_test_coverage() -> None:
 
 
 def get_doc_coverage() -> None:
+    """Function docstring."""
     # If interrogate is not available, try parsing another way, but we know it's there
     try:
         result = subprocess.run(
@@ -31,7 +37,8 @@ def get_doc_coverage() -> None:
     return "unknown"
 
 
-def get_color(coverage) -> None:
+def get_color(coverage: Any) -> None:
+    """Function docstring."""
     try:
         val = float(coverage)
         if val >= 90:
@@ -46,6 +53,7 @@ def get_color(coverage) -> None:
 
 
 def main() -> None:
+    """Function docstring."""
     test_cov = get_test_coverage()
     doc_cov = get_doc_coverage()
 

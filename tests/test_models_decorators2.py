@@ -1,9 +1,12 @@
 """Module docstring."""
 
+from typing import Any
+
+
 from ml_framework_snapshots.models import GhostInspector
 
 
-def torch_compile_mock(func) -> None:
+def torch_compile_mock(func: Any) -> None:
     """Function docstring.
 
     Args:
@@ -13,7 +16,7 @@ def torch_compile_mock(func) -> None:
     class Compiled:
         """Class docstring."""
 
-        def __init__(self, f):
+        def __init__(self, f: Any) -> Any:  # type: ignore
             """Function docstring.
 
             Args:
@@ -21,14 +24,14 @@ def torch_compile_mock(func) -> None:
             """
             self._orig_mod = f
 
-    return Compiled(func)
+    return Compiled(func)  # type: ignore
 
 
 def test_unwrap_torch_compile() -> None:
     """Function docstring."""
 
     @torch_compile_mock
-    def my_compiled(x, y=10):
+    def my_compiled(x: Any, y=10) -> Any:  # type: ignore
         """Function docstring.
 
         Args:

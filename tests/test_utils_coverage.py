@@ -1,5 +1,8 @@
 """Module docstring."""
 
+from typing import Any
+
+
 from ml_framework_snapshots.utils import get_all_members, extract_c_extension_signature
 
 
@@ -10,7 +13,7 @@ class FaultyModule:
     good = 1
 
     @property
-    def bad(self):
+    def bad(self) -> Any:
         """Function docstring."""
         raise ValueError("Cannot access")
 
@@ -34,28 +37,28 @@ def test_get_all_members_exception() -> None:
 def test_extract_c_ext_coverage() -> None:
     """Function docstring."""
 
-    def empty_doc():
+    def empty_doc() -> Any:
         """Function docstring."""
         pass
 
     empty_doc.__doc__ = ""
     assert extract_c_extension_signature(empty_doc, "empty_doc") is None
 
-    def bad_syntax():
+    def bad_syntax() -> Any:
         """Function docstring."""
         pass
 
     bad_syntax.__doc__ = "func(a b c) -> int"
     assert extract_c_extension_signature(bad_syntax, "bad_syntax") is None
 
-    def no_match():
+    def no_match() -> Any:
         """Function docstring."""
         pass
 
     no_match.__doc__ = "This is just a description without signature."
     assert extract_c_extension_signature(no_match, "no_match") is None
 
-    def string_def():
+    def string_def() -> Any:
         """Function docstring."""
         pass
 
@@ -72,7 +75,7 @@ def test_extract_c_ext_coverage() -> None:
     assert sig[0][2] == "'hello'"  # a='hello'
     assert sig[1][2] == "None"  # b=None
 
-    def func_with_self():
+    def func_with_self() -> Any:
         """Function docstring."""
         pass
 

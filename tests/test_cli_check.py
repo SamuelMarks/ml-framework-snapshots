@@ -1,5 +1,7 @@
-from typing import Any
 """Test CLI check command."""
+
+from typing import Any
+
 
 import argparse
 from unittest.mock import patch, mock_open
@@ -42,7 +44,9 @@ MOCK_JSON = """
 @patch("ml_framework_snapshots.compliance.score_compliance")
 @patch("ml_framework_snapshots.compliance.extract_target_refs")
 @patch("builtins.open", new_callable=mock_open, read_data=MOCK_JSON)
-def test_cmd_check(mock_file, mock_extract, mock_score, capsys: Any) -> None:
+def test_cmd_check(
+    mock_file: Any, mock_extract: Any, mock_score: Any, capsys: Any
+) -> None:
     """Test basic check command reporting.
 
     Args:
@@ -87,7 +91,9 @@ def test_cmd_check(mock_file, mock_extract, mock_score, capsys: Any) -> None:
 @patch("ml_framework_snapshots.compliance.score_compliance")
 @patch("ml_framework_snapshots.compliance.extract_target_refs")
 @patch("builtins.open", new_callable=mock_open, read_data='{"categories": {}}')
-def test_cmd_check_pagination(mock_file, mock_extract, mock_score, capsys: Any) -> None:
+def test_cmd_check_pagination(
+    mock_file: Any, mock_extract: Any, mock_score: Any, capsys: Any
+) -> None:
     """Test pagination in check command reporting.
 
     Args:
@@ -128,7 +134,9 @@ def test_cmd_check_pagination(mock_file, mock_extract, mock_score, capsys: Any) 
 @patch("ml_framework_snapshots.compliance.score_compliance")
 @patch("ml_framework_snapshots.compliance.extract_target_refs")
 @patch("builtins.open", new_callable=mock_open, read_data='{"categories": {}}')
-def test_cmd_check_no_missing_mismatched(mock_file, mock_extract, mock_score, capsys: Any) -> None:
+def test_cmd_check_no_missing_mismatched(
+    mock_file: Any, mock_extract: Any, mock_score: Any, capsys: Any
+) -> None:
     """Test check command with complete compliance.
 
     Args:
@@ -158,7 +166,8 @@ def test_cmd_check_no_missing_mismatched(mock_file, mock_extract, mock_score, ca
     assert "Mismatched APIs" not in captured.out
 
 
-def test_cmd_check_output_formatting(mocker, capsys: Any, tmp_path: Any) -> None:
+def test_cmd_check_output_formatting(mocker: Any, capsys: Any, tmp_path: Any) -> None:
+    """Function docstring."""
     from ml_framework_snapshots.cli import cmd_check
     from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
     import json

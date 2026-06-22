@@ -27,10 +27,6 @@ allow-direct-references = true
 ignore_missing_imports = true
 strict = true
 warn_unused_ignores = false
-exclude = [
-    "^tests/",
-    "^scripts/"
-]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
@@ -44,13 +40,8 @@ exclude = [
 packages = ["src/ml_framework_snapshots"]
 
 [tool.ruff]
-exclude = ["tests", "scripts", "add_docstrings.py", "fix_tests_typing.py"]
 lint.select = ["E", "F", "D"]
 lint.ignore = ["E501"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["D"]
-"scripts/**/*.py" = ["D"]

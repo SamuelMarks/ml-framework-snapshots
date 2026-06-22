@@ -2,3 +2,4 @@ pydantic>=2.0.0
 griffe>=1.0.0
 python-cdd @ git+https://github.com/offscale/cdd-python.git@master
 ml-switcheroo-compiler @ git+https://github.com/offscale/ml-switcheroo-compiler.git
+ml-switcheroo-ir @ git+https://github.com/SamuelMarks/ml-switcheroo-ir.git

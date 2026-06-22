@@ -1,11 +1,14 @@
 """Module docstring."""
 
+from typing import Any
+
+
 import types
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
-def create_module(name, attrs) -> None:
+def create_module(name: Any, attrs: Any) -> None:
     """Function docstring.
 
     Args:
@@ -15,10 +18,10 @@ def create_module(name, attrs) -> None:
     mod = types.ModuleType(name)
     for k, v in attrs.items():
         setattr(mod, k, v)
-    return mod
+    return mod  # type: ignore
 
 
-def test_torch_collect(mocker) -> None:
+def test_torch_collect(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import torch as torch_fw
 
@@ -97,11 +100,11 @@ def test_torch_collect(mocker) -> None:
 
         pass
 
-    def xavier_uniform_():
+    def xavier_uniform_() -> Any:
         """Function docstring."""
         pass
 
-    def _private_init():
+    def _private_init() -> Any:
         """Function docstring."""
         pass
 
@@ -115,12 +118,12 @@ def test_torch_collect(mocker) -> None:
 
         pass
 
-    fake_nn_init = create_module(
+    fake_nn_init = create_module(  # type: ignore
         "torch.nn.init",
         {"xavier_uniform_": xavier_uniform_, "_private_init": _private_init},
     )
 
-    fake_nn = create_module(
+    fake_nn = create_module(  # type: ignore
         "torch.nn",
         {
             "Module": Module,
@@ -135,7 +138,7 @@ def test_torch_collect(mocker) -> None:
         },
     )
 
-    fake_lr_scheduler = create_module(
+    fake_lr_scheduler = create_module(  # type: ignore
         "torch.optim.lr_scheduler",
         {
             "LRScheduler": LRScheduler,
@@ -144,7 +147,7 @@ def test_torch_collect(mocker) -> None:
         },
     )
 
-    fake_optim = create_module(
+    fake_optim = create_module(  # type: ignore
         "torch.optim",
         {
             "Optimizer": Optimizer,
@@ -154,7 +157,7 @@ def test_torch_collect(mocker) -> None:
             "lr_scheduler": fake_lr_scheduler,
         },
     )
-    fake_data = create_module(
+    fake_data = create_module(  # type: ignore
         "torch.utils.data", {"DataLoader": DataLoader, "_PrivateLoader": _PrivateLoader}
     )
 
@@ -240,7 +243,7 @@ def test_torch_collect(mocker) -> None:
     assert torch_fw.collect_api("unknown") == []
 
 
-def test_torch_import_error(mocker) -> None:
+def test_torch_import_error(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import torch as torch_fw
 
@@ -257,7 +260,7 @@ def test_torch_import_error(mocker) -> None:
     assert torch_fw.collect_api(SemanticTier.DATALOADER) == []
 
 
-def test_torch_typeerror(mocker) -> None:
+def test_torch_typeerror(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import torch as torch_fw
 
@@ -268,14 +271,14 @@ def test_torch_typeerror(mocker) -> None:
 
     BadLoss.__name__ = "BadLoss"
 
-    fake_nn = create_module(
+    fake_nn = create_module(  # type: ignore
         "torch.nn",
         {
             "Module": 1,  # Causes TypeError in issubclass
             "BadLoss": BadLoss,
         },
     )
-    fake_optim = create_module("torch.optim", {"Optimizer": 1, "BadOptim": BadLoss})
+    fake_optim = create_module("torch.optim", {"Optimizer": 1, "BadOptim": BadLoss})  # type: ignore
     mocker.patch.object(torch_fw, "nn", fake_nn)
     mocker.patch.object(torch_fw, "optim", fake_optim)
 
@@ -286,11 +289,11 @@ def test_torch_typeerror(mocker) -> None:
     assert torch_fw.collect_api("unknown") == []
 
 
-def test_tensorflow_collect(mocker) -> None:
+def test_tensorflow_collect(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import tensorflow as tf_fw
 
-    def relu():
+    def relu() -> Any:
         """Function docstring."""
         pass
 
@@ -339,21 +342,21 @@ def test_tensorflow_collect(mocker) -> None:
 
         pass
 
-    fake_nn = create_module("tf.nn", {"relu": relu})
-    fake_layers = create_module(
+    fake_nn = create_module("tf.nn", {"relu": relu})  # type: ignore
+    fake_layers = create_module(  # type: ignore
         "tf.keras.layers", {"DenseLayer": DenseLayer, "_PrivateLayer": _PrivateLayer}
     )
-    fake_losses = create_module("tf.keras.losses", {"MSELoss": MSELoss})
-    fake_schedules = create_module("schedules", {"CosineDecay": CosineDecay})
-    fake_optims = create_module(
+    fake_losses = create_module("tf.keras.losses", {"MSELoss": MSELoss})  # type: ignore
+    fake_schedules = create_module("schedules", {"CosineDecay": CosineDecay})  # type: ignore
+    fake_optims = create_module(  # type: ignore
         "tf.keras.optimizers", {"Adam": Adam, "schedules": fake_schedules}
     )
-    fake_inits = create_module(
+    fake_inits = create_module(  # type: ignore
         "tf.keras.initializers", {"GlorotUniform": GlorotUniform}
     )
-    fake_metrics = create_module("tf.keras.metrics", {"Accuracy": Accuracy})
+    fake_metrics = create_module("tf.keras.metrics", {"Accuracy": Accuracy})  # type: ignore
 
-    fake_keras = create_module(
+    fake_keras = create_module(  # type: ignore
         "tf.keras",
         {
             "layers": fake_layers,
@@ -363,11 +366,11 @@ def test_tensorflow_collect(mocker) -> None:
             "metrics": fake_metrics,
         },
     )
-    fake_data = create_module(
+    fake_data = create_module(  # type: ignore
         "tf.data", {"Dataset": Dataset, "_PrivateDataset": _PrivateDataset}
     )
 
-    fake_tf = create_module(
+    fake_tf = create_module(  # type: ignore
         "tf", {"nn": fake_nn, "keras": fake_keras, "data": fake_data}
     )
 
@@ -408,7 +411,7 @@ def test_tensorflow_collect(mocker) -> None:
     assert tf_fw.collect_api(SemanticTier.LAYER) == []
 
     # Test when tf module lacks submodules (nn, keras, data)
-    empty_tf = create_module("tf", {})
+    empty_tf = create_module("tf", {})  # type: ignore
     mocker.patch.object(tf_fw, "tf", empty_tf)
     assert tf_fw.collect_api(SemanticTier.ACTIVATION) == []
     assert tf_fw.collect_api(SemanticTier.LAYER) == []
@@ -423,7 +426,7 @@ def test_tensorflow_collect(mocker) -> None:
     assert tf_fw.collect_api(SemanticTier.LOSS) == []
 
 
-def test_keras_collect(mocker) -> None:
+def test_keras_collect(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import keras as keras_fw
 
@@ -437,7 +440,7 @@ def test_keras_collect(mocker) -> None:
 
         pass
 
-    def relu():
+    def relu() -> Any:
         """Function docstring."""
         pass
 
@@ -461,25 +464,25 @@ def test_keras_collect(mocker) -> None:
 
         pass
 
-    fake_keras = create_module(
+    fake_keras = create_module(  # type: ignore
         "keras",
         {
-            "losses": create_module("losses", {"MSELoss": MSELoss}),
-            "optimizers": create_module(
+            "losses": create_module("losses", {"MSELoss": MSELoss}),  # type: ignore
+            "optimizers": create_module(  # type: ignore
                 "optimizers",
                 {
                     "Adam": Adam,
-                    "schedules": create_module(
+                    "schedules": create_module(  # type: ignore
                         "schedules", {"CosineDecay": CosineDecay}
                     ),
                 },
             ),
-            "activations": create_module("activations", {"relu": relu}),
-            "layers": create_module("layers", {"DenseLayer": DenseLayer}),
-            "initializers": create_module(
+            "activations": create_module("activations", {"relu": relu}),  # type: ignore
+            "layers": create_module("layers", {"DenseLayer": DenseLayer}),  # type: ignore
+            "initializers": create_module(  # type: ignore
                 "initializers", {"GlorotUniform": GlorotUniform}
             ),
-            "metrics": create_module("metrics", {"Accuracy": Accuracy}),
+            "metrics": create_module("metrics", {"Accuracy": Accuracy}),  # type: ignore
         },
     )
 
@@ -516,9 +519,11 @@ def test_keras_collect(mocker) -> None:
 
         pass
 
-    fake_metrics2 = create_module("metrics", {"Metric": Metric, "_priv": Metric})
+    fake_metrics2 = create_module("metrics", {"Metric": Metric, "_priv": Metric})  # type: ignore
     mocker.patch.object(
-        keras_fw, "keras", create_module("keras", {"metrics": fake_metrics2})
+        keras_fw,
+        "keras",
+        create_module("keras", {"metrics": fake_metrics2}),  # type: ignore
     )
     mets2 = keras_fw.collect_api(SemanticTier.METRIC)
     assert not any(x.name == "Metric" for x in mets2)
@@ -534,7 +539,7 @@ def test_keras_collect(mocker) -> None:
     assert keras_fw.collect_api(SemanticTier.LOSS) == []
 
 
-def test_mlx_collect(mocker) -> None:
+def test_mlx_collect(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import mlx as mlx_fw
 
@@ -543,11 +548,11 @@ def test_mlx_collect(mocker) -> None:
 
         pass
 
-    def relu():
+    def relu() -> Any:
         """Function docstring."""
         pass
 
-    def mse_loss():
+    def mse_loss() -> Any:
         """Function docstring."""
         pass
 
@@ -556,12 +561,12 @@ def test_mlx_collect(mocker) -> None:
 
         pass
 
-    fake_losses = create_module("losses", {"mse_loss": mse_loss})
-    fake_nn = create_module(
+    fake_losses = create_module("losses", {"mse_loss": mse_loss})  # type: ignore
+    fake_nn = create_module(  # type: ignore
         "mlx.nn", {"Dense": Dense, "relu": relu, "losses": fake_losses}
     )
-    fake_optims = create_module("mlx.optimizers", {"Adam": Adam})
-    fake_mlx = create_module("mlx", {"nn": fake_nn, "optimizers": fake_optims})
+    fake_optims = create_module("mlx.optimizers", {"Adam": Adam})  # type: ignore
+    fake_mlx = create_module("mlx", {"nn": fake_nn, "optimizers": fake_optims})  # type: ignore
 
     mocker.patch.object(mlx_fw, "mlx", fake_mlx)
 
@@ -572,20 +577,21 @@ def test_mlx_collect(mocker) -> None:
     assert mlx_fw.collect_api("unknown") == []
 
     # Test mlx.nn.losses coverage gaps (not a function/class, not containing 'loss')
-    fake_losses_gap = create_module(
+    fake_losses_gap = create_module(  # type: ignore
         "losses", {"not_a_callable": 123, "other_func": lambda x: x}
     )
     mocker.patch.object(
         mlx_fw,
         "mlx",
-        create_module(
-            "mlx", {"nn": create_module("mlx.nn", {"losses": fake_losses_gap})}
+        create_module(  # type: ignore
+            "mlx",
+            {"nn": create_module("mlx.nn", {"losses": fake_losses_gap})},  # type: ignore
         ),
     )
     assert mlx_fw.collect_api(SemanticTier.LOSS) == []
 
-    empty_nn = create_module("mlx.nn", {})
-    mocker.patch.object(mlx_fw, "mlx", create_module("mlx", {"nn": empty_nn}))
+    empty_nn = create_module("mlx.nn", {})  # type: ignore
+    mocker.patch.object(mlx_fw, "mlx", create_module("mlx", {"nn": empty_nn}))  # type: ignore
     assert mlx_fw.collect_api(SemanticTier.LOSS) == []
 
     mocker.patch.object(mlx_fw, "mlx", None)
@@ -599,35 +605,35 @@ def test_mlx_collect(mocker) -> None:
     assert mlx_fw.collect_api(SemanticTier.LAYER) == []
 
 
-def test_jax_collect(mocker) -> None:
+def test_jax_collect(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import jax as jax_fw
     from ml_framework_snapshots.frameworks.optax_shim import OptaxScanner
 
-    def relu():
+    def relu() -> Any:
         """Function docstring."""
         pass
 
-    def _priv():
+    def _priv() -> Any:
         """Function docstring."""
         pass
 
-    def glorot():
+    def glorot() -> Any:
         """Function docstring."""
         pass
 
     mocker.patch.object(jax_fw, "jax", True)
-    fake_jax_nn = create_module(
+    fake_jax_nn = create_module(  # type: ignore
         "jax.nn", {"relu": relu, "_priv": _priv, "not_a_func": 123}
     )
-    fake_jax_init = create_module(
+    fake_jax_init = create_module(  # type: ignore
         "jax.nn.initializers", {"glorot": glorot, "_priv": _priv, "not_a_func": 123}
     )
 
     mocker.patch.dict(
         "sys.modules",
         {
-            "jax": create_module("jax", {}),
+            "jax": create_module("jax", {}),  # type: ignore
             "jax.nn": fake_jax_nn,
             "jax.nn.initializers": fake_jax_init,
         },
@@ -673,7 +679,7 @@ def test_jax_collect(mocker) -> None:
     assert jax_fw.collect_api(SemanticTier.INITIALIZER) == []
 
 
-def test_flax_nnx_collect(mocker) -> None:
+def test_flax_nnx_collect(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import flax_nnx as flax_fw
 
@@ -697,7 +703,7 @@ def test_flax_nnx_collect(mocker) -> None:
 
         pass
 
-    fake_nnx = create_module(
+    fake_nnx = create_module(  # type: ignore
         "flax.nnx",
         {"Module": Module, "Dense": Dense, "_Priv": _Priv, "NotAModule": NotAModule},
     )
@@ -729,51 +735,51 @@ def test_flax_nnx_collect(mocker) -> None:
     assert flax_fw.collect_api(SemanticTier.LAYER) == []
 
 
-def test_optax_shim_collect(mocker) -> None:
+def test_optax_shim_collect(mocker: Any) -> None:
     """Function docstring."""
     import ml_framework_snapshots.frameworks.optax_shim as o_shim
 
-    def adam():
+    def adam() -> Any:
         """Function docstring."""
         pass
 
-    def sgd():
+    def sgd() -> Any:
         """Function docstring."""
         pass
 
-    def my_optimizer():
+    def my_optimizer() -> Any:
         """Function docstring."""
         pass
 
-    def _priv():
+    def _priv() -> Any:
         """Function docstring."""
         pass
 
-    def mse_loss():
+    def mse_loss() -> Any:
         """Function docstring."""
         pass
 
-    def other_error():
+    def other_error() -> Any:
         """Function docstring."""
         pass
 
-    def kl_entropy():
+    def kl_entropy() -> Any:
         """Function docstring."""
         pass
 
-    def _priv_loss():
+    def _priv_loss() -> Any:
         """Function docstring."""
         pass
 
-    def some_other_func():
+    def some_other_func() -> Any:
         """Function docstring."""
         pass
 
-    def cosine():
+    def cosine() -> Any:
         """Function docstring."""
         pass
 
-    fake_losses = create_module(
+    fake_losses = create_module(  # type: ignore
         "losses",
         {
             "mse_loss": mse_loss,
@@ -785,15 +791,15 @@ def test_optax_shim_collect(mocker) -> None:
         },
     )
 
-    fake_scheds = create_module(
+    fake_scheds = create_module(  # type: ignore
         "schedules", {"cosine": cosine, "_priv": _priv, "not_a_func": 123}
     )
 
-    def not_a_thing():
+    def not_a_thing() -> Any:
         """Function docstring."""
         pass
 
-    fake_optax = create_module(
+    fake_optax = create_module(  # type: ignore
         "optax",
         {
             "adam": adam,
@@ -838,7 +844,7 @@ def test_optax_shim_collect(mocker) -> None:
     assert o_shim.OptaxScanner.scan_schedulers() == []
 
 
-def test_sklearn_collect(mocker) -> None:
+def test_sklearn_collect(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import sklearn as sklearn_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -852,7 +858,7 @@ def test_sklearn_collect(mocker) -> None:
     class RandomForestClassifier(BaseEstimator):
         """Class docstring."""
 
-        def __init__(self, n_estimators: int = 100):
+        def __init__(self, n_estimators: int = 100) -> Any:  # type: ignore
             """Function docstring.
 
             Args:
@@ -865,7 +871,7 @@ def test_sklearn_collect(mocker) -> None:
 
         pass
 
-    def accuracy_score(y_true, y_pred):
+    def accuracy_score(y_true: Any, y_pred: Any) -> Any:
         """Function docstring.
 
         Args:
@@ -875,15 +881,15 @@ def test_sklearn_collect(mocker) -> None:
         pass
 
     mock_sklearn = types.ModuleType("sklearn")
-    mock_sklearn.base = types.ModuleType("sklearn.base")
+    mock_sklearn.base = types.ModuleType("sklearn.base")  # type: ignore
     mock_sklearn.base.BaseEstimator = BaseEstimator
 
     mock_ensemble = types.ModuleType("sklearn.ensemble")
-    mock_ensemble.RandomForestClassifier = RandomForestClassifier
-    mock_ensemble.NotAnEstimator = NotAnEstimator
+    mock_ensemble.RandomForestClassifier = RandomForestClassifier  # type: ignore
+    mock_ensemble.NotAnEstimator = NotAnEstimator  # type: ignore
 
     mock_metrics = types.ModuleType("sklearn.metrics")
-    mock_metrics.accuracy_score = accuracy_score
+    mock_metrics.accuracy_score = accuracy_score  # type: ignore
 
     sys_modules = {
         "sklearn": mock_sklearn,
@@ -922,7 +928,7 @@ def test_sklearn_collect(mocker) -> None:
     assert empty == []
 
 
-def test_sklearn_import_error(mocker) -> None:
+def test_sklearn_import_error(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import sklearn as sklearn_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -933,7 +939,7 @@ def test_sklearn_import_error(mocker) -> None:
     assert layers == []
 
 
-def test_sklearn_module_import_error(mocker) -> None:
+def test_sklearn_module_import_error(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks import sklearn as sklearn_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -945,7 +951,7 @@ def test_sklearn_module_import_error(mocker) -> None:
 
     original_import = builtins.__import__
 
-    def mock_import(name, *args, **kwargs):
+    def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
         """Function docstring.
 
         Args:
@@ -966,7 +972,7 @@ def test_sklearn_module_import_error(mocker) -> None:
     assert metrics == []
 
 
-def test_sklearn_scan_module_edge_cases(mocker) -> None:
+def test_sklearn_scan_module_edge_cases(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks.sklearn import _scan_module
     import types
@@ -982,11 +988,11 @@ def test_sklearn_scan_module_edge_cases(mocker) -> None:
         """Class docstring."""
 
         @property
-        def bad(self):
+        def bad(self) -> Any:
             """Function docstring."""
             raise RuntimeError("Bad")
 
-    mock_mod.bad_obj = BadObj()
+    mock_mod.bad_obj = BadObj()  # type: ignore
     mocker.patch(
         "ml_framework_snapshots.frameworks.tensorflow.get_all_members",
         side_effect=Exception("mocked"),
@@ -1001,8 +1007,8 @@ def test_sklearn_scan_module_edge_cases(mocker) -> None:
 
         pass
 
-    mock_mod2._private = ValidObj
-    mock_mod2.blocked = ValidObj
+    mock_mod2._private = ValidObj  # type: ignore
+    mock_mod2.blocked = ValidObj  # type: ignore
 
     mocker.patch(
         "ml_framework_snapshots.frameworks.tensorflow.get_all_members",
@@ -1012,7 +1018,7 @@ def test_sklearn_scan_module_edge_cases(mocker) -> None:
     assert _scan_module(mock_mod2, "prefix", block_list={"blocked"}) == []
 
 
-def test_sklearn_scan_module_branches(mocker) -> None:
+def test_sklearn_scan_module_branches(mocker: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.frameworks.sklearn import _scan_module
     import types
@@ -1024,13 +1030,13 @@ def test_sklearn_scan_module_branches(mocker) -> None:
 
         pass
 
-    def valid_func():
+    def valid_func() -> Any:
         """Function docstring."""
         pass
 
     # 1. kind="class", is_estimator=False
-    mock_mod.ValidObj = ValidObj
-    mock_mod.valid_func = valid_func
+    mock_mod.ValidObj = ValidObj  # type: ignore
+    mock_mod.valid_func = valid_func  # type: ignore
 
     mocker.patch(
         "ml_framework_snapshots.frameworks.tensorflow.get_all_members",
@@ -1048,19 +1054,19 @@ def test_sklearn_scan_module_branches(mocker) -> None:
     assert len(res) == 1
 
 
-def test_numpy_collect(mocker) -> None:
+def test_numpy_collect(mocker: Any) -> None:
     """Function docstring."""
     import ml_framework_snapshots.frameworks.numpy as np_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     from ml_framework_snapshots.models import GhostInspector
 
-    def tanh():
+    def tanh() -> Any:
         pass
 
-    def exp():
+    def exp() -> Any:
         pass
 
-    fake_np = create_module(
+    fake_np = create_module(  # type: ignore
         "numpy",
         {
             "tanh": tanh,
@@ -1074,7 +1080,7 @@ def test_numpy_collect(mocker) -> None:
 
     original_inspect = GhostInspector.inspect
 
-    def mock_inspect(obj, api_path, **kwargs):
+    def mock_inspect(obj: Any, api_path: Any, **kwargs: Any) -> Any:
         if "minimum" in api_path:
             raise ValueError("mock error")
         return original_inspect(obj, api_path, **kwargs)
@@ -1099,25 +1105,25 @@ def test_numpy_collect(mocker) -> None:
     assert not np_shim.collect_api(SemanticTier.ACTIVATION)
 
 
-def test_orbax_collect(mocker) -> None:
+def test_orbax_collect(mocker: Any) -> None:
     """Function docstring."""
     import ml_framework_snapshots.frameworks.orbax_checkpoint as ocp_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     from ml_framework_snapshots.models import GhostInspector
 
-    def checkpoint():
+    def checkpoint() -> Any:
         pass
 
-    def _priv():
+    def _priv() -> Any:
         pass
 
     class Checkpointer:
         pass
 
-    def error_func():
+    def error_func() -> Any:
         pass
 
-    fake_ocp = create_module(
+    fake_ocp = create_module(  # type: ignore
         "orbax.checkpoint",
         {
             "checkpoint": checkpoint,
@@ -1131,7 +1137,7 @@ def test_orbax_collect(mocker) -> None:
 
     original_inspect = GhostInspector.inspect
 
-    def mock_inspect(obj, api_path, **kwargs):
+    def mock_inspect(obj: Any, api_path: Any, **kwargs: Any) -> Any:
         if "error_func" in api_path:
             raise ValueError("mock error")
         return original_inspect(obj, api_path, **kwargs)
@@ -1161,7 +1167,7 @@ def test_orbax_collect(mocker) -> None:
     assert not ocp_shim.collect_api(SemanticTier.ARRAY_API)
 
 
-def test_pax_collect(mocker) -> None:
+def test_pax_collect(mocker: Any) -> None:
     """Function docstring."""
     import ml_framework_snapshots.frameworks.pax as pax_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -1173,13 +1179,13 @@ def test_pax_collect(mocker) -> None:
     class _PrivLayer:
         pass
 
-    def not_a_class():
+    def not_a_class() -> Any:
         pass
 
     class ErrorClass:
         pass
 
-    fake_layers = create_module(
+    fake_layers = create_module(  # type: ignore
         "praxis.layers",
         {
             "Linear": Linear,
@@ -1193,7 +1199,7 @@ def test_pax_collect(mocker) -> None:
 
     original_inspect = GhostInspector.inspect
 
-    def mock_inspect(obj, api_path, **kwargs):
+    def mock_inspect(obj: Any, api_path: Any, **kwargs: Any) -> Any:
         if "ErrorClass" in api_path:
             raise ValueError("mock error")
         return original_inspect(obj, api_path, **kwargs)
@@ -1217,21 +1223,21 @@ def test_pax_collect(mocker) -> None:
     assert not pax_shim.collect_api(SemanticTier.NEURAL)
 
 
-def test_triton_collect(mocker) -> None:
+def test_triton_collect(mocker: Any) -> None:
     """Function docstring."""
     import ml_framework_snapshots.frameworks.triton as triton_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     import importlib
 
-    def cdiv():
+    def cdiv() -> Any:
         pass
 
-    fake_triton = create_module("triton", {"cdiv": cdiv, "_priv": lambda: None})
-    fake_tl = create_module("triton.language", {"cdiv": cdiv, "_priv": lambda: None})
+    fake_triton = create_module("triton", {"cdiv": cdiv, "_priv": lambda: None})  # type: ignore
+    fake_tl = create_module("triton.language", {"cdiv": cdiv, "_priv": lambda: None})  # type: ignore
 
     original_import = importlib.import_module
 
-    def mock_import(name, *args, **kwargs):
+    def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
         if name == "triton":
             return fake_triton
         elif name == "triton.language":
@@ -1250,19 +1256,19 @@ def test_triton_collect(mocker) -> None:
     assert not triton_shim.collect_api(SemanticTier.UTIL)
 
 
-def test_deepspeed_collect(mocker) -> None:
+def test_deepspeed_collect(mocker: Any) -> None:
     """Function docstring."""
     import ml_framework_snapshots.frameworks.deepspeed as ds_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     import importlib
 
-    def initialize():
+    def initialize() -> Any:
         pass
 
-    fake_ds = create_module("deepspeed", {"initialize": initialize})
+    fake_ds = create_module("deepspeed", {"initialize": initialize})  # type: ignore
     original_import = importlib.import_module
 
-    def mock_import(name, *args, **kwargs):
+    def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
         if name == "deepspeed":
             return fake_ds
         return original_import(name, *args, **kwargs)
@@ -1275,7 +1281,7 @@ def test_deepspeed_collect(mocker) -> None:
     assert not ds_shim.collect_api(SemanticTier.MODEL)
 
 
-def test_onnxruntime_collect(mocker) -> None:
+def test_onnxruntime_collect(mocker: Any) -> None:
     """Function docstring."""
     import ml_framework_snapshots.frameworks.onnxruntime as ort_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -1284,10 +1290,10 @@ def test_onnxruntime_collect(mocker) -> None:
     class InferenceSession:
         pass
 
-    fake_ort = create_module("onnxruntime", {"InferenceSession": InferenceSession})
+    fake_ort = create_module("onnxruntime", {"InferenceSession": InferenceSession})  # type: ignore
     original_import = importlib.import_module
 
-    def mock_import(name, *args, **kwargs):
+    def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
         if name == "onnxruntime":
             return fake_ort
         return original_import(name, *args, **kwargs)
@@ -1300,7 +1306,7 @@ def test_onnxruntime_collect(mocker) -> None:
     assert not ort_shim.collect_api(SemanticTier.MODEL)
 
 
-def test_huggingface_collect(mocker) -> None:
+def test_huggingface_collect(mocker: Any) -> None:
     """Function docstring."""
     import ml_framework_snapshots.frameworks.huggingface as hf_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -1312,13 +1318,13 @@ def test_huggingface_collect(mocker) -> None:
     class Trainer:
         pass
 
-    fake_transformers = create_module(
+    fake_transformers = create_module(  # type: ignore
         "transformers", {"PreTrainedModel": PreTrainedModel, "Trainer": Trainer}
     )
 
     original_import = importlib.import_module
 
-    def mock_import(name, *args, **kwargs):
+    def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
         if name == "transformers":
             return fake_transformers
         return original_import(name, *args, **kwargs)

@@ -1,16 +1,18 @@
-from typing import Any
 """Module docstring."""
+
+from typing import Any
+
 
 from ml_framework_snapshots.cli import main
 from unittest.mock import mock_open
 
 
-def test_cli_capture(mocker, capsys: Any) -> None:
+def test_cli_capture(mocker: Any, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch("sys.argv", ["ml-snapshots", "capture", "--out-dir", "test_out"])
 
     # Mock extract_snapshot and write_snapshot
-    def mock_extract(fw, include_nonpublic=False):
+    def mock_extract(fw: Any, include_nonpublic=False) -> Any:  # type: ignore
         """Function docstring.
 
         Args:
@@ -38,7 +40,7 @@ def test_cli_capture(mocker, capsys: Any) -> None:
     assert "Skipping jax, not installed" in captured.out
 
 
-def test_cli_diff(mocker, capsys: Any) -> None:
+def test_cli_diff(mocker: Any, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch("sys.argv", ["ml-snapshots", "diff", "1.json", "2.json"])
 
@@ -60,7 +62,7 @@ def test_cli_diff(mocker, capsys: Any) -> None:
     assert "~ c" in captured.out
 
 
-def test_cli_diff_changelog(mocker, capsys: Any) -> None:
+def test_cli_diff_changelog(mocker: Any, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv", ["ml-snapshots", "diff", "1.json", "2.json", "--changelog"]
@@ -86,7 +88,7 @@ def test_cli_diff_changelog(mocker, capsys: Any) -> None:
     assert "## Changelog Mock" in captured.out
 
 
-def test_cli_stubs(mocker, capsys: Any) -> None:
+def test_cli_stubs(mocker: Any, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -103,7 +105,7 @@ def test_cli_stubs(mocker, capsys: Any) -> None:
     assert "Stubs generated in out" in captured.out
 
 
-def test_cli_export_openapi(mocker, capsys: Any) -> None:
+def test_cli_export_openapi(mocker: Any, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -146,7 +148,7 @@ def test_cli_export_openapi(mocker, capsys: Any) -> None:
     assert "Exported OpenAPI spec to out/openapi.json" in captured.out
 
 
-def test_cli_export_json_schema(mocker, capsys: Any) -> None:
+def test_cli_export_json_schema(mocker: Any, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -189,7 +191,7 @@ def test_cli_export_json_schema(mocker, capsys: Any) -> None:
     assert "Exported 1 JSON schemas to out" in captured.out
 
 
-def test_cli_export_pydantic(mocker, capsys: Any) -> None:
+def test_cli_export_pydantic(mocker: Any, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -232,7 +234,7 @@ def test_cli_export_pydantic(mocker, capsys: Any) -> None:
     assert "Exported 1 Pydantic models to out" in captured.out
 
 
-def test_cli_export_protobuf(mocker, capsys: Any) -> None:
+def test_cli_export_protobuf(mocker: Any, capsys: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "sys.argv",
@@ -275,7 +277,7 @@ def test_cli_export_protobuf(mocker, capsys: Any) -> None:
     assert "Exported 1 Protobuf definitions to out" in captured.out
 
 
-def test_cli_export_unknown_format(mocker, capsys: Any) -> None:
+def test_cli_export_unknown_format(mocker: Any, capsys: Any) -> None:
     """Function docstring."""
     from ml_framework_snapshots.cli import cmd_export
     import pytest

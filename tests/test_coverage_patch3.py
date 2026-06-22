@@ -1,3 +1,5 @@
+"""Module docstring."""
+
 # --- DIFF ---
 """Module docstring."""
 

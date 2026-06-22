@@ -1,5 +1,8 @@
 """Module docstring."""
 
+from typing import Any
+
+
 from unittest.mock import patch, MagicMock
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_framework_snapshots.frameworks.huggingface import (
@@ -38,7 +41,7 @@ def test_collect_transformers() -> None:
     mock_mod.DummyConfig = DummyConfig
     mock_mod.AutoModelForCausalLM = AutoModelForCausalLM
     mock_mod.DummyModel = DummyModel
-    mock_mod.__dir__ = lambda self: [
+    mock_mod.__dir__ = lambda self: [  # type: ignore
         "DummyConfig",
         "AutoModelForCausalLM",
         "DummyModel",
@@ -89,7 +92,7 @@ def test_collect_diffusers() -> None:
         pass
 
     mock_mod.DummyScheduler = DummyScheduler
-    mock_mod.__dir__ = lambda self: ["DummyScheduler"]
+    mock_mod.__dir__ = lambda self: ["DummyScheduler"]  # type: ignore
 
     with (
         patch("importlib.import_module", return_value=mock_mod),
@@ -122,7 +125,7 @@ def test_collect_tokenizers() -> None:
         pass
 
     mock_mod.DummyTokenizer = DummyTokenizer
-    mock_mod.__dir__ = lambda self: ["DummyTokenizer"]
+    mock_mod.__dir__ = lambda self: ["DummyTokenizer"]  # type: ignore
 
     with (
         patch("importlib.import_module", return_value=mock_mod),
@@ -150,12 +153,13 @@ from ml_switcheroo_ir.schema.ghost import GhostRef  # noqa: E402
 
 
 def test_parse_pretrained_config_with_empty_annotations() -> None:
+    """Function docstring."""
     ref = GhostRef(name="MyConfig", api_path="pkg.MyConfig", kind="class")
 
     class DummyConfig:
         __annotations__ = {}
 
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> Any:  # type: ignore
             pass
 
     _parse_pretrained_config(DummyConfig, ref)

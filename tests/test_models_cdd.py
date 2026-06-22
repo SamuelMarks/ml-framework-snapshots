@@ -1,5 +1,7 @@
-from typing import Any
 """Module docstring."""
+
+from typing import Any
+
 
 from ml_framework_snapshots.models import GhostInspector
 
@@ -7,13 +9,9 @@ from ml_framework_snapshots.models import GhostInspector
 def some_function(a: int = 1, b: str = "test", *args: Any, **kwargs: Any) -> None:
     """A test function.
 
-    :param a: The first parameter.
-    :type a: int
-    :param b: The second parameter.
-    :type b: str
-    :return: None
-
     Args:
+        a: The first parameter.
+        b: The second parameter.
         args: description
         kwargs: description
     """
@@ -23,8 +21,9 @@ def some_function(a: int = 1, b: str = "test", *args: Any, **kwargs: Any) -> Non
 class SomeClass:
     """A test class."""
 
-    def __init__(self, x: float, y: list = []):
+    def __init__(self, x: float, y: list = []) -> Any:  # type: ignore
         """:param x: The x coordinate.
+
         :type x: float
         :param y: The y list.
         :type y: list

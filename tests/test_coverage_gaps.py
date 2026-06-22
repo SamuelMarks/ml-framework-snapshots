@@ -1,5 +1,8 @@
 """Module docstring."""
 
+from typing import Any
+
+
 from ml_framework_snapshots.models import GhostInspector
 
 
@@ -18,7 +21,7 @@ def dummy_func_with_docstring(x: int) -> None:
     pass
 
 
-def dummy_func_sphinx_docstring(y) -> None:
+def dummy_func_sphinx_docstring(y: Any) -> None:
     """Sphinx doc.
 
     :param y: The y value.
@@ -56,7 +59,7 @@ def test_griffe_parsing() -> None:
     assert ref.has_arg("url")
 
 
-def test_cdd_exception_handling(mocker) -> None:
+def test_cdd_exception_handling(mocker: Any) -> None:
     """Function docstring."""
     mocker.patch("cdd.shared.docstring_parsers.parse_docstring", side_effect=ValueError)
     ref = GhostInspector.inspect(
@@ -65,7 +68,7 @@ def test_cdd_exception_handling(mocker) -> None:
     assert ref.name == "dummy_func_with_docstring"
 
 
-def test_cdd_direct_raises(mocker) -> None:
+def test_cdd_direct_raises(mocker: Any) -> None:
     """Function docstring."""
     # Mock cdd to return direct raises list
     mocker.patch(
@@ -87,7 +90,7 @@ def test_inspect_annotation_fallback() -> None:
         # A class that lacks __name__ but is passed as annotation
         pass
 
-    def func_annotated(a: ForwardRefStr()):
+    def func_annotated(a: ForwardRefStr()):  # type: ignore
         """Function docstring.
 
         Args:
@@ -106,7 +109,7 @@ def test_griffe_self_skip() -> None:
     class A:
         """Class docstring."""
 
-        def m(self, x):
+        def m(self, x: Any) -> Any:
             """Function docstring.
 
             Args:
@@ -132,7 +135,7 @@ def test_griffe_varargs() -> None:
     assert ref.has_varargs
 
 
-def test_models_raises_no_typ(mocker) -> None:
+def test_models_raises_no_typ(mocker: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "cdd.shared.docstring_parsers.parse_docstring",

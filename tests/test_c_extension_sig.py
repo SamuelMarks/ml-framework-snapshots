@@ -1,5 +1,7 @@
-from typing import Any
 """Module docstring."""
+
+from typing import Any
+
 
 import inspect
 from unittest.mock import patch
@@ -7,14 +9,14 @@ from ml_framework_snapshots.models import GhostInspector
 
 
 def dummy_c_ext() -> None:
-    """dummy_c_ext(input: Tensor, *, out: Optional[Tensor] = None) -> Tensor"""
+    """dummy_c_ext(input: Tensor, *, out: Optional[Tensor] = None) -> Tensor"""  # noqa: D402, D415
     pass
 
 
 original_sig = inspect.signature
 
 
-def patched_sig(target, *args: Any, **kwargs: Any) -> None:
+def patched_sig(target: Any, *args: Any, **kwargs: Any) -> None:
     """Function docstring.
 
     Args:
@@ -24,7 +26,7 @@ def patched_sig(target, *args: Any, **kwargs: Any) -> None:
     """
     if target is dummy_c_ext:
         raise ValueError("no signature found")
-    return original_sig(target, *args, **kwargs)
+    return original_sig(target, *args, **kwargs)  # type: ignore
 
 
 def test_c_extension_signature_fallback() -> None:

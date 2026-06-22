@@ -1,5 +1,7 @@
-from typing import Any
 """Module docstring."""
+
+from typing import Any
+
 
 import os
 from ml_framework_snapshots.utils import get_all_members
@@ -21,17 +23,17 @@ def test_get_all_members() -> None:
     class LazyModule:
         """Class docstring."""
 
-        def __init__(self):
+        def __init__(self) -> Any:  # type: ignore
             """Function docstring."""
             self.__all__ = ["hidden_func", "VisibleClass", "broken_all"]
             self.VisibleClass = int
             self._cache = {"hidden_func": lambda: 42}
 
-        def __dir__(self):
+        def __dir__(self) -> Any:
             """Function docstring."""
             return ["VisibleClass", "__all__", "broken_dir"]
 
-        def __getattr__(self, name):
+        def __getattr__(self, name: Any) -> Any:
             """Function docstring.
 
             Args:
@@ -54,7 +56,7 @@ def test_get_all_members() -> None:
     assert members["hidden_func"]() == 42
 
 
-def test_get_pkg_version(mocker) -> None:
+def test_get_pkg_version(mocker: Any) -> None:
     """Function docstring."""
     mocker.patch("importlib.metadata.version", return_value="1.2.3")
     assert get_pkg_version("torch") == "1.2.3"
@@ -65,7 +67,7 @@ def test_get_pkg_version(mocker) -> None:
     assert get_pkg_version("missing_pkg") == "unknown"
 
 
-def test_extract_snapshot(mocker) -> None:
+def test_extract_snapshot(mocker: Any) -> None:
     """Function docstring."""
     # unknown framework
     assert extract_snapshot("nonexistent") == {}
@@ -79,7 +81,7 @@ def test_extract_snapshot(mocker) -> None:
 
     mock_ref = GhostRef(name="MSELoss", api_path="torch.nn.MSELoss", kind="class")
 
-    def fake_collect(cat, include_nonpublic=False):
+    def fake_collect(cat: Any, include_nonpublic=False) -> Any:  # type: ignore
         """Function docstring.
 
         Args:
@@ -101,7 +103,7 @@ def test_extract_snapshot(mocker) -> None:
     assert res["categories"]["loss"][0]["name"] == "MSELoss"
 
     # test no data found
-    def fake_empty(cat, include_nonpublic=False):
+    def fake_empty(cat: Any, include_nonpublic=False) -> Any:  # type: ignore
         """Function docstring.
 
         Args:
@@ -114,7 +116,7 @@ def test_extract_snapshot(mocker) -> None:
     assert extract_snapshot("torch") == {}
 
 
-def test_extract_all_snapshots(mocker) -> None:
+def test_extract_all_snapshots(mocker: Any) -> None:
     """Function docstring."""
     mocker.patch(
         "ml_framework_snapshots.api.extract_snapshot",
@@ -164,7 +166,7 @@ def test_get_available_frameworks_discovery() -> None:
         return_value=[(None, "test", False), (None, "other_mod", False)],
     ):
 
-        def mock_import(name):
+        def mock_import(name: Any) -> Any:
             """Mock import.
 
             Args:
@@ -199,7 +201,7 @@ def test_get_available_frameworks_aliases() -> None:
         return_value=[(None, "sklearn", False), (None, "tensorflow", False)],
     ):
 
-        def mock_import(name):
+        def mock_import(name: Any) -> Any:
             """Mock import.
 
             Args:
@@ -223,7 +225,7 @@ def test_get_available_frameworks_not_startswith_collect() -> None:
 
     with patch("pkgutil.iter_modules", return_value=[(None, "foo", False)]):
 
-        def mock_import(name):
+        def mock_import(name: Any) -> Any:
             """Mock import.
 
             Args:
@@ -298,7 +300,7 @@ def test_get_available_frameworks_not_collect() -> None:
 
     with patch("pkgutil.iter_modules", return_value=[(None, "bar", False)]):
 
-        def mock_import(name):
+        def mock_import(name: Any) -> Any:
             """Mock import.
 
             Args:
@@ -362,7 +364,8 @@ def test_consolidate_aliases_same_length() -> None:
     assert "b.func" in res[0].aliases
 
 
-def test_api_version_aliases(mocker) -> None:
+def test_api_version_aliases(mocker: Any) -> None:
+    """Function docstring."""
     import ml_framework_snapshots.api as api
 
     mocker.patch("importlib.metadata.version", return_value="1.2.3")

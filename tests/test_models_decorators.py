@@ -1,16 +1,19 @@
 """Module docstring."""
 
+from typing import Any
+
+
 from ml_framework_snapshots.models import GhostInspector
 
 
-def dummy_decorator(func) -> None:
+def dummy_decorator(func: Any) -> None:
     """Function docstring.
 
     Args:
         func: description
     """
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         """Function docstring.
 
         Args:
@@ -19,11 +22,11 @@ def dummy_decorator(func) -> None:
         """
         return func(*args, **kwargs)
 
-    wrapper.__wrapped__ = func
-    return wrapper
+    wrapper.__wrapped__ = func  # type: ignore
+    return wrapper  # type: ignore
 
 
-def tf_function_mock(func) -> None:
+def tf_function_mock(func: Any) -> None:
     """Function docstring.
 
     Args:
@@ -33,7 +36,7 @@ def tf_function_mock(func) -> None:
     class TFFunction:
         """Class docstring."""
 
-        def __init__(self, f):
+        def __init__(self, f: Any) -> Any:  # type: ignore
             """Function docstring.
 
             Args:
@@ -41,14 +44,14 @@ def tf_function_mock(func) -> None:
             """
             self._python_function = f
 
-    return TFFunction(func)
+    return TFFunction(func)  # type: ignore
 
 
 def test_unwrap_standard_decorator() -> None:
     """Function docstring."""
 
     @dummy_decorator
-    def my_func(a: int, b: str = "test"):
+    def my_func(a: int, b: str = "test") -> Any:
         """My doc.
 
         Args:
@@ -67,7 +70,7 @@ def test_unwrap_tf_decorator() -> None:
     """Function docstring."""
 
     @tf_function_mock
-    def my_tf_func(tensor, training=False):
+    def my_tf_func(tensor: Any, training=False) -> Any:  # type: ignore
         """Function docstring.
 
         Args:
@@ -84,7 +87,7 @@ def test_unwrap_tf_decorator() -> None:
 def test_unwrap_generic_decorator() -> None:
     """Function docstring."""
 
-    def generic_dec(func):
+    def generic_dec(func: Any) -> Any:
         """Function docstring.
 
         Args:
@@ -101,7 +104,7 @@ def test_unwrap_generic_decorator() -> None:
         return w
 
     @generic_dec
-    def fn1(a):
+    def fn1(a: Any) -> Any:
         """Function docstring.
 
         Args:
@@ -116,7 +119,7 @@ def test_unwrap_generic_decorator() -> None:
 def test_unwrap_variant_decorator() -> None:
     """Function docstring."""
 
-    def variant_dec(func):
+    def variant_dec(func: Any) -> Any:
         """Function docstring.
 
         Args:
@@ -129,11 +132,11 @@ def test_unwrap_variant_decorator() -> None:
             pass
 
         w = Wrapper()
-        w._original_fn = func
+        w._original_fn = func  # type: ignore
         return w
 
     @variant_dec
-    def fn2(b):
+    def fn2(b: Any) -> Any:
         """Function docstring.
 
         Args:

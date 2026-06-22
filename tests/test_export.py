@@ -1,5 +1,7 @@
-from typing import Any
 """Module docstring."""
+
+from typing import Any
+
 
 import pytest
 
@@ -17,7 +19,7 @@ from ml_framework_snapshots.export import (
 @pytest.fixture
 def sample_ghost_ref() -> None:
     """Function docstring."""
-    return GhostRef(
+    return GhostRef(  # type: ignore
         name="Linear",
         api_path="torch.nn.Linear",
         kind="class",
@@ -49,7 +51,7 @@ def sample_ghost_ref() -> None:
     )
 
 
-def test_ghost_to_cdd_ir(sample_ghost_ref) -> None:
+def test_ghost_to_cdd_ir(sample_ghost_ref: Any) -> None:
     """Function docstring.
 
     Args:
@@ -80,7 +82,7 @@ def test_ghost_to_cdd_ir(sample_ghost_ref) -> None:
     assert returns["return_type"]["doc"] == "A tensor of shape"
 
 
-def test_to_json_schema(sample_ghost_ref) -> None:
+def test_to_json_schema(sample_ghost_ref: Any) -> None:
     """Function docstring.
 
     Args:
@@ -100,7 +102,7 @@ def test_to_json_schema(sample_ghost_ref) -> None:
     assert "bias" in properties
 
 
-def test_to_openapi(sample_ghost_ref) -> None:
+def test_to_openapi(sample_ghost_ref: Any) -> None:
     """Function docstring.
 
     Args:
@@ -118,7 +120,7 @@ def test_to_openapi(sample_ghost_ref) -> None:
     assert "Linear" in schemas
 
 
-def test_to_pydantic(sample_ghost_ref) -> None:
+def test_to_pydantic(sample_ghost_ref: Any) -> None:
     """Function docstring.
 
     Args:
@@ -148,7 +150,7 @@ def test_to_pydantic_empty() -> None:
     assert "pass" in code
 
 
-def test_to_protobuf(sample_ghost_ref) -> None:
+def test_to_protobuf(sample_ghost_ref: Any) -> None:
     """Function docstring.
 
     Args:
