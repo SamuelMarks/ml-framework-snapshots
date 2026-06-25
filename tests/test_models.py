@@ -369,7 +369,7 @@ def test_ghost_inspector_griffe_params(mocker: Any) -> None:
     class FakeKind:
         """Class docstring."""
 
-        def __init__(self, name: Any) -> Any:  # type: ignore
+        def __init__(self, name: Any) -> None:  # type: ignore
             """Function docstring. name."""
             self.name = name
 
@@ -378,7 +378,7 @@ def test_ghost_inspector_griffe_params(mocker: Any) -> None:
 
         def __init__(
             self, name: Any, kind_name: Any, default: Any, annotation: Any
-        ) -> Any:  # type: ignore
+        ) -> None:  # type: ignore
             """Function docstring. name kind_name default annotation."""
             self.name = name
             self.kind = FakeKind(kind_name) if kind_name else None
@@ -423,7 +423,7 @@ def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
 
         def __init__(
             self, name: Any, kind_name: Any, default: Any, annotation: Any
-        ) -> Any:  # type: ignore
+        ) -> None:  # type: ignore
             """Function docstring. name kind_name default annotation."""
             self.name = name
 

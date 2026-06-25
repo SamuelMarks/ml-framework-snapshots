@@ -1061,9 +1061,11 @@ def test_numpy_collect(mocker: Any) -> None:
     from ml_framework_snapshots.models import GhostInspector
 
     def tanh() -> Any:
+        """Docstring."""
         pass
 
     def exp() -> Any:
+        """Docstring."""
         pass
 
     fake_np = create_module(  # type: ignore
@@ -1081,6 +1083,7 @@ def test_numpy_collect(mocker: Any) -> None:
     original_inspect = GhostInspector.inspect
 
     def mock_inspect(obj: Any, api_path: Any, **kwargs: Any) -> Any:
+        """Docstring."""
         if "minimum" in api_path:
             raise ValueError("mock error")
         return original_inspect(obj, api_path, **kwargs)
@@ -1112,15 +1115,20 @@ def test_orbax_collect(mocker: Any) -> None:
     from ml_framework_snapshots.models import GhostInspector
 
     def checkpoint() -> Any:
+        """Docstring."""
         pass
 
     def _priv() -> Any:
+        """Docstring."""
         pass
 
     class Checkpointer:
+        """Docstring."""
+
         pass
 
     def error_func() -> Any:
+        """Docstring."""
         pass
 
     fake_ocp = create_module(  # type: ignore
@@ -1138,6 +1146,7 @@ def test_orbax_collect(mocker: Any) -> None:
     original_inspect = GhostInspector.inspect
 
     def mock_inspect(obj: Any, api_path: Any, **kwargs: Any) -> Any:
+        """Docstring."""
         if "error_func" in api_path:
             raise ValueError("mock error")
         return original_inspect(obj, api_path, **kwargs)
@@ -1174,15 +1183,22 @@ def test_pax_collect(mocker: Any) -> None:
     from ml_framework_snapshots.models import GhostInspector
 
     class Linear:
+        """Docstring."""
+
         pass
 
     class _PrivLayer:
+        """Docstring."""
+
         pass
 
     def not_a_class() -> Any:
+        """Docstring."""
         pass
 
     class ErrorClass:
+        """Docstring."""
+
         pass
 
     fake_layers = create_module(  # type: ignore
@@ -1200,6 +1216,7 @@ def test_pax_collect(mocker: Any) -> None:
     original_inspect = GhostInspector.inspect
 
     def mock_inspect(obj: Any, api_path: Any, **kwargs: Any) -> Any:
+        """Docstring."""
         if "ErrorClass" in api_path:
             raise ValueError("mock error")
         return original_inspect(obj, api_path, **kwargs)
@@ -1230,6 +1247,7 @@ def test_triton_collect(mocker: Any) -> None:
     import importlib
 
     def cdiv() -> Any:
+        """Docstring."""
         pass
 
     fake_triton = create_module("triton", {"cdiv": cdiv, "_priv": lambda: None})  # type: ignore
@@ -1238,6 +1256,7 @@ def test_triton_collect(mocker: Any) -> None:
     original_import = importlib.import_module
 
     def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
+        """Docstring."""
         if name == "triton":
             return fake_triton
         elif name == "triton.language":
@@ -1263,12 +1282,14 @@ def test_deepspeed_collect(mocker: Any) -> None:
     import importlib
 
     def initialize() -> Any:
+        """Docstring."""
         pass
 
     fake_ds = create_module("deepspeed", {"initialize": initialize})  # type: ignore
     original_import = importlib.import_module
 
     def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
+        """Docstring."""
         if name == "deepspeed":
             return fake_ds
         return original_import(name, *args, **kwargs)
@@ -1288,12 +1309,15 @@ def test_onnxruntime_collect(mocker: Any) -> None:
     import importlib
 
     class InferenceSession:
+        """Docstring."""
+
         pass
 
     fake_ort = create_module("onnxruntime", {"InferenceSession": InferenceSession})  # type: ignore
     original_import = importlib.import_module
 
     def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
+        """Docstring."""
         if name == "onnxruntime":
             return fake_ort
         return original_import(name, *args, **kwargs)
@@ -1313,9 +1337,13 @@ def test_huggingface_collect(mocker: Any) -> None:
     import importlib
 
     class PreTrainedModel:
+        """Docstring."""
+
         pass
 
     class Trainer:
+        """Docstring."""
+
         pass
 
     fake_transformers = create_module(  # type: ignore
@@ -1325,6 +1353,7 @@ def test_huggingface_collect(mocker: Any) -> None:
     original_import = importlib.import_module
 
     def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
+        """Docstring."""
         if name == "transformers":
             return fake_transformers
         return original_import(name, *args, **kwargs)
