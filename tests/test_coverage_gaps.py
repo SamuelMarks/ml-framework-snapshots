@@ -61,7 +61,7 @@ def test_griffe_parsing() -> None:
 
 def test_cdd_exception_handling(mocker: Any) -> None:
     """Function docstring."""
-    mocker.patch("cdd.shared.docstring_parsers.parse_docstring", side_effect=ValueError)
+    mocker.patch("cdd.docstring.parse.docstring", side_effect=ValueError)
     ref = GhostInspector.inspect(
         dummy_func_with_docstring, "tests.dummy_func_with_docstring"
     )
@@ -72,7 +72,7 @@ def test_cdd_direct_raises(mocker: Any) -> None:
     """Function docstring."""
     # Mock cdd to return direct raises list
     mocker.patch(
-        "cdd.shared.docstring_parsers.parse_docstring",
+        "cdd.docstring.parse.docstring",
         return_value={"raises": [{"typ": "KeyError"}]},
     )
     ref = GhostInspector.inspect(
@@ -138,7 +138,7 @@ def test_griffe_varargs() -> None:
 def test_models_raises_no_typ(mocker: Any) -> None:
     """Function docstring."""
     mocker.patch(
-        "cdd.shared.docstring_parsers.parse_docstring",
+        "cdd.docstring.parse.docstring",
         return_value={"raises": [{"not_typ": "KeyError"}]},
     )
     ref = GhostInspector.inspect(

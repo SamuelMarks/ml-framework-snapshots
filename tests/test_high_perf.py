@@ -32,26 +32,24 @@ def test_triton_collect() -> None:
     mock_tl.constexpr = constexpr
     mock_tl.tensor = tensor
 
-    with patch("importlib.import_module") as mock_import:
+    with patch("ml_framework_snapshots.models.GhostInspector.inspect") as mock_inspect:
+        mock_inspect.return_value = MagicMock()  # Return a dummy GhostRef
+        with patch("importlib.import_module") as mock_import:
 
-        def side_effect(name: Any) -> Any:
-            """Function docstring.
+            def side_effect(name: Any) -> Any:
+                """Function docstring.
 
-            Args:
-                name: description
-            """
-            if name == "triton":
-                return MagicMock()
-            elif name == "triton.language":
-                return mock_tl
-            raise ImportError(name)
+                Args:
+                    name: description
+                """
+                if name == "triton":
+                    return MagicMock()
+                elif name == "triton.language":
+                    return mock_tl
+                raise ImportError(name)
 
-        mock_import.side_effect = side_effect
+            mock_import.side_effect = side_effect
 
-        with patch(
-            "ml_framework_snapshots.models.GhostInspector.inspect"
-        ) as mock_inspect:
-            mock_inspect.return_value = MagicMock()  # Return a dummy GhostRef
             res = triton_collect(SemanticTier.UTIL)
             assert len(res) == 2
 

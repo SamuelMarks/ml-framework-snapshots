@@ -61,12 +61,12 @@ def to_json_schema(ref: GhostRef) -> Dict[str, Any]:
         A dictionary representing the JSON Schema.
 
     """
-    import cdd.emit.json_schema
+    import cdd.json_schema.emit
     from typing import cast
 
     ir = _ghost_to_cdd_ir(ref)
     return cast(
-        Dict[str, Any], cdd.emit.json_schema.json_schema(ir, identifier=ref.api_path)
+        Dict[str, Any], cdd.json_schema.emit.json_schema(ir, identifier=ref.api_path)
     )
 
 
@@ -80,8 +80,8 @@ def to_openapi(refs: List[GhostRef]) -> Dict[str, Any]:
         A dictionary representing the OpenAPI specification.
 
     """
-    import cdd.emit.openapi
-    from cdd.emit.utils.openapi_utils import NameModelRouteIdCrud
+    import cdd.compound.openapi.emit
+    from cdd.compound.openapi.utils.emit_openapi_utils import NameModelRouteIdCrud
 
     nm_cruds = []
     for ref in refs:
@@ -97,7 +97,7 @@ def to_openapi(refs: List[GhostRef]) -> Dict[str, Any]:
 
     from typing import cast
 
-    return cast(Dict[str, Any], cdd.emit.openapi.openapi(nm_cruds))
+    return cast(Dict[str, Any], cdd.compound.openapi.emit.openapi(nm_cruds))
 
 
 def to_pydantic(ref: GhostRef) -> str:

@@ -215,7 +215,7 @@ def test_ghost_inspector_str_has_address() -> None:
 def test_ghost_inspector_cdd_raises_no_typ(mocker: Any) -> None:
     """Function docstring."""
     mocker.patch(
-        "cdd.docstring_parsers.parse_docstring",
+        "cdd.docstring.parse.docstring",
         return_value={"raises": [{"doc": "some error but no typ"}]},
     )
 

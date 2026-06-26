@@ -176,7 +176,7 @@ class GhostInspector:
             A populated GhostRef object.
 
         """
-        import cdd.shared.docstring_parsers as cdd_docstring_parsers
+        import cdd.docstring.parse as cdd_docstring_parsers
         import griffe
 
         # Recursively unwrap nested decorators and framework wrappers
@@ -215,7 +215,7 @@ class GhostInspector:
 
         if doc:
             try:
-                cdd_ir = cdd_docstring_parsers.parse_docstring(doc)
+                cdd_ir = cdd_docstring_parsers.docstring(doc)
                 if cdd_ir.get("returns") and "return_type" in cdd_ir["returns"]:
                     ret = cdd_ir["returns"]["return_type"]
                     returns_type = sanitize_type_str(ret.get("typ"))

@@ -126,23 +126,23 @@ def test_deepspeed_missing() -> None:
             """Function docstring."""
             pass
 
-    with patch("importlib.import_module", return_value=DeepspeedMock()):
-        with patch(
-            "ml_framework_snapshots.models.GhostInspector.inspect",
-            side_effect=lambda obj, name: (
-                None
-                if "nothing" in name
-                else MagicMock(params=[MagicMock(**{"name": "config_params"})])
-            ),
-        ):
+    with patch(
+        "ml_framework_snapshots.models.GhostInspector.inspect",
+        side_effect=lambda obj, name: (
+            None
+            if "nothing" in name
+            else MagicMock(params=[MagicMock(**{"name": "config_params"})])
+        ),
+    ):
+        with patch("importlib.import_module", return_value=DeepspeedMock()):
             collect_api(SemanticTier.MODEL)
             collect_api(SemanticTier.MODEL, include_nonpublic=True)
 
-    with patch("importlib.import_module", return_value=DeepspeedMock()):
-        with patch(
-            "ml_framework_snapshots.models.GhostInspector.inspect",
-            return_value=MagicMock(params=[]),
-        ):
+    with patch(
+        "ml_framework_snapshots.models.GhostInspector.inspect",
+        return_value=MagicMock(params=[]),
+    ):
+        with patch("importlib.import_module", return_value=DeepspeedMock()):
             collect_api(SemanticTier.MODEL)
 
 
@@ -169,23 +169,23 @@ def test_onnxruntime_missing() -> None:
             """Function docstring."""
             pass
 
-    with patch("importlib.import_module", return_value=OnnxMock()):
-        with patch(
-            "ml_framework_snapshots.models.GhostInspector.inspect",
-            side_effect=lambda obj, name: (
-                None
-                if "nothing" in name
-                else MagicMock(params=[MagicMock(**{"name": "path_or_bytes"})])
-            ),
-        ):
+    with patch(
+        "ml_framework_snapshots.models.GhostInspector.inspect",
+        side_effect=lambda obj, name: (
+            None
+            if "nothing" in name
+            else MagicMock(params=[MagicMock(**{"name": "path_or_bytes"})])
+        ),
+    ):
+        with patch("importlib.import_module", return_value=OnnxMock()):
             collect_api(SemanticTier.MODEL)
             collect_api(SemanticTier.MODEL, include_nonpublic=True)
 
-    with patch("importlib.import_module", return_value=OnnxMock()):
-        with patch(
-            "ml_framework_snapshots.models.GhostInspector.inspect",
-            return_value=MagicMock(params=[]),
-        ):
+    with patch(
+        "ml_framework_snapshots.models.GhostInspector.inspect",
+        return_value=MagicMock(params=[]),
+    ):
+        with patch("importlib.import_module", return_value=OnnxMock()):
             collect_api(SemanticTier.MODEL)
 
 
@@ -230,15 +230,17 @@ def test_triton_missing() -> None:
     param_b.name = "b"
 
     with patch(
-        "importlib.import_module",
-        side_effect=lambda x: (
-            mock_mod if x == "triton.language" or x == "triton" else ImportError("No")
+        "ml_framework_snapshots.models.GhostInspector.inspect",
+        side_effect=lambda obj, name: (
+            None if "not_ref" in name else MagicMock(params=[param_a, param_b])
         ),
     ):
         with patch(
-            "ml_framework_snapshots.models.GhostInspector.inspect",
-            side_effect=lambda obj, name: (
-                None if "not_ref" in name else MagicMock(params=[param_a, param_b])
+            "importlib.import_module",
+            side_effect=lambda x: (
+                mock_mod
+                if x == "triton.language" or x == "triton"
+                else ImportError("No")
             ),
         ):
             collect_api(SemanticTier.UTIL)
@@ -438,10 +440,10 @@ def test_huggingface_missing() -> None:
             return MagicMock(params=[MagicMock(**{"name": "a"})])
         return MagicMock(params=[MagicMock(**{"name": "config"})])
 
-    with patch("importlib.import_module", return_value=FakeMod()):
-        with patch(
-            "ml_framework_snapshots.models.GhostInspector.inspect",
-            side_effect=mock_inspect,
-        ):
+    with patch(
+        "ml_framework_snapshots.models.GhostInspector.inspect",
+        side_effect=mock_inspect,
+    ):
+        with patch("importlib.import_module", return_value=FakeMod()):
             collect_transformers(SemanticTier.MODEL)
             collect_transformers(SemanticTier.UTIL)
