@@ -16,9 +16,9 @@ try:
     import torch.optim as optim  # pragma: no cover
     import torch.utils.data as data  # pragma: no cover
 except ImportError:  # pragma: no cover
-    nn = None  # type: ignore
-    optim = None  # type: ignore
-    data = None  # type: ignore
+    nn = None
+    optim = None
+    data = None
 
 
 def _scan_losses(include_nonpublic: bool) -> List[GhostRef]:

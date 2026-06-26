@@ -137,7 +137,7 @@ def collect_huggingface(
         if obj is None:
             continue
 
-        obj_cat = None  # type: ignore
+        obj_cat = None
         if "Config" in name:
             obj_cat = SemanticTier.MODEL
         elif "Model" in name or "Pipeline" in name or "Tokenizer" in name:

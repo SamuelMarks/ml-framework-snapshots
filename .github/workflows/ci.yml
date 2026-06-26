@@ -56,4 +56,4 @@ jobs:
       run: ruff check src tests
 
     - name: Run Interrogate
-      run: interrogate -v -I -M -C src/ml_framework_snapshots
+      run: interrogate -v src tests

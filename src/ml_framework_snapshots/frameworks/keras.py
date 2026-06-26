@@ -15,7 +15,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 try:
     import keras
 except ImportError:  # pragma: no cover
-    keras = None  # type: ignore
+    keras = None
 
 
 def _scan_module(

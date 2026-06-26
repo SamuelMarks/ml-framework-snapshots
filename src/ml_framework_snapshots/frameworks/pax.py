@@ -11,9 +11,9 @@ try:
     import praxis  # pragma: no cover
     from praxis import layers  # pragma: no cover
 except ImportError:  # pragma: no cover
-    paxml = None  # type: ignore # pragma: no cover
-    praxis = None  # type: ignore # pragma: no cover
-    layers = None  # type: ignore # pragma: no cover
+    paxml = None  # pragma: no cover
+    praxis = None  # pragma: no cover
+    layers = None  # pragma: no cover
 
 
 def collect_api(

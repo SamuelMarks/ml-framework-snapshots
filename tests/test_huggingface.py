@@ -157,9 +157,16 @@ def test_parse_pretrained_config_with_empty_annotations() -> None:
     ref = GhostRef(name="MyConfig", api_path="pkg.MyConfig", kind="class")
 
     class DummyConfig:
+        """Class docstring."""
+
         __annotations__ = {}
 
         def __init__(self, **kwargs: Any) -> Any:  # type: ignore
+            """Init docstring.
+
+            Args:
+                **kwargs: kwargs
+            """
             pass
 
     _parse_pretrained_config(DummyConfig, ref)

@@ -16,8 +16,8 @@ try:
     import sklearn
     from sklearn.base import BaseEstimator
 except ImportError:  # pragma: no cover
-    sklearn = None  # type: ignore
-    BaseEstimator = None  # type: ignore
+    sklearn = None
+    BaseEstimator = None
 
 
 def _scan_module(

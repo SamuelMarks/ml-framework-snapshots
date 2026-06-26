@@ -7,7 +7,7 @@ from ml_framework_snapshots.models import GhostInspector
 try:
     import numpy as np
 except ImportError:  # pragma: no cover
-    np = None  # type: ignore
+    np = None
 
 
 def collect_api(

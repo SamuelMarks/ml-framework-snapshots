@@ -6,7 +6,7 @@ import re
 import subprocess
 
 
-def get_test_coverage() -> None:
+def get_test_coverage() -> str:
     """Function docstring."""
     result = subprocess.run(
         ["pytest", "--cov=src/ml_framework_snapshots", "--cov-branch"],
@@ -19,7 +19,7 @@ def get_test_coverage() -> None:
     return "unknown"
 
 
-def get_doc_coverage() -> None:
+def get_doc_coverage() -> str:
     """Function docstring."""
     # If interrogate is not available, try parsing another way, but we know it's there
     try:
@@ -37,7 +37,7 @@ def get_doc_coverage() -> None:
     return "unknown"
 
 
-def get_color(coverage: Any) -> None:
+def get_color(coverage: Any) -> str:
     """Function docstring."""
     try:
         val = float(coverage)

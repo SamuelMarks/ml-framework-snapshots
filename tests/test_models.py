@@ -91,7 +91,7 @@ def test_ghost_inspector_c_extension(mocker: Any) -> None:
 
 def test_ghost_inspector_hydrate() -> None:
     """Function docstring."""
-    data = {  # type: ignore
+    data = {
         "name": "foo",
         "api_path": "foo",
         "kind": "function",
@@ -369,7 +369,7 @@ def test_ghost_inspector_griffe_params(mocker: Any) -> None:
     class FakeKind:
         """Class docstring."""
 
-        def __init__(self, name: Any) -> None:  # type: ignore
+        def __init__(self, name: Any) -> None:
             """Function docstring. name."""
             self.name = name
 
@@ -378,7 +378,7 @@ def test_ghost_inspector_griffe_params(mocker: Any) -> None:
 
         def __init__(
             self, name: Any, kind_name: Any, default: Any, annotation: Any
-        ) -> None:  # type: ignore
+        ) -> None:
             """Function docstring. name kind_name default annotation."""
             self.name = name
             self.kind = FakeKind(kind_name) if kind_name else None
@@ -423,7 +423,7 @@ def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
 
         def __init__(
             self, name: Any, kind_name: Any, default: Any, annotation: Any
-        ) -> None:  # type: ignore
+        ) -> None:
             """Function docstring. name kind_name default annotation."""
             self.name = name
 

@@ -17,7 +17,7 @@ from ml_framework_snapshots.frameworks.jax import collect_api as jax_collect_api
 try:
     import flax.nnx as nnx
 except ImportError:  # pragma: no cover
-    nnx = None  # type: ignore
+    nnx = None
 
 
 def _scan_nnx_layers(include_nonpublic: bool) -> List[GhostRef]:

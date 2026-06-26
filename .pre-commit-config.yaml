@@ -31,9 +31,8 @@ repos:
     rev: v1.10.0
     hooks:
       - id: mypy
-        additional_dependencies: ["pydantic", "griffe", "cdd-python"]
-        args: ["--ignore-missing-imports"]
-        exclude: ^(tests/|scripts/)
+        additional_dependencies: ["pydantic", "griffe", "cdd-python", "pytest"]
+        args: ["--ignore-missing-imports", "--strict"]
 
   - repo: local
     hooks:

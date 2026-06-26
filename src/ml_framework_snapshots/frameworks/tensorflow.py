@@ -15,7 +15,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 try:
     import tensorflow as tf
 except ImportError:  # pragma: no cover
-    tf = None  # type: ignore
+    tf = None
 
 
 def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[GhostRef]:

@@ -882,7 +882,7 @@ def test_sklearn_collect(mocker: Any) -> None:
 
     mock_sklearn = types.ModuleType("sklearn")
     mock_sklearn.base = types.ModuleType("sklearn.base")  # type: ignore
-    mock_sklearn.base.BaseEstimator = BaseEstimator
+    mock_sklearn.base.BaseEstimator = BaseEstimator  # type: ignore
 
     mock_ensemble = types.ModuleType("sklearn.ensemble")
     mock_ensemble.RandomForestClassifier = RandomForestClassifier  # type: ignore

@@ -17,7 +17,7 @@ from typing import List
 try:
     import optax
 except ImportError:  # pragma: no cover
-    optax = None  # type: ignore
+    optax = None
 
 from ml_framework_snapshots.models import GhostInspector
 from ml_switcheroo_ir.schema.ghost import GhostRef

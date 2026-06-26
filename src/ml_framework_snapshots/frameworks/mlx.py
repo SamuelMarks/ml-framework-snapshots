@@ -17,7 +17,7 @@ try:
     import mlx.nn  # pragma: no cover
     import mlx.optimizers  # pragma: no cover
 except ImportError:  # pragma: no cover
-    mlx = None  # type: ignore
+    mlx = None
 
 
 def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[GhostRef]:

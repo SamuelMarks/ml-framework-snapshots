@@ -16,7 +16,7 @@ from ml_framework_snapshots.frameworks.optax_shim import OptaxScanner
 try:
     import jax
 except ImportError:  # pragma: no cover
-    jax = None  # type: ignore
+    jax = None
 
 
 def _scan_jax_activations(include_nonpublic: bool) -> List[GhostRef]:
