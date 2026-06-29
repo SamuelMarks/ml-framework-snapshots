@@ -63,14 +63,17 @@ def test_resolve_snapshot_path_not_found(tmp_path: Any) -> None:
         assert resolved == "missing_framework"
 
 
-def test_resolve_multiple_matches(mocker: Any) -> None:
+def test_resolve_multiple_matches(tmp_path: Any) -> None:
     """Function docstring."""
-    from ml_framework_snapshots.cli import resolve_snapshot_path
+    pkg_dir = tmp_path / "src" / "ml_framework_snapshots"
+    pkg_dir.mkdir(parents=True)
 
-    mocker.patch("pathlib.Path.is_file", side_effect=lambda x: str(x) == "torch")
-    mocker.patch(
-        "glob.glob",
-        return_value=["snapshots/torch-1.12.json", "snapshots/torch-2.0.json"],
-    )
-    res = resolve_snapshot_path("torch")
-    assert res == "snapshots/torch-2.0.json"
+    snapshots_dir = tmp_path / "snapshots"
+    snapshots_dir.mkdir()
+
+    (snapshots_dir / "torch-1.12.json").touch()
+    (snapshots_dir / "torch-2.0.json").touch()
+
+    with patch("ml_framework_snapshots.cli.__file__", str(pkg_dir / "cli.py")):
+        res = resolve_snapshot_path("torch")
+        assert res == str(snapshots_dir / "torch-2.0.json")
