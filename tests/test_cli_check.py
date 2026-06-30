@@ -167,7 +167,13 @@ def test_cmd_check_no_missing_mismatched(
 
 
 def test_cmd_check_output_formatting(mocker: Any, capsys: Any, tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.cli import cmd_check
     from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
     import json

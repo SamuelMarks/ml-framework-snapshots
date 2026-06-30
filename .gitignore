@@ -144,3 +144,5 @@ patch_models.py
 .Trashes
 ehthumbs.db
 Thumbs.db
+.venv_ci/
+scripts/fix_docs.py

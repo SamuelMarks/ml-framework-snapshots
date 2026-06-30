@@ -15,6 +15,10 @@ def forward(x: "TensorRef") -> "TensorRef":
 
     Args:
         x: description
+
+
+    Returns:
+        Return value.
     """
     return x
 

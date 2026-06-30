@@ -11,6 +11,10 @@ def torch_compile_mock(func: Any) -> None:
 
     Args:
         func: description
+
+
+    Returns:
+        Return value.
     """
 
     class Compiled:

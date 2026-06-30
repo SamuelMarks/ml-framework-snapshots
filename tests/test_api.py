@@ -30,7 +30,11 @@ def test_get_all_members() -> None:
             self._cache = {"hidden_func": lambda: 42}
 
         def __dir__(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return ["VisibleClass", "__all__", "broken_dir"]
 
         def __getattr__(self, name: Any) -> Any:
@@ -38,6 +42,14 @@ def test_get_all_members() -> None:
 
             Args:
                 name: description
+
+
+            Raises:
+                AttributeError: Exception.
+                Exception: Exception.
+
+            Returns:
+                Return value.
             """
             if name == "broken_all" or name == "broken_dir":
                 raise Exception("simulated error")
@@ -57,7 +69,11 @@ def test_get_all_members() -> None:
 
 
 def test_get_pkg_version(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     mocker.patch("importlib.metadata.version", return_value="1.2.3")
     assert get_pkg_version("torch") == "1.2.3"
     assert get_pkg_version("flax_nnx") == "1.2.3"
@@ -68,7 +84,11 @@ def test_get_pkg_version(mocker: Any) -> None:
 
 
 def test_extract_snapshot(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     # unknown framework
     assert extract_snapshot("nonexistent") == {}
 
@@ -87,6 +107,13 @@ def test_extract_snapshot(mocker: Any) -> None:
         Args:
             cat: description
             include_nonpublic: description
+
+
+        Raises:
+            Exception: Exception.
+
+        Returns:
+            Return value.
         """
         if cat == SemanticTier.LOSS:
             return [mock_ref]
@@ -109,6 +136,10 @@ def test_extract_snapshot(mocker: Any) -> None:
         Args:
             cat: description
             include_nonpublic: description
+
+
+        Returns:
+            Return value.
         """
         return []
 
@@ -117,7 +148,11 @@ def test_extract_snapshot(mocker: Any) -> None:
 
 
 def test_extract_all_snapshots(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     mocker.patch(
         "ml_framework_snapshots.api.extract_snapshot",
         side_effect=lambda fw, include_nonpublic=False: (
@@ -130,7 +165,11 @@ def test_extract_all_snapshots(mocker: Any) -> None:
 
 
 def test_write_snapshot(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     data = {"version": "2.0.0+cpu", "categories": {}}
     out_dir = tmp_path / "out"
     path = write_snapshot("torch", data, str(out_dir))
@@ -171,6 +210,10 @@ def test_get_available_frameworks_discovery() -> None:
 
             Args:
                 name: name.
+
+
+            Returns:
+                Return value.
             """
             """Mock import."""
             if name.endswith("test"):
@@ -206,6 +249,10 @@ def test_get_available_frameworks_aliases() -> None:
 
             Args:
                 name: name.
+
+
+            Returns:
+                Return value.
             """
             m = MagicMock()
             m.collect_api = lambda *args: []
@@ -230,6 +277,10 @@ def test_get_available_frameworks_not_startswith_collect() -> None:
 
             Args:
                 name: name.
+
+
+            Returns:
+                Return value.
             """
             m = MagicMock()
             m.collect_bar = lambda *args: []
@@ -305,6 +356,10 @@ def test_get_available_frameworks_not_collect() -> None:
 
             Args:
                 name: name.
+
+
+            Returns:
+                Return value.
             """
             m = MagicMock()
             m.collect_ = lambda *args: []
@@ -365,7 +420,11 @@ def test_consolidate_aliases_same_length() -> None:
 
 
 def test_api_version_aliases(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     import ml_framework_snapshots.api as api
 
     mocker.patch("importlib.metadata.version", return_value="1.2.3")

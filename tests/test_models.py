@@ -34,7 +34,10 @@ def test_ghost_ref_has_arg() -> None:
 
 
 def dummy_func(a: int, b=2, *args: Any, **kwargs: Any) -> None:  # type: ignore
-    """Docstring for dummy_func. a b args kwargs."""
+    """Docstring for dummy_func. a b args kwargs.
+
+    # noqa: DAR101
+    """
     pass
 
 
@@ -42,12 +45,18 @@ class DummyClass:
     """Class docstring."""
 
     def __init__(self, c: str = "test") -> Any:  # type: ignore
-        """Function docstring. c."""
+        """Function docstring. c.
+
+        # noqa: DAR101
+        """
         pass
 
 
 def dummy_c_extension(*args: Any, **kwargs: Any) -> None:
-    """Function docstring. args kwargs."""
+    """Function docstring. args kwargs.
+
+    # noqa: DAR101
+    """
     # simulate something that inspect.signature fails on
     pass
 
@@ -58,7 +67,9 @@ def test_ghost_inspector_function() -> None:
     assert ref.name == "dummy_func"
     assert ref.api_path == "tests.dummy_func"
     assert ref.kind == "function"
-    assert ref.docstring == "Docstring for dummy_func. a b args kwargs."
+    assert (
+        ref.docstring == "Docstring for dummy_func. a b args kwargs.\n\n# noqa: DAR101"
+    )
     assert ref.has_varargs is True
 
     assert (
@@ -78,7 +89,11 @@ def test_ghost_inspector_class() -> None:
 
 
 def test_ghost_inspector_c_extension(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     # Mock inspect.signature to raise ValueError
     mocker.patch("inspect.signature", side_effect=ValueError)
     ref = GhostInspector.inspect(dummy_c_extension, "tests.dummy_c_extension")
@@ -91,7 +106,7 @@ def test_ghost_inspector_c_extension(mocker: Any) -> None:
 
 def test_ghost_inspector_hydrate() -> None:
     """Function docstring."""
-    data = {
+    data: dict[str, Any] = {
         "name": "foo",
         "api_path": "foo",
         "kind": "function",
@@ -110,11 +125,19 @@ def test_unrepresentable_default() -> None:
         """Class docstring."""
 
         def __repr__(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Raises:
+                Exception: Exception.
+            """
             raise Exception("no")
 
     def f(a=Unrepresentable()):  # type: ignore
-        """Function docstring. a."""
+        """Function docstring. a.
+
+        Args:
+            a: Parameter.
+        """
         pass
 
     ref = GhostInspector.inspect(f, "f")
@@ -130,7 +153,11 @@ def test_memory_address_default() -> None:
         pass
 
     def f(a=MemoryDefault()):  # type: ignore
-        """Function docstring. a."""
+        """Function docstring. a.
+
+        Args:
+            a: Parameter.
+        """
         pass
 
     ref = GhostInspector.inspect(f, "f")
@@ -145,7 +172,11 @@ def test_callable_default() -> None:
         pass
 
     def f(a=my_default) -> Any:  # type: ignore
-        """Function docstring. a."""
+        """Function docstring. a.
+
+        Args:
+            a: Parameter.
+        """
         pass
 
     ref = GhostInspector.inspect(f, "f")
@@ -159,15 +190,27 @@ def test_ghost_inspector_str_throws() -> None:
         """Class docstring."""
 
         def __repr__(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return "fine"
 
         def __str__(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Raises:
+                Exception: Exception.
+            """
             raise Exception("no")
 
     def f(a=StrThrows()):  # type: ignore
-        """Function docstring. a."""
+        """Function docstring. a.
+
+        Args:
+            a: Parameter.
+        """
         pass
 
     ref = GhostInspector.inspect(f, "f")
@@ -175,7 +218,11 @@ def test_ghost_inspector_str_throws() -> None:
 
 
 def test_ghost_inspector_c_extension_class(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     mocker.patch("inspect.signature", side_effect=ValueError)
 
     class DummyCClass:
@@ -197,15 +244,27 @@ def test_ghost_inspector_str_has_address() -> None:
         """Class docstring."""
 
         def __repr__(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return "fine"
 
         def __str__(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return "something at 0x1234"
 
     def f(a=StrAddr()):  # type: ignore
-        """Function docstring. a."""
+        """Function docstring. a.
+
+        Args:
+            a: Parameter.
+        """
         pass
 
     ref = GhostInspector.inspect(f, "f")
@@ -213,7 +272,11 @@ def test_ghost_inspector_str_has_address() -> None:
 
 
 def test_ghost_inspector_cdd_raises_no_typ(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     mocker.patch(
         "cdd.docstring.parse.docstring",
         return_value={"raises": [{"doc": "some error but no typ"}]},
@@ -228,7 +291,11 @@ def test_ghost_inspector_cdd_raises_no_typ(mocker: Any) -> None:
 
 
 def test_ghost_inspector_is_public(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     # test explicit override
     ref = GhostInspector.inspect(dummy_func, "tests.dummy_func", is_public=False)
     assert ref.is_public is False
@@ -263,7 +330,11 @@ def test_ghost_inspector_annotation_str() -> None:
     """Function docstring."""
 
     def f(a: str) -> Any:
-        """Function docstring. a."""
+        """Function docstring. a.
+
+        Args:
+            a: Parameter.
+        """
         pass
 
     ref = GhostInspector.inspect(f, "f")
@@ -277,8 +348,12 @@ def test_ghost_inspector_cdd_fallback() -> None:
     def dummy_func_cdd(x):  # type: ignore
         """Dummy func.
 
+        # noqa: DAR101
+
         Args:
         x (int): The value.
+
+            x: Parameter.
         """
         pass
 
@@ -295,7 +370,11 @@ def test_ghost_inspector_annotation_name() -> None:
         pass
 
     def dummy_func_anno(x: MyType) -> Any:
-        """Function docstring. x."""
+        """Function docstring. x.
+
+        Args:
+            x: Parameter.
+        """
         pass
 
     GhostInspector.inspect(dummy_func_anno, "dummy_func_anno")
@@ -306,7 +385,11 @@ def test_ghost_inspector_annotation_name() -> None:
 
 
 def test_ghost_inspector_annotation_name_mock(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     # Mock get_type_hints to raise an Exception so it falls back to raw annotations
     mocker.patch("typing.get_type_hints", side_effect=Exception("Failed"))
 
@@ -316,7 +399,11 @@ def test_ghost_inspector_annotation_name_mock(mocker: Any) -> None:
         pass
 
     def dummy_func_anno(x: MyType) -> Any:
-        """Function docstring. x."""
+        """Function docstring. x.
+
+        Args:
+            x: Parameter.
+        """
         pass
 
     ref = GhostInspector.inspect(dummy_func_anno, "dummy_func_anno")
@@ -324,11 +411,19 @@ def test_ghost_inspector_annotation_name_mock(mocker: Any) -> None:
 
 
 def test_ghost_inspector_annotation_str_mock(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     mocker.patch("typing.get_type_hints", side_effect=Exception("Failed"))
 
     def dummy_func_anno_str(x: "str") -> Any:
-        """Function docstring. x."""
+        """Function docstring. x.
+
+        Args:
+            x: Parameter.
+        """
         pass
 
     ref = GhostInspector.inspect(dummy_func_anno_str, "dummy_func_anno_str")
@@ -342,8 +437,12 @@ def test_ghost_inspector_cdd_anno_fallback() -> None:
     def dummy_func_no_anno(x):  # type: ignore
         """Dummy func.
 
+        # noqa: DAR101
+
         Args:
         x (int): The value.
+
+            x: Parameter.
         """
         pass
 
@@ -356,7 +455,11 @@ def test_ghost_inspector_return_type_hints() -> None:
     """Function docstring."""
 
     def dummy_func_ret() -> int:
-        """Function docstring."""
+        """Function docstring.
+
+        Returns:
+            Return value.
+        """
         return 0
 
     ref = GhostInspector.inspect(dummy_func_ret, "dummy_func_ret")
@@ -364,13 +467,21 @@ def test_ghost_inspector_return_type_hints() -> None:
 
 
 def test_ghost_inspector_griffe_params(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
 
     class FakeKind:
         """Class docstring."""
 
         def __init__(self, name: Any) -> None:
-            """Function docstring. name."""
+            """Function docstring. name.
+
+            Args:
+                name: Parameter.
+            """
             self.name = name
 
     class FakeParam:
@@ -379,7 +490,14 @@ def test_ghost_inspector_griffe_params(mocker: Any) -> None:
         def __init__(
             self, name: Any, kind_name: Any, default: Any, annotation: Any
         ) -> None:
-            """Function docstring. name kind_name default annotation."""
+            """Function docstring. name kind_name default annotation.
+
+            Args:
+                annotation: Parameter.
+                default: Parameter.
+                kind_name: Parameter.
+                name: Parameter.
+            """
             self.name = name
             self.kind = FakeKind(kind_name) if kind_name else None
             self.default = default
@@ -416,7 +534,11 @@ def test_ghost_inspector_overloads_cdd() -> None:
 
 
 def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
 
     class FakeParam:
         """Class docstring."""
@@ -424,7 +546,14 @@ def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
         def __init__(
             self, name: Any, kind_name: Any, default: Any, annotation: Any
         ) -> None:
-            """Function docstring. name kind_name default annotation."""
+            """Function docstring. name kind_name default annotation.
+
+            Args:
+                annotation: Parameter.
+                default: Parameter.
+                kind_name: Parameter.
+                name: Parameter.
+            """
             self.name = name
 
             class FakeKind:
@@ -441,7 +570,12 @@ def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
         """Class docstring."""
 
         def __init__(self, parameters: Any, returns: Any) -> Any:  # type: ignore
-            """Function docstring. parameters returns."""
+            """Function docstring. parameters returns.
+
+            Args:
+                parameters: Parameter.
+                returns: Parameter.
+            """
             self.parameters = parameters
             self.returns = returns
 

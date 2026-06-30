@@ -7,7 +7,11 @@ from ml_framework_snapshots.stubs import generate_stubs
 
 
 def test_generate_stubs(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     snap = {
         "categories": {
             "layer": [
@@ -97,14 +101,22 @@ def test_generate_stubs(tmp_path: Any) -> None:
 
 
 def test_generate_stubs_empty(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     out_dir = tmp_path / "stubs"
     generate_stubs({}, str(out_dir))
     assert not (out_dir / "test_fw").exists()
 
 
 def test_generate_stubs_default_vals(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     snap = {
         "categories": {
             "layer": [
@@ -132,7 +144,11 @@ def test_generate_stubs_default_vals(tmp_path: Any) -> None:
 
 
 def test_generate_stubs_no_module(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     data = {
         "categories": {
             "losses": [
@@ -152,7 +168,11 @@ def test_generate_stubs_no_module(tmp_path: Any) -> None:
 
 
 def test_generate_stubs_include_nonpublic(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     snap = {
         "categories": {
             "layer": [

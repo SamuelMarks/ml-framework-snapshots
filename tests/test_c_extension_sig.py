@@ -23,6 +23,13 @@ def patched_sig(target: Any, *args: Any, **kwargs: Any) -> None:
         target: description
         args: description
         kwargs: description
+
+
+    Raises:
+        ValueError: Exception.
+
+    Returns:
+        Return value.
     """
     if target is dummy_c_ext:
         raise ValueError("no signature found")

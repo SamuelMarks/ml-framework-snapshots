@@ -33,7 +33,11 @@ def test_ghostinspector_env_tags() -> None:
 
 
 def test_ghostinspector_env_tags_no_torch(monkeypatch: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        monkeypatch: Parameter.
+    """
     import sys
 
     monkeypatch.setitem(sys.modules, "torch", None)
@@ -47,7 +51,12 @@ def test_ghostinspector_env_tags_no_torch(monkeypatch: Any) -> None:
 
 
 def test_ghostinspector_env_tags_cuda_true(mocker: Any, monkeypatch: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+        monkeypatch: Parameter.
+    """
     import sys
 
     class MockCuda:
@@ -55,7 +64,11 @@ def test_ghostinspector_env_tags_cuda_true(mocker: Any, monkeypatch: Any) -> Non
 
         @staticmethod
         def is_available() -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return True
 
     class MockTorch:

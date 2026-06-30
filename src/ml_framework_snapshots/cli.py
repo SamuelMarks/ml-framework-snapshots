@@ -18,7 +18,14 @@ from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
 def resolve_snapshot_path(path: str) -> str:
-    """Resolve a snapshot path, looking in the local snapshots directory if needed."""
+    """Resolve a snapshot path, looking in the local snapshots directory if needed.
+
+    Args:
+        path: The path or name to resolve.
+
+    Returns:
+        The resolved full path if found, or the original path otherwise.
+    """
     if os.path.exists(path):
         return path
 

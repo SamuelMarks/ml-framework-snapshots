@@ -27,6 +27,10 @@ class SomeClass:
         :type x: float
         :param y: The y list.
         :type y: list
+
+        Args:
+            x: Parameter.
+            y: Parameter.
         """
         pass
 

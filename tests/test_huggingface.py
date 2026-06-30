@@ -35,6 +35,10 @@ def test_collect_transformers() -> None:
             Args:
                 input_ids: description
                 max_length: description
+
+
+            Returns:
+                Return value.
             """
             return ""
 

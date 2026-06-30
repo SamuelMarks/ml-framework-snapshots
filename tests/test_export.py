@@ -18,7 +18,11 @@ from ml_framework_snapshots.export import (
 
 @pytest.fixture
 def sample_ghost_ref() -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Returns:
+        Return value.
+    """
     return GhostRef(  # type: ignore
         name="Linear",
         api_path="torch.nn.Linear",

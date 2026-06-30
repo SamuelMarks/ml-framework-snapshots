@@ -8,7 +8,12 @@ from unittest.mock import mock_open
 
 
 def test_cli_capture(mocker: Any, capsys: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
     mocker.patch("sys.argv", ["ml-snapshots", "capture", "--out-dir", "test_out"])
 
     # Mock extract_snapshot and write_snapshot
@@ -18,6 +23,10 @@ def test_cli_capture(mocker: Any, capsys: Any) -> None:
         Args:
             fw: description
             include_nonpublic: description
+
+
+        Returns:
+            Return value.
         """
         if fw == "torch":
             return {"version": "1.0"}
@@ -41,7 +50,12 @@ def test_cli_capture(mocker: Any, capsys: Any) -> None:
 
 
 def test_cli_diff(mocker: Any, capsys: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
     mocker.patch("sys.argv", ["ml-snapshots", "diff", "1.json", "2.json"])
 
     mocker.patch("builtins.open", mocker.mock_open(read_data="{}"))
@@ -63,7 +77,12 @@ def test_cli_diff(mocker: Any, capsys: Any) -> None:
 
 
 def test_cli_diff_changelog(mocker: Any, capsys: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
     mocker.patch(
         "sys.argv", ["ml-snapshots", "diff", "1.json", "2.json", "--changelog"]
     )
@@ -89,7 +108,12 @@ def test_cli_diff_changelog(mocker: Any, capsys: Any) -> None:
 
 
 def test_cli_stubs(mocker: Any, capsys: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
     mocker.patch(
         "sys.argv",
         ["ml-snapshots", "generate-stubs", "--input", "in.json", "--out-dir", "out"],
@@ -106,7 +130,12 @@ def test_cli_stubs(mocker: Any, capsys: Any) -> None:
 
 
 def test_cli_export_openapi(mocker: Any, capsys: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
     mocker.patch(
         "sys.argv",
         [
@@ -149,7 +178,12 @@ def test_cli_export_openapi(mocker: Any, capsys: Any) -> None:
 
 
 def test_cli_export_json_schema(mocker: Any, capsys: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
     mocker.patch(
         "sys.argv",
         [
@@ -192,7 +226,12 @@ def test_cli_export_json_schema(mocker: Any, capsys: Any) -> None:
 
 
 def test_cli_export_pydantic(mocker: Any, capsys: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
     mocker.patch(
         "sys.argv",
         [
@@ -235,7 +274,12 @@ def test_cli_export_pydantic(mocker: Any, capsys: Any) -> None:
 
 
 def test_cli_export_protobuf(mocker: Any, capsys: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
     mocker.patch(
         "sys.argv",
         [
@@ -278,7 +322,12 @@ def test_cli_export_protobuf(mocker: Any, capsys: Any) -> None:
 
 
 def test_cli_export_unknown_format(mocker: Any, capsys: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.cli import cmd_export
     import pytest
 
@@ -312,7 +361,11 @@ def test_cli_export_unknown_format(mocker: Any, capsys: Any) -> None:
 
 
 def test_cmd_capture_wildcard(capsys: Any) -> None:
-    """Test function."""
+    """Test function.
+
+    Args:
+        capsys: Parameter.
+    """
     from ml_framework_snapshots.cli import cmd_capture
     import argparse
     from unittest.mock import patch
@@ -332,7 +385,11 @@ def test_cmd_capture_wildcard(capsys: Any) -> None:
 
 
 def test_cmd_capture_unsupported(capsys: Any) -> None:
-    """Test function."""
+    """Test function.
+
+    Args:
+        capsys: Parameter.
+    """
     from ml_framework_snapshots.cli import cmd_capture
     import argparse
     from unittest.mock import patch
@@ -353,7 +410,11 @@ def test_cmd_capture_unsupported(capsys: Any) -> None:
 
 
 def test_cmd_capture_all(capsys: Any) -> None:
-    """Test function."""
+    """Test function.
+
+    Args:
+        capsys: Parameter.
+    """
     from ml_framework_snapshots.cli import cmd_capture
     import argparse
     from unittest.mock import patch
@@ -377,7 +438,11 @@ def test_cmd_capture_all(capsys: Any) -> None:
 
 
 def test_cmd_capture_missing(capsys: Any) -> None:
-    """Test function."""
+    """Test function.
+
+    Args:
+        capsys: Parameter.
+    """
     from ml_framework_snapshots.cli import cmd_capture
     import argparse
     from unittest.mock import patch

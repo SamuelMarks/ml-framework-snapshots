@@ -14,6 +14,10 @@ def create_module(name: Any, attrs: Any) -> None:
     Args:
         name: description
         attrs: description
+
+
+    Returns:
+        Return value.
     """
     mod = types.ModuleType(name)
     for k, v in attrs.items():
@@ -22,7 +26,11 @@ def create_module(name: Any, attrs: Any) -> None:
 
 
 def test_torch_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import torch as torch_fw
 
     class Module:
@@ -244,7 +252,11 @@ def test_torch_collect(mocker: Any) -> None:
 
 
 def test_torch_import_error(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import torch as torch_fw
 
     mocker.patch.object(torch_fw, "nn", None)
@@ -261,7 +273,11 @@ def test_torch_import_error(mocker: Any) -> None:
 
 
 def test_torch_typeerror(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import torch as torch_fw
 
     class BadLoss:
@@ -290,7 +306,11 @@ def test_torch_typeerror(mocker: Any) -> None:
 
 
 def test_tensorflow_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import tensorflow as tf_fw
 
     def relu() -> Any:
@@ -427,7 +447,11 @@ def test_tensorflow_collect(mocker: Any) -> None:
 
 
 def test_keras_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import keras as keras_fw
 
     class MSELoss:
@@ -540,7 +564,11 @@ def test_keras_collect(mocker: Any) -> None:
 
 
 def test_mlx_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import mlx as mlx_fw
 
     class Dense:
@@ -606,7 +634,11 @@ def test_mlx_collect(mocker: Any) -> None:
 
 
 def test_jax_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import jax as jax_fw
     from ml_framework_snapshots.frameworks.optax_shim import OptaxScanner
 
@@ -680,7 +712,11 @@ def test_jax_collect(mocker: Any) -> None:
 
 
 def test_flax_nnx_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import flax_nnx as flax_fw
 
     class Module:
@@ -736,7 +772,11 @@ def test_flax_nnx_collect(mocker: Any) -> None:
 
 
 def test_optax_shim_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     import ml_framework_snapshots.frameworks.optax_shim as o_shim
 
     def adam() -> Any:
@@ -845,7 +885,11 @@ def test_optax_shim_collect(mocker: Any) -> None:
 
 
 def test_sklearn_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import sklearn as sklearn_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     import types
@@ -929,7 +973,11 @@ def test_sklearn_collect(mocker: Any) -> None:
 
 
 def test_sklearn_import_error(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import sklearn as sklearn_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
 
@@ -940,7 +988,11 @@ def test_sklearn_import_error(mocker: Any) -> None:
 
 
 def test_sklearn_module_import_error(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks import sklearn as sklearn_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     import types
@@ -958,6 +1010,13 @@ def test_sklearn_module_import_error(mocker: Any) -> None:
             name: description
             args: description
             kwargs: description
+
+
+        Raises:
+            ImportError: Exception.
+
+        Returns:
+            Return value.
         """
         if name.startswith("sklearn."):
             raise ImportError("Mocked import error")
@@ -973,7 +1032,11 @@ def test_sklearn_module_import_error(mocker: Any) -> None:
 
 
 def test_sklearn_scan_module_edge_cases(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks.sklearn import _scan_module
     import types
 
@@ -989,7 +1052,11 @@ def test_sklearn_scan_module_edge_cases(mocker: Any) -> None:
 
         @property
         def bad(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Raises:
+                RuntimeError: Exception.
+            """
             raise RuntimeError("Bad")
 
     mock_mod.bad_obj = BadObj()  # type: ignore
@@ -1019,7 +1086,11 @@ def test_sklearn_scan_module_edge_cases(mocker: Any) -> None:
 
 
 def test_sklearn_scan_module_branches(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     from ml_framework_snapshots.frameworks.sklearn import _scan_module
     import types
 
@@ -1055,7 +1126,11 @@ def test_sklearn_scan_module_branches(mocker: Any) -> None:
 
 
 def test_numpy_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     import ml_framework_snapshots.frameworks.numpy as np_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     from ml_framework_snapshots.models import GhostInspector
@@ -1083,7 +1158,19 @@ def test_numpy_collect(mocker: Any) -> None:
     original_inspect = GhostInspector.inspect
 
     def mock_inspect(obj: Any, api_path: Any, **kwargs: Any) -> Any:
-        """Docstring."""
+        """Docstring.
+
+        Args:
+            **kwargs: Parameter.
+            api_path: Parameter.
+            obj: Parameter.
+
+        Raises:
+            ValueError: Exception.
+
+        Returns:
+            Return value.
+        """
         if "minimum" in api_path:
             raise ValueError("mock error")
         return original_inspect(obj, api_path, **kwargs)
@@ -1109,7 +1196,11 @@ def test_numpy_collect(mocker: Any) -> None:
 
 
 def test_orbax_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     import ml_framework_snapshots.frameworks.orbax_checkpoint as ocp_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     from ml_framework_snapshots.models import GhostInspector
@@ -1146,7 +1237,19 @@ def test_orbax_collect(mocker: Any) -> None:
     original_inspect = GhostInspector.inspect
 
     def mock_inspect(obj: Any, api_path: Any, **kwargs: Any) -> Any:
-        """Docstring."""
+        """Docstring.
+
+        Args:
+            **kwargs: Parameter.
+            api_path: Parameter.
+            obj: Parameter.
+
+        Raises:
+            ValueError: Exception.
+
+        Returns:
+            Return value.
+        """
         if "error_func" in api_path:
             raise ValueError("mock error")
         return original_inspect(obj, api_path, **kwargs)
@@ -1177,7 +1280,11 @@ def test_orbax_collect(mocker: Any) -> None:
 
 
 def test_pax_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     import ml_framework_snapshots.frameworks.pax as pax_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     from ml_framework_snapshots.models import GhostInspector
@@ -1216,7 +1323,19 @@ def test_pax_collect(mocker: Any) -> None:
     original_inspect = GhostInspector.inspect
 
     def mock_inspect(obj: Any, api_path: Any, **kwargs: Any) -> Any:
-        """Docstring."""
+        """Docstring.
+
+        Args:
+            **kwargs: Parameter.
+            api_path: Parameter.
+            obj: Parameter.
+
+        Raises:
+            ValueError: Exception.
+
+        Returns:
+            Return value.
+        """
         if "ErrorClass" in api_path:
             raise ValueError("mock error")
         return original_inspect(obj, api_path, **kwargs)
@@ -1241,7 +1360,11 @@ def test_pax_collect(mocker: Any) -> None:
 
 
 def test_triton_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     import ml_framework_snapshots.frameworks.triton as triton_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     import importlib
@@ -1256,7 +1379,19 @@ def test_triton_collect(mocker: Any) -> None:
     original_import = importlib.import_module
 
     def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
-        """Docstring."""
+        """Docstring.
+
+        Args:
+            **kwargs: Parameter.
+            *args: Parameter.
+            name: Parameter.
+
+        Raises:
+            ImportError: Exception.
+
+        Returns:
+            Return value.
+        """
         if name == "triton":
             return fake_triton
         elif name == "triton.language":
@@ -1276,7 +1411,11 @@ def test_triton_collect(mocker: Any) -> None:
 
 
 def test_deepspeed_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     import ml_framework_snapshots.frameworks.deepspeed as ds_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     import importlib
@@ -1289,7 +1428,16 @@ def test_deepspeed_collect(mocker: Any) -> None:
     original_import = importlib.import_module
 
     def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
-        """Docstring."""
+        """Docstring.
+
+        Args:
+            **kwargs: Parameter.
+            *args: Parameter.
+            name: Parameter.
+
+        Returns:
+            Return value.
+        """
         if name == "deepspeed":
             return fake_ds
         return original_import(name, *args, **kwargs)
@@ -1303,7 +1451,11 @@ def test_deepspeed_collect(mocker: Any) -> None:
 
 
 def test_onnxruntime_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     import ml_framework_snapshots.frameworks.onnxruntime as ort_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     import importlib
@@ -1317,7 +1469,16 @@ def test_onnxruntime_collect(mocker: Any) -> None:
     original_import = importlib.import_module
 
     def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
-        """Docstring."""
+        """Docstring.
+
+        Args:
+            **kwargs: Parameter.
+            *args: Parameter.
+            name: Parameter.
+
+        Returns:
+            Return value.
+        """
         if name == "onnxruntime":
             return fake_ort
         return original_import(name, *args, **kwargs)
@@ -1331,7 +1492,11 @@ def test_onnxruntime_collect(mocker: Any) -> None:
 
 
 def test_huggingface_collect(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     import ml_framework_snapshots.frameworks.huggingface as hf_shim
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     import importlib
@@ -1353,7 +1518,16 @@ def test_huggingface_collect(mocker: Any) -> None:
     original_import = importlib.import_module
 
     def mock_import(name: Any, *args: Any, **kwargs: Any) -> Any:
-        """Docstring."""
+        """Docstring.
+
+        Args:
+            **kwargs: Parameter.
+            *args: Parameter.
+            name: Parameter.
+
+        Returns:
+            Return value.
+        """
         if name == "transformers":
             return fake_transformers
         return original_import(name, *args, **kwargs)

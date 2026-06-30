@@ -6,3 +6,4 @@ mlx>=0.10.0 ; sys_platform == 'darwin'
 cupy-cuda12x ; sys_platform == 'linux'
 tensorflow
 tensorflow-macos ; sys_platform == 'darwin'
+numpy<2.0.0

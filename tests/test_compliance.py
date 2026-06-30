@@ -18,7 +18,11 @@ from ml_framework_snapshots.compliance import extract_target_refs, score_complia
 
 
 def test_get_module_info_from_path_file(tmp_path: Path) -> None:
-    """Test getting module info from a python file."""
+    """Test getting module info from a python file.
+
+    Args:
+        tmp_path: Parameter.
+    """
     # Create a simple structure
     # tmp_path/my_pkg/__init__.py
     # tmp_path/my_pkg/sub_module.py
@@ -34,7 +38,11 @@ def test_get_module_info_from_path_file(tmp_path: Path) -> None:
 
 
 def test_get_module_info_from_path_dir(tmp_path: Path) -> None:
-    """Test getting module info from a directory package."""
+    """Test getting module info from a directory package.
+
+    Args:
+        tmp_path: Parameter.
+    """
     # Create a simple structure
     # tmp_path/my_pkg/__init__.py
     pkg_dir = tmp_path / "my_pkg"
@@ -47,7 +55,11 @@ def test_get_module_info_from_path_dir(tmp_path: Path) -> None:
 
 
 def test_get_module_info_from_path_init_file(tmp_path: Path) -> None:
-    """Test getting module info from an __init__.py file."""
+    """Test getting module info from an __init__.py file.
+
+    Args:
+        tmp_path: Parameter.
+    """
     # Create a simple structure
     # tmp_path/my_pkg/__init__.py
     pkg_dir = tmp_path / "my_pkg"
@@ -67,14 +79,22 @@ def test_get_module_info_from_path_not_exist() -> None:
 
 
 def test_get_module_info_from_path_value_error(tmp_path: Path) -> None:
-    """Test getting module info raises ValueError when module name is empty."""
+    """Test getting module info raises ValueError when module name is empty.
+
+    Args:
+        tmp_path: Parameter.
+    """
     # This happens if you pass the root directory
     with pytest.raises(ValueError, match="Could not derive module name"):
         get_module_info_from_path(str(tmp_path))
 
 
 def test_extract_target_ast(tmp_path: Path) -> None:
-    """Test extracting target AST via griffe."""
+    """Test extracting target AST via griffe.
+
+    Args:
+        tmp_path: Parameter.
+    """
     file_path = tmp_path / "simple_mod.py"
     file_path.write_text("def my_func(): pass")
 
@@ -94,7 +114,11 @@ def test_align_namespace() -> None:
 
 
 def test_get_module_info_from_path_no_py_ext(tmp_path: Path) -> None:
-    """Test getting module info from a file without .py extension."""
+    """Test getting module info from a file without .py extension.
+
+    Args:
+        tmp_path: Parameter.
+    """
     pkg_dir = tmp_path / "my_pkg"
     pkg_dir.mkdir()
     (pkg_dir / "__init__.py").touch()
@@ -107,7 +131,11 @@ def test_get_module_info_from_path_no_py_ext(tmp_path: Path) -> None:
 
 
 def test_extract_target_refs(tmp_path: Path) -> None:
-    """Test extracting target refs dynamically."""
+    """Test extracting target refs dynamically.
+
+    Args:
+        tmp_path: Parameter.
+    """
     pkg_dir = tmp_path / "mock_pkg"
     pkg_dir.mkdir()
     (pkg_dir / "__init__.py").touch()
@@ -262,7 +290,11 @@ def test_score_compliance_mismatch() -> None:
 
 
 def test_extract_target_refs_import_error(tmp_path: Path) -> None:
-    """Test extracting target refs skips bad imports."""
+    """Test extracting target refs skips bad imports.
+
+    Args:
+        tmp_path: Parameter.
+    """
     pkg_dir = tmp_path / "bad_pkg"
     pkg_dir.mkdir()
     (pkg_dir / "__init__.py").touch()
@@ -277,7 +309,11 @@ def test_extract_target_refs_import_error(tmp_path: Path) -> None:
 
 
 def test_extract_target_refs_aliases(tmp_path: Path) -> None:
-    """Test extraction with aliases mapping correctly."""
+    """Test extraction with aliases mapping correctly.
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_switcheroo_ir.schema.ghost import GhostRef
 
     ref_snap = {
@@ -314,7 +350,11 @@ def test_extract_target_refs_aliases(tmp_path: Path) -> None:
 
 
 def test_extract_target_refs_skip_private(tmp_path: Path) -> None:
-    """Test extracting target refs skips private members."""
+    """Test extracting target refs skips private members.
+
+    Args:
+        tmp_path: Parameter.
+    """
     pkg_dir = tmp_path / "priv_pkg"
     pkg_dir.mkdir()
     (pkg_dir / "__init__.py").touch()
@@ -326,7 +366,11 @@ def test_extract_target_refs_skip_private(tmp_path: Path) -> None:
 
 
 def test_extract_target_refs_nested_import_error(tmp_path: Path) -> None:
-    """Test extracting target refs fails on nested import cleanly."""
+    """Test extracting target refs fails on nested import cleanly.
+
+    Args:
+        tmp_path: Parameter.
+    """
     pkg_dir = tmp_path / "nested_pkg"
     pkg_dir.mkdir()
     (pkg_dir / "__init__.py").touch()
@@ -348,7 +392,11 @@ def test_extract_target_refs_nested_import_error(tmp_path: Path) -> None:
 
 
 def test_extract_target_refs_sys_path(tmp_path: Path) -> None:
-    """Test extracting target refs when search path is already in sys.path."""
+    """Test extracting target refs when search path is already in sys.path.
+
+    Args:
+        tmp_path: Parameter.
+    """
     import sys
 
     pkg_dir = tmp_path / "sys_pkg"
@@ -364,7 +412,11 @@ def test_extract_target_refs_sys_path(tmp_path: Path) -> None:
 
 
 def test_extract_target_refs_empty_members(tmp_path: Path) -> None:
-    """Test extracting from a module with no members."""
+    """Test extracting from a module with no members.
+
+    Args:
+        tmp_path: Parameter.
+    """
     pkg_dir = tmp_path / "empty_pkg"
     pkg_dir.mkdir()
     (pkg_dir / "__init__.py").touch()
@@ -374,7 +426,11 @@ def test_extract_target_refs_empty_members(tmp_path: Path) -> None:
 
 
 def test_extract_target_refs_catch_all_exception(tmp_path: Path) -> None:
-    """Test extracting target refs skips items that raise general exceptions."""
+    """Test extracting target refs skips items that raise general exceptions.
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.compliance import extract_target_refs
 
     pkg_dir = tmp_path / "broken_pkg"
@@ -392,7 +448,11 @@ def test_extract_target_refs_catch_all_exception(tmp_path: Path) -> None:
 
 
 def test_extract_target_refs_catch_inner_exception(tmp_path: Any) -> None:
-    """Test extracting target refs fails cleanly on inner node walk."""
+    """Test extracting target refs fails cleanly on inner node walk.
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.compliance import extract_target_refs
     from unittest.mock import patch
 
@@ -414,6 +474,13 @@ def test_extract_target_refs_catch_inner_exception(tmp_path: Any) -> None:
             obj: The object.
             api_path: The api path.
             is_public: Public flag.
+
+
+        Raises:
+            RuntimeError: Exception.
+
+        Returns:
+            Return value.
         """
         if "Inner" in api_path:
             raise RuntimeError("inner broken")
@@ -428,7 +495,11 @@ def test_extract_target_refs_catch_inner_exception(tmp_path: Any) -> None:
 
 
 def test_extract_target_refs_no_parts(tmp_path: Any) -> None:
-    """Test extracting target refs handles paths with no inner parts (just module)."""
+    """Test extracting target refs handles paths with no inner parts (just module).
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.compliance import extract_target_refs
 
     pkg_dir = tmp_path / "top_level_pkg"
@@ -441,7 +512,11 @@ def test_extract_target_refs_no_parts(tmp_path: Any) -> None:
 
 
 def test_extract_target_refs_break_loop(tmp_path: Any) -> None:
-    """Test extracting target refs loop breaking logic."""
+    """Test extracting target refs loop breaking logic.
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.compliance import extract_target_refs
 
     pkg_dir = tmp_path / "break_pkg"
@@ -458,7 +533,11 @@ def test_extract_target_refs_break_loop(tmp_path: Any) -> None:
 
 
 def test_extract_target_refs_continue_loop(tmp_path: Any) -> None:
-    """Test extracting target refs handles the loop fully exiting."""
+    """Test extracting target refs handles the loop fully exiting.
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.compliance import extract_target_refs
 
     pkg_dir = tmp_path / "cont_pkg"
@@ -476,7 +555,11 @@ def test_extract_target_refs_continue_loop(tmp_path: Any) -> None:
 
 
 def test_derive_base_path_src(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.compliance import get_module_info_from_path
     import os
 

@@ -6,7 +6,7 @@ from typing import Any
 from ml_framework_snapshots.models import GhostInspector
 
 
-def dummy_func_with_docstring(x: int) -> None:
+def dummy_func_with_docstring(x: int) -> str:
     """Dummy function.
 
     Args:
@@ -17,8 +17,12 @@ def dummy_func_with_docstring(x: int) -> None:
 
     Raises:
         ValueError: If x is bad.
+
+    # noqa: DAR202, DAR402
     """
-    pass
+    if x < 0:
+        raise ValueError()
+    return "test"
 
 
 def dummy_func_sphinx_docstring(y: Any) -> None:
@@ -27,6 +31,9 @@ def dummy_func_sphinx_docstring(y: Any) -> None:
     :param y: The y value.
     :type y: int
     :raises TypeError: If wrong.
+
+    Args:
+        y: Parameter.
     """
     pass
 
@@ -60,7 +67,11 @@ def test_griffe_parsing() -> None:
 
 
 def test_cdd_exception_handling(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     mocker.patch("cdd.docstring.parse.docstring", side_effect=ValueError)
     ref = GhostInspector.inspect(
         dummy_func_with_docstring, "tests.dummy_func_with_docstring"
@@ -69,7 +80,11 @@ def test_cdd_exception_handling(mocker: Any) -> None:
 
 
 def test_cdd_direct_raises(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     # Mock cdd to return direct raises list
     mocker.patch(
         "cdd.docstring.parse.docstring",
@@ -136,7 +151,11 @@ def test_griffe_varargs() -> None:
 
 
 def test_models_raises_no_typ(mocker: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
     mocker.patch(
         "cdd.docstring.parse.docstring",
         return_value={"raises": [{"not_typ": "KeyError"}]},

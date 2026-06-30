@@ -93,7 +93,16 @@ def extract_target_ast(file_path: str, target_prefix: str = "") -> Any:
 
 
 def align_namespace(api_path: str, target_prefix: str, reference_prefix: str) -> str:
-    """Align a target namespace path to a reference namespace path."""
+    """Align a target namespace path to a reference namespace path.
+
+    Args:
+        api_path: The API path to align.
+        target_prefix: The prefix in the target namespace.
+        reference_prefix: The prefix in the reference namespace.
+
+    Returns:
+        The aligned namespace string.
+    """
     if api_path == target_prefix:
         return reference_prefix
 
@@ -315,7 +324,16 @@ def score_compliance(
 def extract_target_refs(
     file_paths: List[str], target_prefix: str, reference_prefix: str
 ) -> List[GhostRef]:
-    """Extract a list of GhostRefs from multiple target file paths."""
+    """Extract a list of GhostRefs from multiple target file paths.
+
+    Args:
+        file_paths: A list of file paths to extract refs from.
+        target_prefix: The prefix in the target namespace.
+        reference_prefix: The prefix in the reference namespace.
+
+    Returns:
+        A list of GhostRef objects.
+    """
     if isinstance(file_paths, str):
         file_paths = [file_paths]
     refs = []

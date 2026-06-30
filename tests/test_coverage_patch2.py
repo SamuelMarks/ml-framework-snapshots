@@ -115,7 +115,11 @@ def test_deepspeed_missing() -> None:
         """Class docstring."""
 
         def __dir__(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return ["_hidden", "initialize", "nothing"]
 
         def initialize(self) -> Any:
@@ -158,7 +162,11 @@ def test_onnxruntime_missing() -> None:
         """Class docstring."""
 
         def __dir__(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return ["_hidden", "InferenceSession", "nothing"]
 
         def InferenceSession(self) -> Any:
@@ -302,7 +310,11 @@ def test_huggingface_missing() -> None:
 
         @property
         def bad(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Raises:
+                ValueError: Exception.
+            """
             raise ValueError()
 
     mock_mod = MagicMock()
@@ -322,7 +334,11 @@ def test_huggingface_missing() -> None:
         """Class docstring."""
 
         def __dir__(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return [
                 "_hidden",
                 "DummyConfig",
@@ -340,52 +356,92 @@ def test_huggingface_missing() -> None:
 
         @property
         def bad(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Raises:
+                ValueError: Exception.
+            """
             raise ValueError()
 
         @property
         def DummyConfig(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return type("DummyConfig", (), {"__annotations__": {}})()
 
         @property
         def EmptyConfig(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return type("EmptyConfig", (), {"__annotations__": {"a": int}})()
 
         @property
         def EmptyConfigB(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return type("EmptyConfigB", (), {"__annotations__": {"b": int}})()
 
         @property
         def AutoModelA(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return MagicMock()
 
         @property
         def AutoModelB(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return MagicMock()
 
         @property
         def Other(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return MagicMock()
 
         @property
         def ThrowConfig(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return MagicMock()
 
         @property
         def ReturnNone(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return None
 
         @property
         def GenModel(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
 
             class M:
                 """Class docstring."""
@@ -404,7 +460,11 @@ def test_huggingface_missing() -> None:
 
         @property
         def RefNone(self) -> Any:
-            """Function docstring."""
+            """Function docstring.
+
+            Returns:
+                Return value.
+            """
             return MagicMock()
 
     def mock_inspect(obj: Any, name: Any) -> Any:
@@ -413,6 +473,13 @@ def test_huggingface_missing() -> None:
         Args:
             obj: description
             name: description
+
+
+        Raises:
+            Exception: Exception.
+
+        Returns:
+            Return value.
         """
         if "ThrowConfig" in name:
             raise Exception("test")

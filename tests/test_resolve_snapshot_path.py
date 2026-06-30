@@ -6,7 +6,11 @@ from ml_framework_snapshots.cli import resolve_snapshot_path
 
 
 def test_resolve_snapshot_path_existing_file(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     file_path = tmp_path / "my_snapshot.json"
     file_path.touch()
 
@@ -15,7 +19,11 @@ def test_resolve_snapshot_path_existing_file(tmp_path: Any) -> None:
 
 
 def test_resolve_snapshot_path_append_json(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     file_path = tmp_path / "my_snapshot.json"
     file_path.touch()
 
@@ -26,7 +34,11 @@ def test_resolve_snapshot_path_append_json(tmp_path: Any) -> None:
 
 
 def test_resolve_snapshot_path_fallback_to_repo(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     # Mock __file__ so repo root points to our temp directory
     pkg_dir = tmp_path / "src" / "ml_framework_snapshots"
     pkg_dir.mkdir(parents=True)
@@ -56,7 +68,11 @@ def test_resolve_snapshot_path_fallback_to_repo(tmp_path: Any) -> None:
 
 
 def test_resolve_snapshot_path_not_found(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     # Should just return the input path if nothing works
     with patch("ml_framework_snapshots.cli.__file__", "/tmp/does_not_exist/cli.py"):
         resolved = resolve_snapshot_path("missing_framework")
@@ -64,7 +80,11 @@ def test_resolve_snapshot_path_not_found(tmp_path: Any) -> None:
 
 
 def test_resolve_multiple_matches(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     pkg_dir = tmp_path / "src" / "ml_framework_snapshots"
     pkg_dir.mkdir(parents=True)
 
@@ -77,3 +97,20 @@ def test_resolve_multiple_matches(tmp_path: Any) -> None:
     with patch("ml_framework_snapshots.cli.__file__", str(pkg_dir / "cli.py")):
         res = resolve_snapshot_path("torch")
         assert res == str(snapshots_dir / "torch-2.0.json")
+
+
+def test_resolve_no_matches_in_existing_dir(tmp_path: Any) -> None:
+    """Test when snapshots_dir exists but no glob matches are found.
+
+    Args:
+        tmp_path: Parameter.
+    """
+    pkg_dir = tmp_path / "src" / "ml_framework_snapshots"
+    pkg_dir.mkdir(parents=True)
+
+    snapshots_dir = tmp_path / "snapshots"
+    snapshots_dir.mkdir()
+
+    with patch("ml_framework_snapshots.cli.__file__", str(pkg_dir / "cli.py")):
+        res = resolve_snapshot_path("nonexistent_framework")
+        assert res == "nonexistent_framework"

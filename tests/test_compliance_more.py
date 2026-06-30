@@ -172,7 +172,11 @@ def test_score_compliance_varargs_fallback_special_cases() -> None:
 
 
 def test_extract_target_refs_string_path(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.compliance import extract_target_refs
 
     pkg_dir = tmp_path / "str_pkg"
@@ -187,7 +191,11 @@ def test_extract_target_refs_string_path(tmp_path: Any) -> None:
 
 
 def test_get_module_info_from_path_no_src_dir(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.compliance import get_module_info_from_path
 
     # mod_name will be empty if we point to a root dir without __init__.py
@@ -197,7 +205,11 @@ def test_get_module_info_from_path_no_src_dir(tmp_path: Any) -> None:
 
 
 def test_extract_target_refs_list_path(tmp_path: Any) -> None:
-    """Function docstring."""
+    """Function docstring.
+
+    Args:
+        tmp_path: Parameter.
+    """
     from ml_framework_snapshots.compliance import extract_target_refs
 
     pkg_dir = tmp_path / "list_pkg"

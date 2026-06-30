@@ -14,7 +14,11 @@ class FaultyModule:
 
     @property
     def bad(self) -> Any:
-        """Function docstring."""
+        """Function docstring.
+
+        Raises:
+            ValueError: Exception.
+        """
         raise ValueError("Cannot access")
 
 

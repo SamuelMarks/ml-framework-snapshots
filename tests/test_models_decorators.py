@@ -11,6 +11,10 @@ def dummy_decorator(func: Any) -> None:
 
     Args:
         func: description
+
+
+    Returns:
+        Return value.
     """
 
     def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -19,6 +23,10 @@ def dummy_decorator(func: Any) -> None:
         Args:
             args: description
             kwargs: description
+
+
+        Returns:
+            Return value.
         """
         return func(*args, **kwargs)
 
@@ -31,6 +39,10 @@ def tf_function_mock(func: Any) -> None:
 
     Args:
         func: description
+
+
+    Returns:
+        Return value.
     """
 
     class TFFunction:
@@ -92,6 +104,10 @@ def test_unwrap_generic_decorator() -> None:
 
         Args:
             func: description
+
+
+        Returns:
+            Return value.
         """
 
         class Wrapper:
@@ -124,6 +140,10 @@ def test_unwrap_variant_decorator() -> None:
 
         Args:
             func: description
+
+
+        Returns:
+            Return value.
         """
 
         class Wrapper:

@@ -41,6 +41,13 @@ def test_triton_collect() -> None:
 
                 Args:
                     name: description
+
+
+                Raises:
+                    ImportError: Exception.
+
+                Returns:
+                    Return value.
                 """
                 if name == "triton":
                     return MagicMock()
