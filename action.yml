@@ -14,6 +14,18 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Create required directories and set permissions
+      shell: bash
+      run: |
+        sudo mkdir -p /Users/samuel/repos
+        sudo chown -R $USER /Users
+
+    - name: Checkout ml-switcheroo-ir
+      uses: actions/checkout@v7
+      with:
+        repository: SamuelMarks/ml-switcheroo-ir
+        path: /Users/samuel/repos/ml-switcheroo-ir
+
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
