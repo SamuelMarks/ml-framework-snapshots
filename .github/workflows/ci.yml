@@ -19,13 +19,10 @@ jobs:
     - name: Create required directories and set permissions
       run: |
         sudo mkdir -p /Users/samuel/repos
-        sudo chown -R $USER /Users
+        sudo chown -R $(whoami) /Users
 
     - name: Checkout ml-switcheroo-ir
-      uses: actions/checkout@v7
-      with:
-        repository: SamuelMarks/ml-switcheroo-ir
-        path: /Users/samuel/repos/ml-switcheroo-ir
+      run: git clone https://github.com/SamuelMarks/ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
