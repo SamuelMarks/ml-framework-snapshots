@@ -173,6 +173,13 @@ def test_torch_collect(mocker: Any) -> None:
     mocker.patch.object(torch_fw, "optim", fake_optim)
     mocker.patch.object(torch_fw, "data", fake_data)
 
+    mocker.patch.dict(
+        "sys.modules",
+        {
+            "torch": create_module("torch", {"abs": lambda: None}),  # type: ignore
+        },
+    )
+
     losses = torch_fw.collect_api(SemanticTier.LOSS)
     lnames = [x.name for x in losses]
     assert "MSELoss" in lnames
@@ -248,6 +255,9 @@ def test_torch_collect(mocker: Any) -> None:
     assert "DataLoader" in dnames
     assert "_PrivateLoader" not in dnames
 
+    arrays = torch_fw.collect_api(SemanticTier.ARRAY_API)
+    assert any("abs" in x.api_path for x in arrays)
+
     assert torch_fw.collect_api("unknown") == []
 
 
@@ -270,6 +280,12 @@ def test_torch_import_error(mocker: Any) -> None:
     assert torch_fw.collect_api(SemanticTier.SCHEDULER) == []
     assert torch_fw.collect_api(SemanticTier.INITIALIZER) == []
     assert torch_fw.collect_api(SemanticTier.DATALOADER) == []
+    import unittest.mock as mock
+
+    with mock.patch.dict("sys.modules", {"torch": None}):
+        res = torch_fw.collect_api(SemanticTier.ARRAY_API)
+        assert len(res) == 1
+        assert res[0].name == "float"
 
 
 def test_torch_typeerror(mocker: Any) -> None:
@@ -594,7 +610,10 @@ def test_mlx_collect(mocker: Any) -> None:
         "mlx.nn", {"Dense": Dense, "relu": relu, "losses": fake_losses}
     )
     fake_optims = create_module("mlx.optimizers", {"Adam": Adam})  # type: ignore
-    fake_mlx = create_module("mlx", {"nn": fake_nn, "optimizers": fake_optims})  # type: ignore
+    fake_core = create_module("mlx.core", {"abs": lambda: None})  # type: ignore
+    fake_mlx = create_module(
+        "mlx", {"nn": fake_nn, "optimizers": fake_optims, "core": fake_core}
+    )  # type: ignore
 
     mocker.patch.object(mlx_fw, "mlx", fake_mlx)
 
@@ -602,6 +621,7 @@ def test_mlx_collect(mocker: Any) -> None:
     assert any(x.name == "Adam" for x in mlx_fw.collect_api(SemanticTier.OPTIMIZER))
     assert any(x.name == "relu" for x in mlx_fw.collect_api(SemanticTier.ACTIVATION))
     assert any(x.name == "Dense" for x in mlx_fw.collect_api(SemanticTier.LAYER))
+    assert any("abs" in x.api_path for x in mlx_fw.collect_api(SemanticTier.ARRAY_API))
     assert mlx_fw.collect_api("unknown") == []
 
     # Test mlx.nn.losses coverage gaps (not a function/class, not containing 'loss')
@@ -668,6 +688,10 @@ def test_jax_collect(mocker: Any) -> None:
             "jax": create_module("jax", {}),  # type: ignore
             "jax.nn": fake_jax_nn,
             "jax.nn.initializers": fake_jax_init,
+            "jax.numpy": create_module(
+                "jax.numpy", {"abs": lambda: None, "transpose": lambda: None}
+            ),  # type: ignore
+            "numpy": create_module("numpy", {"float32": 1}),  # type: ignore
         },
     )
 
@@ -697,6 +721,15 @@ def test_jax_collect(mocker: Any) -> None:
     inits = jax_fw.collect_api(SemanticTier.INITIALIZER)
     assert any(x.name == "glorot" for x in inits)
 
+    arrays = jax_fw.collect_api(SemanticTier.ARRAY_API)
+    assert any("abs" in x.api_path for x in arrays)
+
+    import sys
+
+    del sys.modules["jax.numpy"].transpose
+    arrays2 = jax_fw.collect_api(SemanticTier.ARRAY_API)
+    assert not any("transpose" in x.api_path for x in arrays2)
+
     assert jax_fw.collect_api("unknown") == []
 
     # Exception branch coverage
@@ -709,6 +742,11 @@ def test_jax_collect(mocker: Any) -> None:
     mocker.patch.object(jax_fw, "jax", None)
     assert jax_fw.collect_api(SemanticTier.ACTIVATION) == []
     assert jax_fw.collect_api(SemanticTier.INITIALIZER) == []
+    import unittest.mock as mock
+
+    with mock.patch.dict("sys.modules", {"jax.numpy": None}):
+        res = jax_fw.collect_api(SemanticTier.ARRAY_API)
+        assert len(res) == 3
 
 
 def test_flax_nnx_collect(mocker: Any) -> None:

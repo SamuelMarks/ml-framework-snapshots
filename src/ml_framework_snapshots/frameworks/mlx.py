@@ -12,10 +12,15 @@ from ml_framework_snapshots.models import GhostInspector
 from ml_switcheroo_ir.schema.ghost import GhostRef
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 
+import typing
+
 try:
-    import mlx.core  # pragma: no cover
-    import mlx.nn  # pragma: no cover
-    import mlx.optimizers  # pragma: no cover
+    import mlx.core as _core  # noqa: F401 # pragma: no cover
+    import mlx.nn as _nn  # noqa: F401 # pragma: no cover
+    import mlx.optimizers as _optimizers  # noqa: F401 # pragma: no cover
+    import mlx as _mlx  # pragma: no cover
+
+    mlx: typing.Any = _mlx
 except ImportError:  # pragma: no cover
     mlx = None
 
@@ -82,6 +87,11 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                     results.append(
                         GhostInspector.inspect(obj, f"mlx.optimizers.{name}")
                     )
+        elif category == SemanticTier.ARRAY_API:
+            for name in ["abs", "mean"]:
+                obj = getattr(mlx.core, name, None)
+                if obj:
+                    results.append(GhostInspector.inspect(obj, f"mlx.core.{name}"))
     except Exception:  # pragma: no cover
         pass
 

@@ -1,5 +1,5 @@
 torch>=2.0.0
-jax>=0.4.0
+jax>=0.4.0,<0.10.0
 keras>=3.0.0
 flax>=0.8.0
 mlx>=0.10.0 ; sys_platform == 'darwin'

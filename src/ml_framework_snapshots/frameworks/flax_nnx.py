@@ -14,8 +14,12 @@ from ml_switcheroo_ir.schema.ghost import GhostRef
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_framework_snapshots.frameworks.jax import collect_api as jax_collect_api
 
+import typing
+
 try:
-    import flax.nnx as nnx
+    import flax.nnx as _nnx
+
+    nnx: typing.Any = _nnx
 except ImportError:  # pragma: no cover
     nnx = None
 

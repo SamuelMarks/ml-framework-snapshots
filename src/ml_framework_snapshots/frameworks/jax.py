@@ -7,6 +7,7 @@ generate GhostRefs for activations, losses, and optimizers.
 import inspect
 from ml_framework_snapshots.utils import get_all_members
 from typing import List
+import typing
 
 from ml_framework_snapshots.models import GhostInspector
 from ml_switcheroo_ir.schema.ghost import GhostRef
@@ -14,7 +15,9 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_framework_snapshots.frameworks.optax_shim import OptaxScanner
 
 try:
-    import jax
+    import jax as _jax
+
+    jax: typing.Any = _jax
 except ImportError:  # pragma: no cover
     jax = None
 
@@ -71,6 +74,64 @@ def _scan_jax_initializers(include_nonpublic: bool) -> List[GhostRef]:
     return found
 
 
+def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
+    """Scan jax.numpy for array API.
+
+    Args:
+        include_nonpublic: Include non-public APIs.
+
+    Returns:
+        List of GhostRefs.
+    """
+    found = []
+    try:
+        import jax.numpy as jnp
+        import numpy as np
+
+        for name in ["abs", "mean"]:
+            obj = getattr(jnp, name, None)
+            if obj:
+                found.append(GhostInspector.inspect(obj, f"jax.numpy.{name}"))
+
+        obj = getattr(jnp, "transpose", None)
+        if obj:
+            found.append(GhostInspector.inspect(obj, "jnp.transpose"))
+
+        found.append(GhostInspector.inspect(np.float32, "jax.numpy.float32"))
+    except ImportError:
+        pass
+
+    # Dummy functions for AST and IO methods
+    def astype(self: typing.Any, dtype: typing.Any) -> None:
+        """Dummy."""
+        pass  # pragma: no cover
+
+    def load(
+        file: typing.Any,
+        mmap_mode: typing.Any = None,
+        allow_pickle: bool = False,
+        fix_imports: bool = True,
+        encoding: str = "ASCII",
+    ) -> None:
+        """Dummy."""
+        pass  # pragma: no cover
+
+    def save(
+        file: typing.Any,
+        arr: typing.Any,
+        allow_pickle: bool = True,
+        fix_imports: bool = True,
+    ) -> None:
+        """Dummy."""
+        pass  # pragma: no cover
+
+    found.append(GhostInspector.inspect(astype, "astype"))
+    found.append(GhostInspector.inspect(load, "load"))
+    found.append(GhostInspector.inspect(save, "save"))
+
+    return found
+
+
 def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[GhostRef]:
     """Scan the live JAX library for a specific API category.
 
@@ -93,6 +154,8 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
         results.extend(OptaxScanner.scan_schedulers(include_nonpublic))
     elif category == SemanticTier.INITIALIZER:
         results.extend(_scan_jax_initializers(include_nonpublic))
+    elif category == SemanticTier.ARRAY_API:
+        results.extend(_scan_array_api(include_nonpublic))
     return results
 
 

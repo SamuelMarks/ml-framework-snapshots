@@ -4,8 +4,12 @@ from typing import List
 from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
 from ml_framework_snapshots.models import GhostInspector
 
+import typing
+
 try:
-    import numpy as np
+    import numpy as _np
+
+    np: typing.Any = _np
 except ImportError:  # pragma: no cover
     np = None
 

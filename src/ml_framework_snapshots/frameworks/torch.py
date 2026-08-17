@@ -11,10 +11,16 @@ from ml_framework_snapshots.models import GhostInspector
 from ml_switcheroo_ir.schema.ghost import GhostRef
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 
+import typing
+
 try:
-    import torch.nn as nn
-    import torch.optim as optim  # pragma: no cover
-    import torch.utils.data as data  # pragma: no cover
+    import torch.nn as _nn
+    import torch.optim as _optim  # pragma: no cover
+    import torch.utils.data as _data  # pragma: no cover
+
+    nn: typing.Any = _nn
+    optim: typing.Any = _optim
+    data: typing.Any = _data
 except ImportError:  # pragma: no cover
     nn = None
     optim = None
@@ -217,6 +223,30 @@ def _scan_dataloaders(include_nonpublic: bool) -> List[GhostRef]:
     return found
 
 
+def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
+    """Scan top-level PyTorch module for array API functions and some builtins.
+
+    Args:
+        include_nonpublic: Whether to include non-public APIs.
+
+    Returns:
+        A list of GhostRef objects representing found array API functions.
+    """
+    found = []
+    try:
+        import torch
+
+        for name in ["abs", "mean", "load", "save"]:
+            obj = getattr(torch, name, None)
+            if obj:
+                found.append(GhostInspector.inspect(obj, f"torch.{name}"))
+    except ImportError:
+        pass
+
+    found.append(GhostInspector.inspect(float, "float"))
+    return found
+
+
 def collect_api(
     category: SemanticTier, include_nonpublic: bool = False
 ) -> List[GhostRef]:
@@ -246,4 +276,6 @@ def collect_api(
         return _scan_metrics(include_nonpublic)
     elif category == SemanticTier.DATALOADER:
         return _scan_dataloaders(include_nonpublic)
+    elif category == SemanticTier.ARRAY_API:
+        return _scan_array_api(include_nonpublic)
     return []
