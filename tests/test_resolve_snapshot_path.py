@@ -1,5 +1,8 @@
 """Module docstring."""
 
+from pathlib import Path
+import os
+
 from typing import Any
 from unittest.mock import patch
 from ml_framework_snapshots.cli import resolve_snapshot_path
@@ -11,7 +14,7 @@ def test_resolve_snapshot_path_existing_file(tmp_path: Any) -> None:
     Args:
         tmp_path: Parameter.
     """
-    file_path = tmp_path / "my_snapshot.json"
+    file_path = Path(os.path.join(tmp_path, "my_snapshot.json"))
     file_path.touch()
 
     resolved = resolve_snapshot_path(str(file_path))
@@ -24,11 +27,11 @@ def test_resolve_snapshot_path_append_json(tmp_path: Any) -> None:
     Args:
         tmp_path: Parameter.
     """
-    file_path = tmp_path / "my_snapshot.json"
+    file_path = Path(os.path.join(tmp_path, "my_snapshot.json"))
     file_path.touch()
 
     # Try resolving without .json extension
-    base_path = str(tmp_path / "my_snapshot")
+    base_path = str(Path(os.path.join(tmp_path, "my_snapshot")))
     resolved = resolve_snapshot_path(base_path)
     assert resolved == str(file_path)
 
@@ -40,16 +43,21 @@ def test_resolve_snapshot_path_fallback_to_repo(tmp_path: Any) -> None:
         tmp_path: Parameter.
     """
     # Mock __file__ so repo root points to our temp directory
-    pkg_dir = tmp_path / "src" / "ml_framework_snapshots"
+    pkg_dir = Path(
+        os.path.join(Path(os.path.join(tmp_path, "src")), "ml_framework_snapshots")
+    )
     pkg_dir.mkdir(parents=True)
 
-    snapshots_dir = tmp_path / "snapshots"
+    snapshots_dir = Path(os.path.join(tmp_path, "snapshots"))
     snapshots_dir.mkdir()
 
-    target_file = snapshots_dir / "jax_v0.4.30.json"
+    target_file = Path(os.path.join(snapshots_dir, "jax_v0.4.30.json"))
     target_file.touch()
 
-    with patch("ml_framework_snapshots.cli.__file__", str(pkg_dir / "cli.py")):
+    with patch(
+        "ml_framework_snapshots.cli.__file__",
+        str(Path(os.path.join(pkg_dir, "cli.py"))),
+    ):
         # Providing just the basename
         resolved = resolve_snapshot_path("jax_v0.4.30.json")
         assert resolved == str(target_file)
@@ -85,18 +93,23 @@ def test_resolve_multiple_matches(tmp_path: Any) -> None:
     Args:
         tmp_path: Parameter.
     """
-    pkg_dir = tmp_path / "src" / "ml_framework_snapshots"
+    pkg_dir = Path(
+        os.path.join(Path(os.path.join(tmp_path, "src")), "ml_framework_snapshots")
+    )
     pkg_dir.mkdir(parents=True)
 
-    snapshots_dir = tmp_path / "snapshots"
+    snapshots_dir = Path(os.path.join(tmp_path, "snapshots"))
     snapshots_dir.mkdir()
 
-    (snapshots_dir / "torch-1.12.json").touch()
-    (snapshots_dir / "torch-2.0.json").touch()
+    Path(os.path.join(snapshots_dir, "torch-1.12.json")).touch()
+    Path(os.path.join(snapshots_dir, "torch-2.0.json")).touch()
 
-    with patch("ml_framework_snapshots.cli.__file__", str(pkg_dir / "cli.py")):
+    with patch(
+        "ml_framework_snapshots.cli.__file__",
+        str(Path(os.path.join(pkg_dir, "cli.py"))),
+    ):
         res = resolve_snapshot_path("torch")
-        assert res == str(snapshots_dir / "torch-2.0.json")
+        assert res == str(Path(os.path.join(snapshots_dir, "torch-2.0.json")))
 
 
 def test_resolve_no_matches_in_existing_dir(tmp_path: Any) -> None:
@@ -105,12 +118,17 @@ def test_resolve_no_matches_in_existing_dir(tmp_path: Any) -> None:
     Args:
         tmp_path: Parameter.
     """
-    pkg_dir = tmp_path / "src" / "ml_framework_snapshots"
+    pkg_dir = Path(
+        os.path.join(Path(os.path.join(tmp_path, "src")), "ml_framework_snapshots")
+    )
     pkg_dir.mkdir(parents=True)
 
-    snapshots_dir = tmp_path / "snapshots"
+    snapshots_dir = Path(os.path.join(tmp_path, "snapshots"))
     snapshots_dir.mkdir()
 
-    with patch("ml_framework_snapshots.cli.__file__", str(pkg_dir / "cli.py")):
+    with patch(
+        "ml_framework_snapshots.cli.__file__",
+        str(Path(os.path.join(pkg_dir, "cli.py"))),
+    ):
         res = resolve_snapshot_path("nonexistent_framework")
         assert res == "nonexistent_framework"

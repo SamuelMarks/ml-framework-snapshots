@@ -1,0 +1,147 @@
+{
+  "categories": {
+    "activation": [
+      {
+        "aliases": [],
+        "api_path": "numpy.exp",
+        "docstring": "exp(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj])\n\nCalculate the exponential of all elements in the input array.\n\nParameters\n----------\nx : array_like\n    Input values.\nout : ndarray, None, or tuple of ndarray and None, optional\n    A location into which the result is stored. If provided, it must have\n    a shape that the inputs broadcast to. If not provided or None,\n    a freshly-allocated array is returned. A tuple (possible only as a\n    keyword argument) must have length equal to the number of outputs.\nwhere : array_like, optional\n    This condition is broadcast over the input. At locations where the\n    condition is True, the `out` array will be set to the ufunc result.\n    Elsewhere, the `out` array will retain its original value.\n    Note that if an uninitialized `out` array is created via the default\n    ``out=None``, locations within it where the condition is False will\n    remain uninitialized.\n**kwargs\n    For other keyword-only arguments, see the\n    :ref:`ufunc docs <ufuncs.kwargs>`.\n\nReturns\n-------\nout : ndarray or scalar\n    Output array, element-wise exponential of `x`.\n    This is a scalar if `x` is a scalar.\n\nSee Also\n--------\nexpm1 : Calculate ``exp(x) - 1`` for all elements in the array.\nexp2  : Calculate ``2**x`` for all elements in the array.\n\nNotes\n-----\nThe irrational number ``e`` is also known as Euler's number.  It is\napproximately 2.718281, and is the base of the natural logarithm,\n``ln`` (this means that, if :math:`x = \\ln y = \\log_e y`,\nthen :math:`e^x = y`. For real input, ``exp(x)`` is always positive.\n\nFor complex arguments, ``x = a + ib``, we can write\n:math:`e^x = e^a e^{ib}`.  The first term, :math:`e^a`, is already\nknown (it is the real argument, described above).  The second term,\n:math:`e^{ib}`, is :math:`\\cos b + i \\sin b`, a function with\nmagnitude 1 and a periodic phase.\n\nReferences\n----------\n.. [1] Wikipedia, \"Exponential function\",\n       https://en.wikipedia.org/wiki/Exponential_function\n.. [2] M. Abramovitz and I. A. Stegun, \"Handbook of Mathematical Functions\n       with Formulas, Graphs, and Mathematical Tables,\" Dover, 1964, p. 69,\n       https://personal.math.ubc.ca/~cbm/aands/page_69.htm\n\nExamples\n--------\nPlot the magnitude and phase of ``exp(x)`` in the complex plane:\n\n>>> import matplotlib.pyplot as plt\n\n>>> x = np.linspace(-2*np.pi, 2*np.pi, 100)\n>>> xx = x + 1j * x[:, np.newaxis] # a + ib over complex plane\n>>> out = np.exp(xx)\n\n>>> plt.subplot(121)\n>>> plt.imshow(np.abs(out),\n...            extent=[-2*np.pi, 2*np.pi, -2*np.pi, 2*np.pi], cmap='gray')\n>>> plt.title('Magnitude of exp(x)')\n\n>>> plt.subplot(122)\n>>> plt.imshow(np.angle(out),\n...            extent=[-2*np.pi, 2*np.pi, -2*np.pi, 2*np.pi], cmap='hsv')\n>>> plt.title('Phase (angle) of exp(x)')\n>>> plt.show()",
+        "environment_tags": [
+          "darwin",
+          "cpu"
+        ],
+        "has_varargs": true,
+        "is_public": true,
+        "kind": "function",
+        "name": "exp",
+        "overloads": [],
+        "params": [
+          {
+            "annotation": null,
+            "default": null,
+            "description": null,
+            "kind": "VAR_POSITIONAL",
+            "name": "args",
+            "standardized_name": null
+          },
+          {
+            "annotation": "dict | None",
+            "default": null,
+            "description": null,
+            "kind": "VAR_KEYWORD",
+            "name": "kwargs",
+            "standardized_name": null
+          }
+        ],
+        "raises": [],
+        "returns_description": "Output array, element-wise exponential of `x`.",
+        "returns_type": "out : ndarray or scalar"
+      },
+      {
+        "aliases": [],
+        "api_path": "numpy.maximum",
+        "docstring": "maximum(x1, x2, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj])\n\nElement-wise maximum of array elements.\n\nCompare two arrays and return a new array containing the element-wise\nmaxima. If one of the elements being compared is a NaN, then that\nelement is returned. If both elements are NaNs then the first is\nreturned. The latter distinction is important for complex NaNs, which\nare defined as at least one of the real or imaginary parts being a NaN.\nThe net effect is that NaNs are propagated.\n\nParameters\n----------\nx1, x2 : array_like\n    The arrays holding the elements to be compared.\n    If ``x1.shape != x2.shape``, they must be broadcastable to a common\n    shape (which becomes the shape of the output).\nout : ndarray, None, or tuple of ndarray and None, optional\n    A location into which the result is stored. If provided, it must have\n    a shape that the inputs broadcast to. If not provided or None,\n    a freshly-allocated array is returned. A tuple (possible only as a\n    keyword argument) must have length equal to the number of outputs.\nwhere : array_like, optional\n    This condition is broadcast over the input. At locations where the\n    condition is True, the `out` array will be set to the ufunc result.\n    Elsewhere, the `out` array will retain its original value.\n    Note that if an uninitialized `out` array is created via the default\n    ``out=None``, locations within it where the condition is False will\n    remain uninitialized.\n**kwargs\n    For other keyword-only arguments, see the\n    :ref:`ufunc docs <ufuncs.kwargs>`.\n\nReturns\n-------\ny : ndarray or scalar\n    The maximum of `x1` and `x2`, element-wise.\n    This is a scalar if both `x1` and `x2` are scalars.\n\nSee Also\n--------\nminimum :\n    Element-wise minimum of two arrays, propagates NaNs.\nfmax :\n    Element-wise maximum of two arrays, ignores NaNs.\namax :\n    The maximum value of an array along a given axis, propagates NaNs.\nnanmax :\n    The maximum value of an array along a given axis, ignores NaNs.\n\nfmin, amin, nanmin\n\nNotes\n-----\nThe maximum is equivalent to ``np.where(x1 >= x2, x1, x2)`` when\nneither x1 nor x2 are nans, but it is faster and does proper\nbroadcasting.\n\nExamples\n--------\n>>> np.maximum([2, 3, 4], [1, 5, 2])\narray([2, 5, 4])\n\n>>> np.maximum(np.eye(2), [0.5, 2]) # broadcasting\narray([[ 1. ,  2. ],\n       [ 0.5,  2. ]])\n\n>>> np.maximum([np.nan, 0, np.nan], [0, np.nan, np.nan])\narray([nan, nan, nan])\n>>> np.maximum(np.Inf, 1)\ninf",
+        "environment_tags": [
+          "darwin",
+          "cpu"
+        ],
+        "has_varargs": true,
+        "is_public": true,
+        "kind": "function",
+        "name": "maximum",
+        "overloads": [],
+        "params": [
+          {
+            "annotation": null,
+            "default": null,
+            "description": null,
+            "kind": "VAR_POSITIONAL",
+            "name": "args",
+            "standardized_name": null
+          },
+          {
+            "annotation": "dict | None",
+            "default": null,
+            "description": null,
+            "kind": "VAR_KEYWORD",
+            "name": "kwargs",
+            "standardized_name": null
+          }
+        ],
+        "raises": [],
+        "returns_description": "The maximum of `x1` and `x2`, element-wise.",
+        "returns_type": "y : ndarray or scalar"
+      },
+      {
+        "aliases": [],
+        "api_path": "numpy.minimum",
+        "docstring": "minimum(x1, x2, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj])\n\nElement-wise minimum of array elements.\n\nCompare two arrays and return a new array containing the element-wise\nminima. If one of the elements being compared is a NaN, then that\nelement is returned. If both elements are NaNs then the first is\nreturned. The latter distinction is important for complex NaNs, which\nare defined as at least one of the real or imaginary parts being a NaN.\nThe net effect is that NaNs are propagated.\n\nParameters\n----------\nx1, x2 : array_like\n    The arrays holding the elements to be compared.\n    If ``x1.shape != x2.shape``, they must be broadcastable to a common\n    shape (which becomes the shape of the output).\nout : ndarray, None, or tuple of ndarray and None, optional\n    A location into which the result is stored. If provided, it must have\n    a shape that the inputs broadcast to. If not provided or None,\n    a freshly-allocated array is returned. A tuple (possible only as a\n    keyword argument) must have length equal to the number of outputs.\nwhere : array_like, optional\n    This condition is broadcast over the input. At locations where the\n    condition is True, the `out` array will be set to the ufunc result.\n    Elsewhere, the `out` array will retain its original value.\n    Note that if an uninitialized `out` array is created via the default\n    ``out=None``, locations within it where the condition is False will\n    remain uninitialized.\n**kwargs\n    For other keyword-only arguments, see the\n    :ref:`ufunc docs <ufuncs.kwargs>`.\n\nReturns\n-------\ny : ndarray or scalar\n    The minimum of `x1` and `x2`, element-wise.\n    This is a scalar if both `x1` and `x2` are scalars.\n\nSee Also\n--------\nmaximum :\n    Element-wise maximum of two arrays, propagates NaNs.\nfmin :\n    Element-wise minimum of two arrays, ignores NaNs.\namin :\n    The minimum value of an array along a given axis, propagates NaNs.\nnanmin :\n    The minimum value of an array along a given axis, ignores NaNs.\n\nfmax, amax, nanmax\n\nNotes\n-----\nThe minimum is equivalent to ``np.where(x1 <= x2, x1, x2)`` when\nneither x1 nor x2 are NaNs, but it is faster and does proper\nbroadcasting.\n\nExamples\n--------\n>>> np.minimum([2, 3, 4], [1, 5, 2])\narray([1, 3, 2])\n\n>>> np.minimum(np.eye(2), [0.5, 2]) # broadcasting\narray([[ 0.5,  0. ],\n       [ 0. ,  1. ]])\n\n>>> np.minimum([np.nan, 0, np.nan],[0, np.nan, np.nan])\narray([nan, nan, nan])\n>>> np.minimum(-np.Inf, 1)\n-inf",
+        "environment_tags": [
+          "darwin",
+          "cpu"
+        ],
+        "has_varargs": true,
+        "is_public": true,
+        "kind": "function",
+        "name": "minimum",
+        "overloads": [],
+        "params": [
+          {
+            "annotation": null,
+            "default": null,
+            "description": null,
+            "kind": "VAR_POSITIONAL",
+            "name": "args",
+            "standardized_name": null
+          },
+          {
+            "annotation": "dict | None",
+            "default": null,
+            "description": null,
+            "kind": "VAR_KEYWORD",
+            "name": "kwargs",
+            "standardized_name": null
+          }
+        ],
+        "raises": [],
+        "returns_description": "The minimum of `x1` and `x2`, element-wise.",
+        "returns_type": "y : ndarray or scalar"
+      },
+      {
+        "aliases": [],
+        "api_path": "numpy.tanh",
+        "docstring": "tanh(x, /, out=None, *, where=True, casting='same_kind', order='K', dtype=None, subok=True[, signature, extobj])\n\nCompute hyperbolic tangent element-wise.\n\nEquivalent to ``np.sinh(x)/np.cosh(x)`` or ``-1j * np.tan(1j*x)``.\n\nParameters\n----------\nx : array_like\n    Input array.\nout : ndarray, None, or tuple of ndarray and None, optional\n    A location into which the result is stored. If provided, it must have\n    a shape that the inputs broadcast to. If not provided or None,\n    a freshly-allocated array is returned. A tuple (possible only as a\n    keyword argument) must have length equal to the number of outputs.\nwhere : array_like, optional\n    This condition is broadcast over the input. At locations where the\n    condition is True, the `out` array will be set to the ufunc result.\n    Elsewhere, the `out` array will retain its original value.\n    Note that if an uninitialized `out` array is created via the default\n    ``out=None``, locations within it where the condition is False will\n    remain uninitialized.\n**kwargs\n    For other keyword-only arguments, see the\n    :ref:`ufunc docs <ufuncs.kwargs>`.\n\nReturns\n-------\ny : ndarray\n    The corresponding hyperbolic tangent values.\n    This is a scalar if `x` is a scalar.\n\nNotes\n-----\nIf `out` is provided, the function writes the result into it,\nand returns a reference to `out`.  (See Examples)\n\nReferences\n----------\n.. [1] M. Abramowitz and I. A. Stegun, Handbook of Mathematical Functions.\n       New York, NY: Dover, 1972, pg. 83.\n       https://personal.math.ubc.ca/~cbm/aands/page_83.htm\n\n.. [2] Wikipedia, \"Hyperbolic function\",\n       https://en.wikipedia.org/wiki/Hyperbolic_function\n\nExamples\n--------\n>>> np.tanh((0, np.pi*1j, np.pi*1j/2))\narray([ 0. +0.00000000e+00j,  0. -1.22460635e-16j,  0. +1.63317787e+16j])\n\n>>> # Example of providing the optional output parameter illustrating\n>>> # that what is returned is a reference to said parameter\n>>> out1 = np.array([0], dtype='d')\n>>> out2 = np.tanh([0.1], out1)\n>>> out2 is out1\nTrue\n\n>>> # Example of ValueError due to provision of shape mis-matched `out`\n>>> np.tanh(np.zeros((3,3)),np.zeros((2,2)))\nTraceback (most recent call last):\n  File \"<stdin>\", line 1, in <module>\nValueError: operands could not be broadcast together with shapes (3,3) (2,2)",
+        "environment_tags": [
+          "darwin",
+          "cpu"
+        ],
+        "has_varargs": true,
+        "is_public": true,
+        "kind": "function",
+        "name": "tanh",
+        "overloads": [],
+        "params": [
+          {
+            "annotation": null,
+            "default": null,
+            "description": null,
+            "kind": "VAR_POSITIONAL",
+            "name": "args",
+            "standardized_name": null
+          },
+          {
+            "annotation": "dict | None",
+            "default": null,
+            "description": null,
+            "kind": "VAR_KEYWORD",
+            "name": "kwargs",
+            "standardized_name": null
+          }
+        ],
+        "raises": [],
+        "returns_description": "The corresponding hyperbolic tangent values.",
+        "returns_type": "y : ndarray"
+      }
+    ]
+  },
+  "version": "1.26.4"
+}

@@ -1,5 +1,7 @@
 """Module docstring."""
 
+from pathlib import Path
+
 from typing import Any
 
 
@@ -171,7 +173,7 @@ def test_write_snapshot(tmp_path: Any) -> None:
         tmp_path: Parameter.
     """
     data = {"version": "2.0.0+cpu", "categories": {}}
-    out_dir = tmp_path / "out"
+    out_dir = Path(os.path.join(tmp_path, "out"))
     path = write_snapshot("torch", data, str(out_dir))
 
     assert "torch_v2.0.0_cpu.json" in path

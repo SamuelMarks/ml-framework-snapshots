@@ -3,6 +3,8 @@
 Generate .pyi stub files from snapshot JSON data.
 """
 
+import os
+
 from typing import Dict, Any, List, Tuple
 from pathlib import Path
 import ast
@@ -78,9 +80,9 @@ def generate_stubs(
         if not module_name:
             continue
 
-        module_path = out_path / module_name.replace(".", "/")
+        module_path = Path(os.path.join(out_path, module_name.replace(".", os.sep)))
         module_path.mkdir(parents=True, exist_ok=True)
-        init_file = module_path / "__init__.pyi"
+        init_file = Path(os.path.join(module_path, "__init__.pyi"))
 
         lines = []
         lines.append(

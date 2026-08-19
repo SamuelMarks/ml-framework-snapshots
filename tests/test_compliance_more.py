@@ -1,5 +1,8 @@
 """Module docstring."""
 
+from pathlib import Path
+import os
+
 from typing import Any
 
 
@@ -179,10 +182,10 @@ def test_extract_target_refs_string_path(tmp_path: Any) -> None:
     """
     from ml_framework_snapshots.compliance import extract_target_refs
 
-    pkg_dir = tmp_path / "str_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "str_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     sub_mod.write_text("def my_func(a: int) -> None: pass")
 
     refs = extract_target_refs(str(sub_mod), "str_pkg.api", "ref")  # type: ignore
@@ -212,10 +215,10 @@ def test_extract_target_refs_list_path(tmp_path: Any) -> None:
     """
     from ml_framework_snapshots.compliance import extract_target_refs
 
-    pkg_dir = tmp_path / "list_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "list_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     sub_mod.write_text("def list_func(): pass")
 
     refs = extract_target_refs([str(sub_mod)], "list_pkg.api", "ref")

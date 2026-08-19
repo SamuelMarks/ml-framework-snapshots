@@ -1,5 +1,8 @@
 """Test CLI check command."""
 
+from pathlib import Path
+import os
+
 from typing import Any
 
 
@@ -204,7 +207,7 @@ def test_cmd_check_output_formatting(mocker: Any, capsys: Any, tmp_path: Any) ->
 
     snapshot = {"categories": {"LAYER": [ref.model_dump(), ref2.model_dump()]}}
 
-    snap_file = tmp_path / "snap.json"
+    snap_file = Path(os.path.join(tmp_path, "snap.json"))
     snap_file.write_text(json.dumps(snapshot))
 
     mocker.patch(

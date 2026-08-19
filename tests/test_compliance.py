@@ -1,5 +1,7 @@
 """Tests for the compliance checking module."""
 
+import os
+
 from typing import Any
 
 
@@ -26,10 +28,10 @@ def test_get_module_info_from_path_file(tmp_path: Path) -> None:
     # Create a simple structure
     # tmp_path/my_pkg/__init__.py
     # tmp_path/my_pkg/sub_module.py
-    pkg_dir = tmp_path / "my_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "my_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "sub_module.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "sub_module.py"))
     sub_mod.write_text("def foo(): pass")
 
     search_path, mod_name = get_module_info_from_path(str(sub_mod))
@@ -45,9 +47,9 @@ def test_get_module_info_from_path_dir(tmp_path: Path) -> None:
     """
     # Create a simple structure
     # tmp_path/my_pkg/__init__.py
-    pkg_dir = tmp_path / "my_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "my_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
 
     search_path, mod_name = get_module_info_from_path(str(pkg_dir))
     assert search_path == str(tmp_path)
@@ -62,9 +64,9 @@ def test_get_module_info_from_path_init_file(tmp_path: Path) -> None:
     """
     # Create a simple structure
     # tmp_path/my_pkg/__init__.py
-    pkg_dir = tmp_path / "my_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "my_pkg"))
     pkg_dir.mkdir()
-    init_file = pkg_dir / "__init__.py"
+    init_file = Path(os.path.join(pkg_dir, "__init__.py"))
     init_file.touch()
 
     search_path, mod_name = get_module_info_from_path(str(init_file))
@@ -95,7 +97,7 @@ def test_extract_target_ast(tmp_path: Path) -> None:
     Args:
         tmp_path: Parameter.
     """
-    file_path = tmp_path / "simple_mod.py"
+    file_path = Path(os.path.join(tmp_path, "simple_mod.py"))
     file_path.write_text("def my_func(): pass")
 
     ast_node = extract_target_ast(str(file_path))
@@ -119,10 +121,10 @@ def test_get_module_info_from_path_no_py_ext(tmp_path: Path) -> None:
     Args:
         tmp_path: Parameter.
     """
-    pkg_dir = tmp_path / "my_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "my_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "sub_module"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "sub_module"))
     sub_mod.write_text("def foo(): pass")
 
     search_path, mod_name = get_module_info_from_path(str(sub_mod))
@@ -136,10 +138,10 @@ def test_extract_target_refs(tmp_path: Path) -> None:
     Args:
         tmp_path: Parameter.
     """
-    pkg_dir = tmp_path / "mock_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "mock_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     sub_mod.write_text("def my_func(a: int) -> int: return a")
 
     refs = extract_target_refs(str(sub_mod), "mock_pkg.api", "reference")  # type: ignore
@@ -295,10 +297,10 @@ def test_extract_target_refs_import_error(tmp_path: Path) -> None:
     Args:
         tmp_path: Parameter.
     """
-    pkg_dir = tmp_path / "bad_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "bad_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     # missing_module doesn't exist
     sub_mod.write_text("import missing_module\ndef my_func(): pass")
 
@@ -355,10 +357,10 @@ def test_extract_target_refs_skip_private(tmp_path: Path) -> None:
     Args:
         tmp_path: Parameter.
     """
-    pkg_dir = tmp_path / "priv_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "priv_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     sub_mod.write_text("def _private_func(): pass\nclass _PrivateClass: pass")
 
     refs = extract_target_refs(str(sub_mod), "priv_pkg.api", "reference")  # type: ignore
@@ -371,10 +373,10 @@ def test_extract_target_refs_nested_import_error(tmp_path: Path) -> None:
     Args:
         tmp_path: Parameter.
     """
-    pkg_dir = tmp_path / "nested_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "nested_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     # Create something that looks like an attribute but actually triggers ImportError logic
     # that doesn't resolve to a live object.
     # In `extract_target_refs`, if import fails we fallback to getattr.
@@ -399,10 +401,10 @@ def test_extract_target_refs_sys_path(tmp_path: Path) -> None:
     """
     import sys
 
-    pkg_dir = tmp_path / "sys_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "sys_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     sub_mod.write_text("def my_func(): pass")
 
     sys.path.insert(0, str(tmp_path))
@@ -417,9 +419,9 @@ def test_extract_target_refs_empty_members(tmp_path: Path) -> None:
     Args:
         tmp_path: Parameter.
     """
-    pkg_dir = tmp_path / "empty_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "empty_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
 
     refs = extract_target_refs(str(pkg_dir), "empty_pkg", "reference")  # type: ignore
     assert len(refs) == 0
@@ -433,10 +435,10 @@ def test_extract_target_refs_catch_all_exception(tmp_path: Path) -> None:
     """
     from ml_framework_snapshots.compliance import extract_target_refs
 
-    pkg_dir = tmp_path / "broken_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "broken_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     sub_mod.write_text(
         "class BrokenClass:\n    @property\n    def prop(self): raise RuntimeError('Broken')"
     )
@@ -456,10 +458,10 @@ def test_extract_target_refs_catch_inner_exception(tmp_path: Any) -> None:
     from ml_framework_snapshots.compliance import extract_target_refs
     from unittest.mock import patch
 
-    pkg_dir = tmp_path / "inner_broken_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "inner_broken_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     # Create an invalid state for Griffe so dynamic import fails but walk continues
     sub_mod.write_text("class Outer:\n    class Inner:\n        pass\n")
 
@@ -502,9 +504,9 @@ def test_extract_target_refs_no_parts(tmp_path: Any) -> None:
     """
     from ml_framework_snapshots.compliance import extract_target_refs
 
-    pkg_dir = tmp_path / "top_level_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "top_level_pkg"))
     pkg_dir.mkdir()
-    sub_mod = pkg_dir / "__init__.py"
+    sub_mod = Path(os.path.join(pkg_dir, "__init__.py"))
     sub_mod.write_text("def top_func(): pass")
 
     refs = extract_target_refs(str(sub_mod), "top_level_pkg", "reference")  # type: ignore
@@ -519,10 +521,10 @@ def test_extract_target_refs_break_loop(tmp_path: Any) -> None:
     """
     from ml_framework_snapshots.compliance import extract_target_refs
 
-    pkg_dir = tmp_path / "break_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "break_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     # This will have parts "break_pkg", "api", "MyClass"
     sub_mod.write_text("class MyClass:\n    pass")
 
@@ -540,10 +542,10 @@ def test_extract_target_refs_continue_loop(tmp_path: Any) -> None:
     """
     from ml_framework_snapshots.compliance import extract_target_refs
 
-    pkg_dir = tmp_path / "cont_pkg"
+    pkg_dir = Path(os.path.join(tmp_path, "cont_pkg"))
     pkg_dir.mkdir()
-    (pkg_dir / "__init__.py").touch()
-    sub_mod = pkg_dir / "api.py"
+    Path(os.path.join(pkg_dir, "__init__.py")).touch()
+    sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     # Provide a function that gets completely imported but isn't part of the target loop break
     sub_mod.write_text("import sys\ndef func(): pass")
 
@@ -563,15 +565,15 @@ def test_derive_base_path_src(tmp_path: Any) -> None:
     from ml_framework_snapshots.compliance import get_module_info_from_path
     import os
 
-    src_dir = tmp_path / "src"
+    src_dir = Path(os.path.join(tmp_path, "src"))
     src_dir.mkdir()
-    setup_file = tmp_path / "setup.py"
+    setup_file = Path(os.path.join(tmp_path, "setup.py"))
     setup_file.touch()
 
-    init_dir = tmp_path / "my_pkg"
+    init_dir = Path(os.path.join(tmp_path, "my_pkg"))
     init_dir.mkdir()
-    (init_dir / "__init__.py").touch()
-    py_file = init_dir / "my_mod.py"
+    Path(os.path.join(init_dir, "__init__.py")).touch()
+    py_file = Path(os.path.join(init_dir, "my_mod.py"))
     py_file.touch()
 
     orig = os.getcwd()

@@ -1,5 +1,6 @@
 """Module docstring."""
 
+import os
 from typing import Any
 
 
@@ -37,7 +38,7 @@ def test_cli_capture(mocker: Any, capsys: Any) -> None:
     )
     mocker.patch(
         "ml_framework_snapshots.cli.write_snapshot",
-        return_value="test_out/torch_v1.0.json",
+        return_value=os.path.join("test_out", "torch_v1.0.json"),
     )
 
     # Run CLI

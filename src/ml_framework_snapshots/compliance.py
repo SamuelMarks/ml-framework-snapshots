@@ -4,6 +4,8 @@ This module provides functionality to parse arbitrary Python files or packages
 and compare them against a reference ML framework snapshot.
 """
 
+import os
+
 import importlib
 import sys
 
@@ -46,7 +48,10 @@ def get_module_info_from_path(
     current = path if is_dir else path.parent
 
     # Traverse upwards while an __init__.py is present
-    while (current / "__init__.py").exists() and current.parent != current:
+    while (
+        Path(os.path.join(current, "__init__.py")).exists()
+        and current.parent != current
+    ):
         current = current.parent
 
     search_path = str(current)
@@ -66,8 +71,8 @@ def get_module_info_from_path(
     if not mod_name:  # pragma: no branch
         if target_prefix:
             mod_name = target_prefix.split(".")[0]
-            if (Path(search_path) / "src").is_dir():
-                search_path = str(Path(search_path) / "src")
+            if Path(os.path.join(Path(search_path), "src")).is_dir():
+                search_path = str(Path(os.path.join(Path(search_path), "src")))
         else:
             raise ValueError(f"Could not derive module name from path: {file_path}")
 

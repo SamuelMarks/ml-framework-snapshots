@@ -1,5 +1,8 @@
 """Module docstring."""
 
+from pathlib import Path
+import os
+
 from typing import Any
 
 
@@ -78,10 +81,15 @@ def test_generate_stubs(tmp_path: Any) -> None:
         }
     }
 
-    out_dir = tmp_path / "stubs"
+    out_dir = Path(os.path.join(tmp_path, "stubs"))
     generate_stubs(snap, str(out_dir))
 
-    nn_init = out_dir / "test_fw" / "nn" / "__init__.pyi"
+    nn_init = Path(
+        os.path.join(
+            Path(os.path.join(Path(os.path.join(out_dir, "test_fw")), "nn")),
+            "__init__.pyi",
+        )
+    )
     assert nn_init.exists()
 
     content = nn_init.read_text()
@@ -93,7 +101,12 @@ def test_generate_stubs(tmp_path: Any) -> None:
     assert "class EmptyClass:" in content
     assert "def __init__(self) -> Any: ..." in content
 
-    func_init = out_dir / "test_fw" / "functional" / "__init__.pyi"
+    func_init = Path(
+        os.path.join(
+            Path(os.path.join(Path(os.path.join(out_dir, "test_fw")), "functional")),
+            "__init__.pyi",
+        )
+    )
     assert func_init.exists()
     content = func_init.read_text()
     assert "def relu(x: Tensor, *args, **kwargs) -> Tensor: ..." in content
@@ -106,9 +119,9 @@ def test_generate_stubs_empty(tmp_path: Any) -> None:
     Args:
         tmp_path: Parameter.
     """
-    out_dir = tmp_path / "stubs"
+    out_dir = Path(os.path.join(tmp_path, "stubs"))
     generate_stubs({}, str(out_dir))
-    assert not (out_dir / "test_fw").exists()
+    assert not Path(os.path.join(out_dir, "test_fw")).exists()
 
 
 def test_generate_stubs_default_vals(tmp_path: Any) -> None:
@@ -135,10 +148,15 @@ def test_generate_stubs_default_vals(tmp_path: Any) -> None:
             ]
         }
     }
-    out_dir = tmp_path / "stubs"
+    out_dir = Path(os.path.join(tmp_path, "stubs"))
     generate_stubs(snap, str(out_dir))
 
-    nn_init = out_dir / "test_fw" / "nn" / "__init__.pyi"
+    nn_init = Path(
+        os.path.join(
+            Path(os.path.join(Path(os.path.join(out_dir, "test_fw")), "nn")),
+            "__init__.pyi",
+        )
+    )
     content = nn_init.read_text()
     assert "def __init__(self, in_features: int = 10) -> Any: ..." in content
 
@@ -187,10 +205,15 @@ def test_generate_stubs_include_nonpublic(tmp_path: Any) -> None:
         }
     }
 
-    out_dir = tmp_path / "stubs_priv"
+    out_dir = Path(os.path.join(tmp_path, "stubs_priv"))
     generate_stubs(snap, str(out_dir))
 
-    nn_init = out_dir / "test_fw" / "nn" / "__init__.pyi"
+    nn_init = Path(
+        os.path.join(
+            Path(os.path.join(Path(os.path.join(out_dir, "test_fw")), "nn")),
+            "__init__.pyi",
+        )
+    )
     assert not nn_init.exists()
 
     generate_stubs(snap, str(out_dir), include_nonpublic=True)

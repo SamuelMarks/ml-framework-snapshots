@@ -4,6 +4,8 @@ Provides a programmatic interface for capturing and saving API signatures
 from various machine learning frameworks.
 """
 
+import os
+
 import concurrent.futures
 import importlib.metadata
 import json
@@ -16,6 +18,8 @@ from ml_framework_snapshots.frameworks.jax import collect_api as jax_collect
 from ml_framework_snapshots.frameworks.keras import collect_api as keras_collect
 from ml_framework_snapshots.frameworks.tensorflow import collect_api as tf_collect
 from ml_framework_snapshots.frameworks.mlx import collect_api as mlx_collect
+from ml_framework_snapshots.frameworks.cupy import collect_api as cupy_collect
+from ml_framework_snapshots.frameworks.dask import collect_api as dask_collect
 from ml_framework_snapshots.frameworks.flax_nnx import collect_api as flax_collect
 from ml_framework_snapshots.frameworks.sklearn import collect_api as sklearn_collect
 from ml_framework_snapshots.frameworks.huggingface import (
@@ -73,6 +77,8 @@ def get_available_frameworks() -> Dict[str, Any]:
         "keras": keras_collect,
         "tensorflow": tf_collect,
         "mlx": mlx_collect,
+        "cupy": cupy_collect,
+        "dask": dask_collect,
         "flax_nnx": flax_collect,
         "sklearn": sklearn_collect,
         "transformers": collect_transformers,
@@ -269,7 +275,7 @@ def write_snapshot(
     version = snapshot_data.get("version", "unknown")
     safe_ver = version.replace("+", "_").replace(" ", "_")
 
-    file_path = out_path / f"{framework_name}_v{safe_ver}.json"
+    file_path = Path(os.path.join(out_path, f"{framework_name}_v{safe_ver}.json"))
 
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(snapshot_data, f, indent=2, sort_keys=True)

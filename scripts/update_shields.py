@@ -1,5 +1,6 @@
 """Module docstring."""
 
+import os
 from typing import Any
 
 import re
@@ -24,7 +25,7 @@ def get_doc_coverage() -> str:
     # If interrogate is not available, try parsing another way, but we know it's there
     try:
         result = subprocess.run(
-            ["interrogate", "src/ml_framework_snapshots"],
+            ["interrogate", os.path.join("src", "ml_framework_snapshots")],
             capture_output=True,
             text=True,
         )

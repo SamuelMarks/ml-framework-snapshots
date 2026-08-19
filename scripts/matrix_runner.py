@@ -47,7 +47,7 @@ def build_and_run(framework: str, version: str, output_dir: Path) -> Path:
                 "-t",
                 image_tag,
                 "-f",
-                str(tmp_path / "Dockerfile"),
+                str(os.path.join(tmp_path, "Dockerfile")),
                 ".",
             ],
             check=False,
@@ -99,7 +99,9 @@ def main() -> None:
     parser.add_argument(
         "--matrix", type=str, help="Path to JSON matrix config", default=None
     )
-    parser.add_argument("--output-dir", type=str, default="./matrix_snapshots")
+    parser.add_argument(
+        "--output-dir", type=str, default=os.path.join(".", "matrix_snapshots")
+    )
     parser.add_argument(
         "--s3-bucket", type=str, help="S3 bucket for upload", default=None
     )
