@@ -17,14 +17,14 @@ def test_triton_collect() -> None:
 
     def constexpr() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     constexpr.__module__ = "triton.language"
     constexpr.__name__ = "constexpr"
 
     def tensor() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     tensor.__module__ = "triton.language"
     tensor.__name__ = "tensor"
@@ -51,9 +51,9 @@ def test_triton_collect() -> None:
                 """
                 if name == "triton":
                     return MagicMock()
-                elif name == "triton.language":
+                elif name == "triton.language":  # pragma: no branch
                     return mock_tl
-                raise ImportError(name)
+                raise ImportError(name)  # pragma: no cover
 
             mock_import.side_effect = side_effect
 
@@ -102,7 +102,7 @@ def test_ds_collect() -> None:
 
     def initialize() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     mock_ds.initialize = initialize
 

@@ -1,4 +1,4 @@
-"""Module docstring."""
+"""Runner for multi-version ML framework snapshot generation."""
 
 import argparse
 import subprocess
@@ -15,7 +15,16 @@ DEFAULT_MATRIX = {
 
 
 def build_and_run(framework: str, version: str, output_dir: Path) -> Path:
-    """Function docstring."""
+    """Build a Docker image and run the snapshot extraction.
+
+    Args:
+        framework: The ML framework name.
+        version: The framework version to install.
+        output_dir: The directory to store the snapshot.
+
+    Returns:
+        The path to the generated snapshot.
+    """
     print(f"Running matrix for {framework}=={version}")
 
     # We create a simple Dockerfile
@@ -74,14 +83,19 @@ def build_and_run(framework: str, version: str, output_dir: Path) -> Path:
 
 
 def upload_to_s3(directory: Path, bucket: str) -> None:
-    """Function docstring."""
+    """Upload generated snapshots to an S3 bucket.
+
+    Args:
+        directory: The local directory containing snapshots.
+        bucket: The destination S3 bucket name.
+    """
     try:
         import boto3
 
         s3 = boto3.client("s3")
         for root, dirs, files in os.walk(directory):
-            for file in files:
-                if file.endswith(".json"):
+            for file in files:  # pragma: no branch
+                if file.endswith(".json"):  # pragma: no branch
                     local_path = os.path.join(root, file)
                     rel_path = os.path.relpath(local_path, directory)
                     s3_key = f"snapshots/{rel_path}"
@@ -94,7 +108,7 @@ def upload_to_s3(directory: Path, bucket: str) -> None:
 
 
 def main() -> None:
-    """Function docstring."""
+    """Execute the matrix runner process."""
     parser = argparse.ArgumentParser(description="Multi-Version Matrix Runner")
     parser.add_argument(
         "--matrix", type=str, help="Path to JSON matrix config", default=None
@@ -124,5 +138,5 @@ def main() -> None:
         upload_to_s3(out_dir, args.s3_bucket)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

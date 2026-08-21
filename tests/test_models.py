@@ -38,7 +38,7 @@ def dummy_func(a: int, b=2, *args: Any, **kwargs: Any) -> None:  # type: ignore
 
     # noqa: DAR101
     """
-    pass
+    pass  # pragma: no cover
 
 
 class DummyClass:
@@ -49,7 +49,7 @@ class DummyClass:
 
         # noqa: DAR101
         """
-        pass
+        pass  # pragma: no cover
 
 
 def dummy_c_extension(*args: Any, **kwargs: Any) -> None:
@@ -58,7 +58,7 @@ def dummy_c_extension(*args: Any, **kwargs: Any) -> None:
     # noqa: DAR101
     """
     # simulate something that inspect.signature fails on
-    pass
+    pass  # pragma: no cover
 
 
 def test_ghost_inspector_function() -> None:
@@ -138,7 +138,7 @@ def test_unrepresentable_default() -> None:
         Args:
             a: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
     assert ref.params[0].default == "<unrepresentable>"
@@ -158,7 +158,7 @@ def test_memory_address_default() -> None:
         Args:
             a: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
     assert ref.params[0].default is None
@@ -169,7 +169,7 @@ def test_callable_default() -> None:
 
     def my_default() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     def f(a=my_default) -> Any:  # type: ignore
         """Function docstring. a.
@@ -177,7 +177,7 @@ def test_callable_default() -> None:
         Args:
             a: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
     assert ref.params[0].default is None
@@ -211,7 +211,7 @@ def test_ghost_inspector_str_throws() -> None:
         Args:
             a: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
     assert ref.params[0].default == "<unrepresentable>"
@@ -265,7 +265,7 @@ def test_ghost_inspector_str_has_address() -> None:
         Args:
             a: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
     assert ref.params[0].default is None
@@ -284,7 +284,7 @@ def test_ghost_inspector_cdd_raises_no_typ(mocker: Any) -> None:
 
     def f() -> Any:
         """Doc."""
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
     assert ref.raises == []
@@ -320,7 +320,7 @@ def test_ghost_inspector_is_public(mocker: Any) -> None:
 
     def _private_dummy() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     ref3 = GhostInspector.inspect(_private_dummy, "tests._private_dummy")
     assert ref3.is_public is False
@@ -335,7 +335,7 @@ def test_ghost_inspector_annotation_str() -> None:
         Args:
             a: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
     assert ref.params[0].annotation == "str"
@@ -355,7 +355,7 @@ def test_ghost_inspector_cdd_fallback() -> None:
 
             x: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy_func_cdd, "dummy_func_cdd")
     assert ref.params[0].annotation == "int"
@@ -375,7 +375,7 @@ def test_ghost_inspector_annotation_name() -> None:
         Args:
             x: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     GhostInspector.inspect(dummy_func_anno, "dummy_func_anno")
     # Will use get_type_hints which works. To bypass get_type_hints,
@@ -404,7 +404,7 @@ def test_ghost_inspector_annotation_name_mock(mocker: Any) -> None:
         Args:
             x: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy_func_anno, "dummy_func_anno")
     assert ref.params[0].annotation == "MyType"
@@ -424,7 +424,7 @@ def test_ghost_inspector_annotation_str_mock(mocker: Any) -> None:
         Args:
             x: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy_func_anno_str, "dummy_func_anno_str")
     assert ref.params[0].annotation == "str"
@@ -444,7 +444,7 @@ def test_ghost_inspector_cdd_anno_fallback() -> None:
 
             x: Parameter.
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy_func_no_anno, "dummy_func_no_anno")
     assert ref.params[0].annotation == "int"
@@ -460,7 +460,7 @@ def test_ghost_inspector_return_type_hints() -> None:
         Returns:
             Return value.
         """
-        return 0
+        return 0  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy_func_ret, "dummy_func_ret")
     assert ref.returns_type == "int"
@@ -517,7 +517,7 @@ def test_ghost_inspector_griffe_params(mocker: Any) -> None:
 
     def dummy_func_griffe() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy_func_griffe, "dummy_func_griffe")
     assert ref.has_varargs is True
@@ -598,7 +598,7 @@ def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
 
     def dummy_func_griffe() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy_func_griffe, "dummy_func_griffe")
     assert len(ref.overloads) == 1

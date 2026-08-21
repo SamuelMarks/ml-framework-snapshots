@@ -236,10 +236,64 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
     try:
         import torch
 
-        for name in ["abs", "mean", "load", "save"]:
+        # Top-level array API functions
+        for name in [
+            "abs",
+            "mean",
+            "load",
+            "save",
+            "divide",
+            "true_divide",
+            "add",
+            "sub",
+            "mul",
+            "trunc",
+            "fmod",
+            "sum",
+            "max",
+            "min",
+            "prod",
+            "all",
+            "any",
+            "erfinv",
+            "nan_to_num",
+            "arange",
+            "zeros",
+            "ones",
+            "full",
+            "reshape",
+            "sort",
+            "argsort",
+            "allclose",
+            "stft",
+            "istft",
+            "hann_window",
+            "hamming_window",
+            "kaiser_window",
+            "argmax",
+            "argmin",
+        ]:
             obj = getattr(torch, name, None)
             if obj:
                 found.append(GhostInspector.inspect(obj, f"torch.{name}"))
+
+        # fft module
+        if hasattr(torch, "fft"):
+            for name in dir(torch.fft):
+                if not name.startswith("_"):
+                    obj = getattr(torch.fft, name)
+                    if callable(obj):
+                        found.append(GhostInspector.inspect(obj, f"torch.fft.{name}"))
+
+        # nn.functional module (vision/others)
+        if hasattr(torch, "nn") and hasattr(torch.nn, "functional"):
+            for name in ["interpolate", "affine_grid", "grid_sample"]:
+                obj = getattr(torch.nn.functional, name, None)
+                if obj:
+                    found.append(
+                        GhostInspector.inspect(obj, f"torch.nn.functional.{name}")
+                    )
+
     except ImportError:
         pass
 

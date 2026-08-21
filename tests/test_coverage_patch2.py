@@ -124,11 +124,11 @@ def test_deepspeed_missing() -> None:
 
         def initialize(self) -> Any:
             """Function docstring."""
-            pass
+            pass  # pragma: no cover
 
         def nothing(self) -> Any:
             """Function docstring."""
-            pass
+            pass  # pragma: no cover
 
     with patch(
         "ml_framework_snapshots.models.GhostInspector.inspect",
@@ -171,11 +171,11 @@ def test_onnxruntime_missing() -> None:
 
         def InferenceSession(self) -> Any:
             """Function docstring."""
-            pass
+            pass  # pragma: no cover
 
         def nothing(self) -> Any:
             """Function docstring."""
-            pass
+            pass  # pragma: no cover
 
     with patch(
         "ml_framework_snapshots.models.GhostInspector.inspect",
@@ -218,7 +218,7 @@ def test_triton_missing() -> None:
             a: description
             b: description
         """
-        pass
+        pass  # pragma: no cover
 
     fake_fn.__annotations__ = {"a": "int constexpr", "b": "float"}
 
@@ -287,7 +287,7 @@ def test_huggingface_missing() -> None:
                 args: description
                 kwargs: description
             """
-            pass
+            pass  # pragma: no cover
 
     r = GhostRef(name="A", api_path="A", kind="class", params=[])
     _extract_generation_kwargs(M(), r)
@@ -315,7 +315,7 @@ def test_huggingface_missing() -> None:
             Raises:
                 ValueError: Exception.
             """
-            raise ValueError()
+            raise ValueError()  # pragma: no cover
 
     mock_mod = MagicMock()
     mock_mod.__dir__ = lambda self: [  # type: ignore
@@ -454,7 +454,7 @@ def test_huggingface_missing() -> None:
                         args: description
                         kwargs: description
                     """
-                    pass
+                    pass  # pragma: no cover
 
             return M()
 

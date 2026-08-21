@@ -8,7 +8,11 @@ import subprocess
 
 
 def get_test_coverage() -> str:
-    """Function docstring."""
+    """Get the current test coverage percentage.
+
+    Returns:
+        The string representation of the test coverage percentage.
+    """
     result = subprocess.run(
         ["pytest", "--cov=src/ml_framework_snapshots", "--cov-branch"],
         capture_output=True,
@@ -21,7 +25,11 @@ def get_test_coverage() -> str:
 
 
 def get_doc_coverage() -> str:
-    """Function docstring."""
+    """Get the current documentation coverage percentage.
+
+    Returns:
+        The string representation of the documentation coverage percentage.
+    """
     # If interrogate is not available, try parsing another way, but we know it's there
     try:
         result = subprocess.run(
@@ -39,7 +47,14 @@ def get_doc_coverage() -> str:
 
 
 def get_color(coverage: Any) -> str:
-    """Function docstring."""
+    """Determine the badge color based on coverage.
+
+    Args:
+        coverage: The coverage percentage (can be a string or float).
+
+    Returns:
+        The color name for the shield badge.
+    """
     try:
         val = float(coverage)
         if val >= 90:
@@ -49,12 +64,12 @@ def get_color(coverage: Any) -> str:
         if val >= 70:
             return "orange"
         return "red"
-    except ValueError:
+    except (ValueError, TypeError):
         return "lightgrey"
 
 
 def main() -> None:
-    """Function docstring."""
+    """Update the coverage shields in README.md."""
     test_cov = get_test_coverage()
     doc_cov = get_doc_coverage()
 
@@ -82,5 +97,5 @@ def main() -> None:
         f.write(content)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

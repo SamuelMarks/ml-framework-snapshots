@@ -25,7 +25,7 @@ def test_ghostinspector_env_tags() -> None:
 
     def dummy() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy, "dummy")
     assert sys.platform in ref.environment_tags
@@ -44,7 +44,7 @@ def test_ghostinspector_env_tags_no_torch(monkeypatch: Any) -> None:
 
     def dummy() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy, "dummy")
     assert "cpu" in ref.environment_tags
@@ -80,7 +80,7 @@ def test_ghostinspector_env_tags_cuda_true(mocker: Any, monkeypatch: Any) -> Non
 
     def dummy() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(dummy, "dummy")
     assert "cuda" in ref.environment_tags

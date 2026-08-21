@@ -55,9 +55,9 @@ def test_get_all_members() -> None:
             """
             if name == "broken_all" or name == "broken_dir":
                 raise Exception("simulated error")
-            if name in self._cache:
+            if name in self._cache:  # pragma: no branch
                 return self._cache[name]
-            raise AttributeError(name)
+            raise AttributeError(name)  # pragma: no cover
 
     lazy_mod = LazyModule()
     members = dict(get_all_members(lazy_mod))
@@ -223,11 +223,11 @@ def test_get_available_frameworks_discovery() -> None:
                 m.collect_api = lambda *args: []
                 m.collect_test_api = lambda *args: []
                 return m
-            elif name.endswith("other_mod"):
+            elif name.endswith("other_mod"):  # pragma: no branch
                 m = MagicMock()
                 m.collect_other = lambda *args: []
                 return m
-            return MagicMock()
+            return MagicMock()  # pragma: no cover
 
         with patch("importlib.import_module", side_effect=mock_import):
             res = get_available_frameworks()

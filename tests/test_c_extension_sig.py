@@ -10,7 +10,7 @@ from ml_framework_snapshots.models import GhostInspector
 
 def dummy_c_ext() -> None:
     """dummy_c_ext(input: Tensor, *, out: Optional[Tensor] = None) -> Tensor"""  # noqa: D402, D415
-    pass
+    pass  # pragma: no cover
 
 
 original_sig = inspect.signature
@@ -31,9 +31,9 @@ def patched_sig(target: Any, *args: Any, **kwargs: Any) -> None:
     Returns:
         Return value.
     """
-    if target is dummy_c_ext:
+    if target is dummy_c_ext:  # pragma: no branch
         raise ValueError("no signature found")
-    return original_sig(target, *args, **kwargs)  # type: ignore
+    return original_sig(target, *args, **kwargs)  # type: ignore  # pragma: no cover
 
 
 def test_c_extension_signature_fallback() -> None:

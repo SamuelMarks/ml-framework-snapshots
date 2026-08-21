@@ -20,9 +20,9 @@ def dummy_func_with_docstring(x: int) -> str:
 
     # noqa: DAR202, DAR402
     """
-    if x < 0:
-        raise ValueError()
-    return "test"
+    if x < 0:  # pragma: no cover
+        raise ValueError()  # pragma: no cover
+    return "test"  # pragma: no cover
 
 
 def dummy_func_sphinx_docstring(y: Any) -> None:
@@ -35,7 +35,7 @@ def dummy_func_sphinx_docstring(y: Any) -> None:
     Args:
         y: Parameter.
     """
-    pass
+    pass  # pragma: no cover
 
 
 def test_cdd_returns_and_params() -> None:
@@ -111,7 +111,7 @@ def test_inspect_annotation_fallback() -> None:
         Args:
             a: description
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(func_annotated, "tests.func_annotated")
     assert "ForwardRefStr" in ref.params[0].annotation
@@ -130,7 +130,7 @@ def test_griffe_self_skip() -> None:
             Args:
                 x: description
             """
-            pass
+            pass  # pragma: no cover
 
     # we need a real class importable by griffe to test griffe skipping 'self'
     import email.message

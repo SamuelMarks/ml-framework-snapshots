@@ -43,28 +43,28 @@ def test_extract_c_ext_coverage() -> None:
 
     def empty_doc() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     empty_doc.__doc__ = ""
     assert extract_c_extension_signature(empty_doc, "empty_doc") is None
 
     def bad_syntax() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     bad_syntax.__doc__ = "func(a b c) -> int"
     assert extract_c_extension_signature(bad_syntax, "bad_syntax") is None
 
     def no_match() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     no_match.__doc__ = "This is just a description without signature."
     assert extract_c_extension_signature(no_match, "no_match") is None
 
     def string_def() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     string_def.__doc__ = (
         "func(a='hello', b=None, *args: int, c=1, **kwargs: float) -> str"
@@ -81,7 +81,7 @@ def test_extract_c_ext_coverage() -> None:
 
     def func_with_self() -> Any:
         """Function docstring."""
-        pass
+        pass  # pragma: no cover
 
     func_with_self.__doc__ = "func(self, x=torch.float32)"
     sig2 = extract_c_extension_signature(func_with_self, "func")

@@ -28,8 +28,8 @@ def my_overloaded_func(a: Any, b: Any = None) -> Any:
     _GRIFFE_CACHE.clear()
 
     sys.path.insert(0, ".")
-    if "test_overload_mock_unique" in sys.modules:
-        del sys.modules["test_overload_mock_unique"]
+    if "test_overload_mock_unique" in sys.modules:  # pragma: no branch
+        del sys.modules["test_overload_mock_unique"]  # pragma: no cover
     import test_overload_mock_unique
 
     ref = GhostInspector.inspect(

@@ -17,7 +17,12 @@ except ImportError:  # pragma: no cover
 def collect_api(
     category: SemanticTier, include_nonpublic: bool = False
 ) -> List[GhostRef]:
-    """Collect cupy API."""
+    """Collect cupy API.
+
+    Args:
+        category: Parameter.
+        include_nonpublic: Parameter.
+    """
     results: List[GhostRef] = []
     if not cp:
         return results

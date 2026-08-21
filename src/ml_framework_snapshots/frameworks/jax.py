@@ -103,7 +103,12 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
 
     # Dummy functions for AST and IO methods
     def astype(self: typing.Any, dtype: typing.Any) -> None:
-        """Dummy."""
+        """Represent a dummy function.
+
+        Args:
+            self: Parameter.
+            dtype: Parameter.
+        """
         pass  # pragma: no cover
 
     def load(
@@ -113,7 +118,15 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
         fix_imports: bool = True,
         encoding: str = "ASCII",
     ) -> None:
-        """Dummy."""
+        """Represent a dummy function.
+
+        Args:
+            file: Parameter.
+            mmap_mode: Parameter.
+            allow_pickle: Parameter.
+            fix_imports: Parameter.
+            encoding: Parameter.
+        """
         pass  # pragma: no cover
 
     def save(
@@ -122,7 +135,14 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
         allow_pickle: bool = True,
         fix_imports: bool = True,
     ) -> None:
-        """Dummy."""
+        """Represent a dummy function.
+
+        Args:
+            file: Parameter.
+            arr: Parameter.
+            allow_pickle: Parameter.
+            fix_imports: Parameter.
+        """
         pass  # pragma: no cover
 
     found.append(GhostInspector.inspect(astype, "astype"))

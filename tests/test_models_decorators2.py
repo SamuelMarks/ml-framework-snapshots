@@ -42,7 +42,7 @@ def test_unwrap_torch_compile() -> None:
             x: description
             y: description
         """
-        pass
+        pass  # pragma: no cover
 
     ref = GhostInspector.inspect(my_compiled, "my_compiled")
     assert ref.has_arg("x")

@@ -217,7 +217,18 @@ def extract_snapshot(
             if refs:
                 refs = _consolidate_aliases(refs)
                 refs.sort(key=lambda x: x.name)
-                return cat.value, [r.model_dump(exclude_unset=True) for r in refs]
+                dumped_refs = []
+                for r in refs:
+                    d = r.model_dump(exclude_unset=True)
+                    kwargs_list = [
+                        p.name
+                        for p in r.params
+                        if p.kind
+                        in ("KEYWORD_ONLY", "POSITIONAL_OR_KEYWORD", "VAR_KEYWORD")
+                    ]
+                    d["kwargs"] = kwargs_list
+                    dumped_refs.append(d)
+                return cat.value, dumped_refs
         except Exception:  # pragma: no branch
             pass
         return cat.value, []

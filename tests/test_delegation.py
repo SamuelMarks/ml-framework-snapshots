@@ -16,7 +16,7 @@ class BaseLayer:
             hidden_dim: description
             dropout: description
         """
-        pass
+        pass  # pragma: no cover
 
 
 class SubLayer(BaseLayer):
@@ -29,7 +29,7 @@ class SubLayer(BaseLayer):
             name: description
             kwargs: description
         """
-        super().__init__(**kwargs)
+        super().__init__(**kwargs)  # pragma: no cover
 
 
 def test_delegation_tracing() -> None:
