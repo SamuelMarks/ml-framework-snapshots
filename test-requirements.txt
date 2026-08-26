@@ -4,3 +4,4 @@ pytest-mock
 pydantic
 scikit-learn
 build
+interrogate

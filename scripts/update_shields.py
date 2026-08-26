@@ -1,6 +1,7 @@
 """Module docstring."""
 
 import os
+import sys
 from typing import Any
 
 import re
@@ -14,7 +15,13 @@ def get_test_coverage() -> str:
         The string representation of the test coverage percentage.
     """
     result = subprocess.run(
-        ["pytest", "--cov=src/ml_framework_snapshots", "--cov-branch"],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--cov=src/ml_framework_snapshots",
+            "--cov-branch",
+        ],
         capture_output=True,
         text=True,
     )
@@ -33,7 +40,12 @@ def get_doc_coverage() -> str:
     # If interrogate is not available, try parsing another way, but we know it's there
     try:
         result = subprocess.run(
-            ["interrogate", os.path.join("src", "ml_framework_snapshots")],
+            [
+                sys.executable,
+                "-m",
+                "interrogate",
+                os.path.join("src", "ml_framework_snapshots"),
+            ],
             capture_output=True,
             text=True,
         )

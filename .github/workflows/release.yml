@@ -40,7 +40,9 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m venv venv-3-10
           venv-3-10/bin/python3 -m pip install -U setuptools wheel pip
-          venv-3-10/bin/python3 -m pip install paxml '.[generate]'
+          venv-3-10/bin/python3 -m pip install '.[generate]'
+          venv-3-10/bin/python3 -m pip uninstall -y jaxlib jax
+          venv-3-10/bin/python3 -m pip install paxml
           venv-3-10/bin/python3 scripts/generate_all_snapshots.py pax
 
       - name: Set up Python 3.12 (for other frameworks)
