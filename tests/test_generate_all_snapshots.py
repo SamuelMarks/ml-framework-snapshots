@@ -2,6 +2,7 @@
 
 import os
 import sys
+import pytest
 from unittest.mock import patch, MagicMock
 
 # Add the root directory to sys.path so we can import generate_all_snapshots
@@ -10,6 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import generate_all_snapshots
 
 
+@patch("sys.argv", ["generate_all_snapshots.py"])
 @patch("generate_all_snapshots.os.makedirs")
 @patch("generate_all_snapshots.extract_snapshot")
 @patch("generate_all_snapshots.write_snapshot")
@@ -70,6 +72,7 @@ def test_main_success(
         mock_print.assert_any_call("  -> Saved")
 
 
+@patch("sys.argv", ["generate_all_snapshots.py"])
 @patch("generate_all_snapshots.os.makedirs")
 @patch("generate_all_snapshots.extract_snapshot")
 @patch("generate_all_snapshots.write_snapshot")
@@ -90,7 +93,8 @@ def test_main_failure(
     """
     mock_extract.side_effect = Exception("Mock exception")
 
-    generate_all_snapshots.main()
+    with pytest.raises(SystemExit):
+        generate_all_snapshots.main()
 
     frameworks = [
         "torch",

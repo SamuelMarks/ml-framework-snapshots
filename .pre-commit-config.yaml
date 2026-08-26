@@ -38,20 +38,20 @@ repos:
     hooks:
       - id: build
         name: Build
-        entry: uv run python -m build
+        entry: python3 -m build
         language: system
         pass_filenames: false
         always_run: true
       - id: pytest
         name: Test (Pytest)
-        entry: uv run pytest --cov=src/ml_framework_snapshots --cov-branch
+        entry: python3 -m pytest --cov=src/ml_framework_snapshots --cov-branch
         language: system
         types: [python]
         pass_filenames: false
         always_run: true
       - id: update-shields
         name: Update Shields
-        entry: uv run python scripts/update_shields.py
+        entry: python3 scripts/update_shields.py
         language: system
         pass_filenames: false
         always_run: true

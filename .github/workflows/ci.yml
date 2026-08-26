@@ -7,45 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-
-    steps:
-    - uses: actions/checkout@v7
-
-    - name: Create required directories and set permissions
-      run: |
-        sudo mkdir -p /Users/samuel/repos
-        sudo chown -R $(whoami) /Users
-
-    - name: Checkout ml-switcheroo-ir
-      run: git clone https://github.com/SamuelMarks/ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v7
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[test,frameworks,generate]"
-
-    - name: Run tests with pytest
-      run: |
-        pytest --cov=src/ml_framework_snapshots --cov-branch --cov-report=xml
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v7
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
-
-  lint:
+  pre-commit:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
@@ -54,14 +16,30 @@ jobs:
       uses: actions/setup-python@v7
       with:
         python-version: "3.11"
+        cache: 'pip'
 
-    - name: Install linting tools
+    - name: Create required directories and set permissions
       run: |
-        python -m pip install --upgrade pip
-        pip install ruff interrogate
+        sudo mkdir -p /Users/samuel/repos
+        sudo chown -R $(whoami) /Users
 
-    - name: Run Ruff
-      run: ruff check src tests
+    - name: Checkout ml-switcheroo-ir
+      uses: actions/checkout@v7
+      with:
+        repository: SamuelMarks/ml-switcheroo-ir
+        path: ml-switcheroo-ir
 
-    - name: Run Interrogate
-      run: interrogate -v src tests
+    - name: Move ml-switcheroo-ir
+      run: mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
+
+    - name: Install dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        python3 -m pip install pre-commit
+
+    - name: Set up virtual environment
+      run: |
+        python3 -m pip install -e ".[test,generate]" build pytest pytest-cov
+
+    - name: Run pre-commit
+      run: pre-commit run --all-files

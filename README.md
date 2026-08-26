@@ -6,7 +6,7 @@ ml-framework-snapshots
 [![Tests](https://img.shields.io/badge/tests-100%25-brightgreen.svg)]()
 [![Docs](https://img.shields.io/badge/docs-100%25-brightgreen.svg)]()
 
-**ML Framework Snapshots** is a toolset designed to statically extract and formalize API signatures from major machine learning frameworks into stable, serializable schemas.
+**ML Framework Snapshots** is a core component of the **ml-switcheroo** ecosystem. It is a toolset designed to statically extract and formalize API signatures from major machine learning frameworks into stable, serializable `GhostRef` schemas (as defined in `ml_switcheroo_ir`).
 
 By deeply introspecting libraries like PyTorch, JAX, TensorFlow, Keras, MLX, and Flax without requiring them to be imported natively into your final application, this project acts as the foundational "Ghost Mode" layer for ML synthesis tools, API emulation layers, and cross-framework translation compilers.
 
@@ -23,13 +23,13 @@ Machine Learning frameworks frequently utilize heavy GPU-bound libraries, comple
 
 ## ✨ Core Features
 
-- **Multi-Framework Introspection**: Natively supports PyTorch, JAX, TensorFlow, Keras, MLX, Flax, Scikit-Learn, HuggingFace (Transformers, Diffusers, Tokenizers), Triton, ONNXRuntime, and DeepSpeed.
+- **Multi-Framework Introspection**: Natively supports PyTorch, JAX, TensorFlow, Keras, MLX, Flax (NNX), NumPy, CuPy, Dask, Optax (Shim), Orbax Checkpoint, Pax, Scikit-Learn, HuggingFace, Triton, ONNXRuntime, and DeepSpeed.
 - **Deep Static & Runtime Analysis**: Achieves maximum fidelity by cascading through AST parsers (`cdd-python`), static typing analyzers (`griffe`), and standard runtime reflection (`inspect`), before falling back to custom C-Extension docstring parsers.
 - **Rich Context Extraction**: Beyond standard arguments, it captures docstrings, parameter descriptions, function overloads, `raises` exceptions, return types, and environment execution tags (e.g., CUDA vs. CPU).
 - **Format Agnostic Exports**: Instantly convert captured API snapshots into OpenAPI specifications, JSON Schema, Pydantic V2 models, and Protobuf (`.proto`) definitions.
 - **Structural Diffing & Semantic Versioning**: Compare two API snapshots to generate markdown changelogs, detecting not just added/removed functions but highlighting potentially breaking signature changes.
 - **Python Stub Generation**: Export snapshots back into python via `.pyi` type stubs so that IDEs and language servers can understand the API without the framework installed.
-- **Compliance Checking**: Automatically test a new API implementation (like a transpiled module or a wrapper wrapper) against a canonical snapshot to measure coverage and highlight signature mismatches.
+- **Compliance Checking**: Automatically test a new API implementation (like a transpiled module or a custom wrapper) against a canonical snapshot to measure coverage and highlight signature mismatches.
 
 ---
 
@@ -41,11 +41,11 @@ Requires Python >= 3.9.
 pip install ml-framework-snapshots
 ```
 
-If you intend to generate new snapshots from your environment, you must install the frameworks you wish to snapshot:
+If you intend to generate new snapshots from your environment, you must install the target frameworks (or install the meta-package that brings them in):
 
 ```bash
-# E.g., to snapshot PyTorch and JAX:
-pip install ml-framework-snapshots[torch,jax]
+# Install the library along with the heavy framework dependencies
+pip install "ml-framework-snapshots[frameworks]"
 ```
 
 *(Note: If you only want to use the CLI to diff, export, or check existing JSON snapshots, you do not need to install the heavy ML framework dependencies.)*
@@ -143,6 +143,16 @@ Run tests with coverage:
 ```bash
 pytest --cov=src/ml_framework_snapshots --cov-branch
 ```
+
+---
+
+## 🛡️ The Ecosystem & Preventing LLM Hallucinations
+
+`ml-framework-snapshots` is the foundational API layer for a broader ecosystem of cross-framework translation and compilation tools. By providing deterministic, versioned JSON schemas of ML APIs, it serves as the **ground-truth source** that prevents AI-driven transpilers and compilers from hallucinating incorrect arguments, shapes, or structural hierarchies.
+
+- **[ml-switcheroo](https://github.com/SamuelMarks/ml-switcheroo)**: A universal compiler and transpiler that solves the $O(N^2)$ interoperability problem. It maps major dialects (PyTorch, JAX, TensorFlow) to a central "Hub" abstract standard. To generate accurate transpiled code, `ml-switcheroo` relies on these JSON snapshots to validate function signatures, ensuring the output is semantically exact rather than just structurally plausible.
+- **[ml-switcheroo-compiler](https://github.com/SamuelMarks/ml-switcheroo-compiler)**: The core execution engine that enforces a "No Math in Frontends" rule. It lowers Unified IR directly into highly optimized WebGPU or WASM SIMD executables for in-browser execution. The compiler uses these snapshots to statically resolve API routing without needing heavy framework dependencies.
+- **[zero-zoo](https://github.com/SamuelMarks/zero-zoo) (and the `zero-*` wrappers)**: The central proving grounds for the ecosystem. It maintains a zoo of canonical model implementations across all dialects and utilizes matrix testing to ensure that the lightweight API shells (like `zero-pytorch`) produce float-for-float identical results compared to native frameworks.
 
 ---
 
