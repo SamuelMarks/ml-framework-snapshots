@@ -10,10 +10,14 @@ Attributes:
 
 """
 
-from ml_framework_snapshots.api import (
-    extract_snapshot,
-    extract_all_snapshots,
-    write_snapshot,
-)
+try:
+    from ml_framework_snapshots.api import (
+        extract_snapshot,
+        extract_all_snapshots,
+        write_snapshot,
+    )
 
-__all__ = ["extract_snapshot", "extract_all_snapshots", "write_snapshot"]
+    __all__ = ["extract_snapshot", "extract_all_snapshots", "write_snapshot"]
+except ImportError:  # pragma: no cover
+    # Handle the case where the package is installed without 'generate' dependencies.
+    __all__ = []

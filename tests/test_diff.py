@@ -305,3 +305,97 @@ def test_changelog_combinations() -> None:
     )
     changelog = generate_changelog(res4)
     assert "## Non-Breaking Signature Changes" in changelog
+
+
+def test_diff_branches() -> None:
+    """Function docstring."""
+    from ml_framework_snapshots.diff import diff_snapshots
+
+    # Hit line 81->87 (_compare_params empty)
+    s1 = {
+        "categories": {
+            "MODEL": [{"name": "A", "api_path": "A", "kind": "function", "params": []}]
+        }
+    }
+    s2 = {
+        "categories": {
+            "MODEL": [{"name": "A", "api_path": "A", "kind": "function", "params": []}]
+        }
+    }
+    diff_snapshots(s1, s2)
+
+    # Hit branch where kind changed but it's not breaking (e.g. POSITIONAL_ONLY -> POSITIONAL_OR_KEYWORD)
+    s3 = {
+        "categories": {
+            "MODEL": [
+                {
+                    "name": "B",
+                    "api_path": "B",
+                    "kind": "function",
+                    "params": [{"name": "p", "kind": "POSITIONAL_ONLY"}],
+                }
+            ]
+        }
+    }
+    s4 = {
+        "categories": {
+            "MODEL": [
+                {
+                    "name": "B",
+                    "api_path": "B",
+                    "kind": "function",
+                    "params": [{"name": "p", "kind": "POSITIONAL_OR_KEYWORD"}],
+                }
+            ]
+        }
+    }
+    diff_snapshots(s3, s4)
+
+
+"""Module docstring."""
+
+
+def test_diff_branches_more() -> None:
+    """Function docstring."""
+    from ml_framework_snapshots.diff import diff_snapshots
+
+    s1 = {
+        "categories": {
+            "MODEL": [
+                {
+                    "name": "A",
+                    "api_path": "A",
+                    "kind": "function",
+                    "params": [
+                        {
+                            "name": "p1",
+                            "kind": "POSITIONAL_OR_KEYWORD",
+                            "default": "1",
+                            "annotation": "int",
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+    s2 = {
+        "categories": {
+            "MODEL": [
+                {
+                    "name": "A",
+                    "api_path": "A",
+                    "kind": "function",
+                    "params": [
+                        {
+                            "name": "p1",
+                            "kind": "POSITIONAL_OR_KEYWORD",
+                            "default": "2",
+                            "annotation": "int",
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+    res = diff_snapshots(s1, s2)
+    assert len(res.signature_changed) > 0

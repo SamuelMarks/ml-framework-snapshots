@@ -1,0 +1,5 @@
+pydantic>=2.0.0
+griffe>=1.0.0
+cdd @ git+https://github.com/offscale/cdd-python.git@master
+ml-switcheroo-compiler @ git+https://github.com/SamuelMarks/ml-switcheroo-compiler.git
+rich

@@ -88,3 +88,18 @@ def test_extract_c_ext_coverage() -> None:
     assert sig2 is not None
     assert sig2[0][0] == "x"
     assert sig2[0][2] == "torch.float32"  # value error fallback
+
+
+def test_utils_branches() -> None:
+    """Function docstring."""
+    from ml_framework_snapshots.utils import (
+        extract_c_extension_signature,
+    )
+
+    class Dummy:
+        """Class docstring."""
+
+        pass
+
+    Dummy.__doc__ = "\n"
+    assert extract_c_extension_signature(Dummy, "X") is None

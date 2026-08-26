@@ -17,8 +17,11 @@ build-backend = "hatchling.build"
 files = ["requirements.txt"]
 
 [tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
+generate = ["requirements-gen.txt"]
 frameworks = ["requirements-frameworks.txt"]
 test = ["test-requirements.txt"]
+host = ["requirements-host.txt"]
+linux_x64 = ["requirements-linux-x64.txt"]
 
 [tool.hatch.metadata]
 allow-direct-references = true

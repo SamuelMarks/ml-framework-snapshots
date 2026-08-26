@@ -36,7 +36,25 @@ def test_main_success(
         os.path.join("src", "ml_framework_snapshots", "snapshots"), exist_ok=True
     )
 
-    frameworks = ["torch", "jax", "tensorflow", "keras", "mlx", "numpy", "cupy", "dask"]
+    frameworks = [
+        "torch",
+        "jax",
+        "tensorflow",
+        "keras",
+        "mlx",
+        "numpy",
+        "cupy",
+        "dask",
+        "flax_nnx",
+        "deepspeed",
+        "optax_shim",
+        "orbax_checkpoint",
+        "huggingface",
+        "triton",
+        "sklearn",
+        "onnxruntime",
+        "pax",
+    ]
 
     assert mock_extract.call_count == len(frameworks)
     assert mock_write.call_count == len(frameworks)
@@ -74,7 +92,25 @@ def test_main_failure(
 
     generate_all_snapshots.main()
 
-    frameworks = ["torch", "jax", "tensorflow", "keras", "mlx", "numpy", "cupy", "dask"]
+    frameworks = [
+        "torch",
+        "jax",
+        "tensorflow",
+        "keras",
+        "mlx",
+        "numpy",
+        "cupy",
+        "dask",
+        "flax_nnx",
+        "deepspeed",
+        "optax_shim",
+        "orbax_checkpoint",
+        "huggingface",
+        "triton",
+        "sklearn",
+        "onnxruntime",
+        "pax",
+    ]
 
     assert mock_extract.call_count == len(frameworks)
     assert mock_write.call_count == 0

@@ -191,3 +191,96 @@ def test_to_protobuf_types() -> None:
     assert "double f = 4;" in code
     assert "string u = 5;" in code
     assert "string unknown = 6;" in code
+
+
+def test_export_branches() -> None:
+    """Function docstring."""
+    from ml_framework_snapshots.export import (
+        _py_type_to_proto,
+        to_pydantic,
+        to_json_schema,
+        _ghost_to_cdd_ir,
+    )
+
+    assert _py_type_to_proto(None) == "string"  # type: ignore
+    assert _py_type_to_proto("") == "string"
+
+    from ml_switcheroo_ir.schema.ghost import GhostParam
+    from ml_switcheroo_ir.schema.ghost import GhostRef
+
+    r = GhostRef(
+        name="X",
+        api_path="X",
+        kind="function",
+        params=[
+            GhostParam(
+                name="p1", kind="KEYWORD_ONLY", default="None", annotation="int"
+            ),
+            GhostParam(
+                name="p2", kind="VAR_POSITIONAL", default="None", annotation="int"
+            ),
+        ],
+    )
+    to_pydantic(r)
+    to_json_schema(r)
+
+    r_empty_anno = GhostRef(
+        name="Y",
+        api_path="Y",
+        kind="function",
+        params=[GhostParam(name="p_empty", kind="KEYWORD_ONLY")],
+        returns_type="str",
+    )  # No returns_description
+    _ghost_to_cdd_ir(r_empty_anno)
+
+    r_ret_desc = GhostRef(
+        name="Z", api_path="Z", kind="function", params=[], returns_description="desc"
+    )
+    _ghost_to_cdd_ir(r_ret_desc)
+
+
+def test_export_branches_more() -> None:
+    """Function docstring."""
+    from ml_framework_snapshots.export import (
+        to_pydantic,
+        to_openapi,
+        to_json_schema,
+    )
+    from ml_switcheroo_ir.schema.ghost import GhostParam
+    from ml_switcheroo_ir.schema.ghost import GhostRef
+
+    r = GhostRef(
+        name="X",
+        api_path="X",
+        kind="class",
+        docstring="doc",
+        params=[
+            GhostParam(
+                name="p1", kind="KEYWORD_ONLY", default="None", annotation="int"
+            ),
+            GhostParam(
+                name="p2", kind="VAR_POSITIONAL", default="None", annotation="int"
+            ),
+        ],
+    )
+    to_pydantic(r)
+    to_openapi([r])
+    to_json_schema(r)
+
+    r2 = GhostRef(
+        name="X",
+        api_path="X",
+        kind="function",
+        returns_type="int",
+        returns_description="desc",
+        params=[
+            GhostParam(
+                name="p1",
+                kind="KEYWORD_ONLY",
+                default="None",
+                annotation="int",
+                description="desc",
+            ),
+        ],
+    )
+    to_pydantic(r2)

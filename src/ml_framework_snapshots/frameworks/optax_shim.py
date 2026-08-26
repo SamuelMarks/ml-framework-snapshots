@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover
     optax = None
 
 from ml_framework_snapshots.models import GhostInspector
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
 
 
 class OptaxScanner:
@@ -137,3 +137,16 @@ class OptaxScanner:
                     pass
 
         return results
+
+
+def collect_api(
+    category: SemanticTier, include_nonpublic: bool = False
+) -> List[GhostRef]:
+    """Collect optax APIs."""
+    if category == SemanticTier.OPTIMIZER:
+        return OptaxScanner.scan_optimizers(include_nonpublic)
+    elif category == SemanticTier.LOSS:
+        return OptaxScanner.scan_losses(include_nonpublic)
+    elif category == SemanticTier.SCHEDULER:
+        return OptaxScanner.scan_schedulers(include_nonpublic)
+    return []

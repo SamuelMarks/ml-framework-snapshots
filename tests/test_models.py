@@ -607,3 +607,11 @@ def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
     assert ref.overloads[0].params[0].annotation == "int"
     assert ref.overloads[0].params[0].default == "1"
     assert ref.overloads[0].returns_type == "int"
+
+
+def test_models_branches() -> None:
+    """Function docstring."""
+    from ml_framework_snapshots.models import sanitize_type_str
+
+    assert sanitize_type_str("typing.List") == "list"
+    assert sanitize_type_str("builtins.str") == "builtins.str"

@@ -25,14 +25,14 @@ runs:
       run: git clone https://github.com/SamuelMarks/ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.9"
 
     - name: Install ml-framework-snapshots and frameworks
       shell: bash
       run: |
-        pip install ".[frameworks]"
+        pip install ".[frameworks,generate]"
 
     - name: Generate Snapshots
       shell: bash

@@ -9,7 +9,25 @@ def main() -> None:
     os.makedirs(
         os.path.join("src", "ml_framework_snapshots", "snapshots"), exist_ok=True
     )
-    frameworks = ["torch", "jax", "tensorflow", "keras", "mlx", "numpy", "cupy", "dask"]
+    frameworks = [
+        "torch",
+        "jax",
+        "tensorflow",
+        "keras",
+        "mlx",
+        "numpy",
+        "cupy",
+        "dask",
+        "flax_nnx",
+        "deepspeed",
+        "optax_shim",
+        "orbax_checkpoint",
+        "huggingface",
+        "triton",
+        "sklearn",
+        "onnxruntime",
+        "pax",
+    ]
     for fw in frameworks:
         print(f"Building snapshot for {fw}...")
         try:

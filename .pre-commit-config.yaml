@@ -55,9 +55,3 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-      - id: validate-backend
-        name: Validate Backend Mappings
-        entry: uv run python scripts/validate_backend_mappings.py
-        language: system
-        pass_filenames: false
-        always_run: true

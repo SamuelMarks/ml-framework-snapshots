@@ -87,6 +87,7 @@ def get_available_frameworks() -> Dict[str, Any]:
         "triton": triton_collect,
         "onnxruntime": onnxruntime_collect,
         "deepspeed": deepspeed_collect,
+        "huggingface": collect_transformers,
         "orbax": __import__(
             "ml_framework_snapshots.frameworks.orbax_checkpoint"
         ).frameworks.orbax_checkpoint.collect_api,
@@ -118,6 +119,12 @@ def get_pkg_version(package_name: str) -> str:
             package_name = "torch"
         elif package_name == "pax":
             package_name = "paxml"
+        elif package_name == "optax_shim":
+            package_name = "optax"
+        elif package_name == "huggingface":
+            package_name = "transformers"
+        elif package_name == "orbax_checkpoint":
+            package_name = "orbax-checkpoint"
         elif package_name == "orbax":
             package_name = "orbax-checkpoint"
 

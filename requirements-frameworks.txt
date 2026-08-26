@@ -8,4 +8,3 @@ tensorflow
 tensorflow-macos ; sys_platform == 'darwin'
 numpy<2.0.0
 dask
-cupy-cuda12x
