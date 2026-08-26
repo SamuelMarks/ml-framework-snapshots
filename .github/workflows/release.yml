@@ -38,8 +38,10 @@ jobs:
       - name: Install dependencies and generate Paxml snapshot
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install paxml ".[generate]"
-          python3 generate_all_snapshots.py pax
+          python3 -m venv venv-3-10
+          venv-3-10/bin/python3 -m pip install -U setuptools wheel pip
+          venv-3-10/bin/python3 -m pip install paxml '.[generate]'
+          venv-3-10/bin/python3 scripts/generate_all_snapshots.py pax
 
       - name: Set up Python 3.12 (for other frameworks)
         uses: actions/setup-python@v7
@@ -49,15 +51,17 @@ jobs:
       - name: Install dependencies for other frameworks
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install ".[frameworks,host,linux_x64,generate]" build
+          python3 -m venv venv-3-12
+          venv-3-12/bin/python3 -m pip install -U setuptools wheel pip
+          venv-3-12/bin/python3 -m pip install '.[frameworks,host,linux_x64,generate]' build
 
       - name: Generate remaining snapshots
         run: |
-          python3 generate_all_snapshots.py torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface triton sklearn onnxruntime
+          venv-3-12/bin/python3 scripts/generate_all_snapshots.py torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface triton sklearn onnxruntime
 
       - name: Build Wheel
         run: |
-          python3 -m build
+          venv-3-12/bin/python3 -m build
 
       - name: Release and Upload Assets
         uses: softprops/action-gh-release@v3

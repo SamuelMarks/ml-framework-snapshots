@@ -127,6 +127,10 @@ def get_pkg_version(package_name: str) -> str:
             package_name = "orbax-checkpoint"
         elif package_name == "orbax":
             package_name = "orbax-checkpoint"
+        elif package_name == "mlir":
+            package_name = "jaxlib"
+        elif package_name in ["html_dsl", "latex_dsl", "tikz", "sass"]:
+            return "1.0.0"
 
         return importlib.metadata.version(package_name)
     except Exception:

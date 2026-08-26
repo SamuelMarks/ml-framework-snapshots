@@ -28,6 +28,12 @@ def main() -> None:
         "sklearn",
         "onnxruntime",
         "pax",
+        "maxtext",
+        "mlir",
+        "html_dsl",
+        "latex_dsl",
+        "tikz",
+        "sass",
     ]
     frameworks = sys.argv[1:] if len(sys.argv) > 1 else all_frameworks
     has_error = False

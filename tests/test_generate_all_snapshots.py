@@ -5,16 +5,16 @@ import sys
 import pytest
 from unittest.mock import patch, MagicMock
 
-# Add the root directory to sys.path so we can import generate_all_snapshots
+# Add the root directory to sys.path so we can import scripts.generate_all_snapshots
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import generate_all_snapshots
+import scripts.generate_all_snapshots as generate_all_snapshots
 
 
 @patch("sys.argv", ["generate_all_snapshots.py"])
-@patch("generate_all_snapshots.os.makedirs")
-@patch("generate_all_snapshots.extract_snapshot")
-@patch("generate_all_snapshots.write_snapshot")
+@patch("scripts.generate_all_snapshots.os.makedirs")
+@patch("scripts.generate_all_snapshots.extract_snapshot")
+@patch("scripts.generate_all_snapshots.write_snapshot")
 @patch("builtins.print")
 def test_main_success(
     mock_print: MagicMock,
@@ -56,6 +56,12 @@ def test_main_success(
         "sklearn",
         "onnxruntime",
         "pax",
+        "maxtext",
+        "mlir",
+        "html_dsl",
+        "latex_dsl",
+        "tikz",
+        "sass",
     ]
 
     assert mock_extract.call_count == len(frameworks)
@@ -73,9 +79,9 @@ def test_main_success(
 
 
 @patch("sys.argv", ["generate_all_snapshots.py"])
-@patch("generate_all_snapshots.os.makedirs")
-@patch("generate_all_snapshots.extract_snapshot")
-@patch("generate_all_snapshots.write_snapshot")
+@patch("scripts.generate_all_snapshots.os.makedirs")
+@patch("scripts.generate_all_snapshots.extract_snapshot")
+@patch("scripts.generate_all_snapshots.write_snapshot")
 @patch("builtins.print")
 def test_main_failure(
     mock_print: MagicMock,
@@ -114,6 +120,12 @@ def test_main_failure(
         "sklearn",
         "onnxruntime",
         "pax",
+        "maxtext",
+        "mlir",
+        "html_dsl",
+        "latex_dsl",
+        "tikz",
+        "sass",
     ]
 
     assert mock_extract.call_count == len(frameworks)

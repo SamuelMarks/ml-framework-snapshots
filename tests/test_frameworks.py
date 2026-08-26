@@ -1626,3 +1626,152 @@ def test_huggingface_collect(mocker: Any) -> None:
 
     mocker.patch("importlib.import_module", side_effect=ImportError)
     assert not hf_shim.collect_transformers(SemanticTier.MODEL)
+
+
+def test_maxtext_collect(mocker: Any) -> None:
+    """Test the maxtext API collector.
+
+    Args:
+        mocker: Parameter.
+    """
+    from ml_framework_snapshots.frameworks import maxtext as maxtext_fw
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+
+    class FakeMaxtext:
+        __path__ = ["fake/path"]
+
+    mocker.patch.object(maxtext_fw, "maxtext", FakeMaxtext())
+
+    import textwrap
+
+    mocker.patch("glob.glob", return_value=["fake/path/models/fake_model.py"])
+
+    mock_file_content = textwrap.dedent("""
+        class FakeModel:
+            def __init__(self, arg1, *, kwarg1=1):
+                pass
+        class NotAModel:
+            pass
+    """)
+
+    mocker.patch("builtins.open", mocker.mock_open(read_data=mock_file_content))
+
+    models = maxtext_fw.collect_api(SemanticTier.MODEL)
+    assert len(models) == 2
+    names = [x.name for x in models]
+    assert "FakeModel" in names
+    assert "NotAModel" in names
+
+    assert maxtext_fw.collect_api(SemanticTier.LAYER) == []
+
+    mocker.patch.object(maxtext_fw, "maxtext", None)
+    assert maxtext_fw.collect_api(SemanticTier.MODEL) == []
+
+    # test parser exception
+    mocker.patch.object(maxtext_fw, "maxtext", FakeMaxtext())
+    mocker.patch("builtins.open", side_effect=Exception)
+    assert maxtext_fw.collect_api(SemanticTier.MODEL) == []
+
+    # test missing __path__
+    class FakeMaxtextNoPath:
+        pass
+
+    mocker.patch.object(maxtext_fw, "maxtext", FakeMaxtextNoPath())
+    assert maxtext_fw.collect_api(SemanticTier.MODEL) == []
+
+
+def test_mlir_collect(mocker: Any) -> None:
+    """Test the mlir API collector.
+
+    Args:
+        mocker: Parameter.
+    """
+    from ml_framework_snapshots.frameworks import mlir as mlir_fw
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+
+    class FakeMlir:
+        __path__ = ["fake/path"]
+
+    mocker.patch.object(mlir_fw, "mlir_dialects", FakeMlir())
+
+    import textwrap
+
+    mocker.patch("glob.glob", return_value=["fake/path/_arith_ops_gen.py"])
+
+    mock_file_content = textwrap.dedent("""
+        class AddFOp:
+            OPERATION_NAME = "arith.addf"
+            def __init__(self, lhs, *, loc=None):
+                pass
+        class NotAnOp:
+            pass
+        class PartialOp:
+            OPERATION_NAME = "arith.partial"
+            # missing __init__
+        class WeirdOp:
+            # Operation name is not a constant
+            OPERATION_NAME = get_name()
+            # Operation target is something else
+            some_other_var = "value"
+    """)
+
+    mocker.patch("builtins.open", mocker.mock_open(read_data=mock_file_content))
+    mocker.patch(
+        "glob.glob",
+        return_value=[
+            "fake/path/_arith_ops_gen.py",
+            "fake/path/not_ops_gen.py",
+            "fake/path/not_started_with_us_ops_gen.py",
+        ],
+    )
+
+    ops = mlir_fw.collect_api(SemanticTier.UTIL)
+    assert len(ops) == 2
+    names = [x.name for x in ops]
+    assert "AddFOp" in names
+    assert "PartialOp" in names
+
+    assert mlir_fw.collect_api(SemanticTier.LAYER) == []
+
+    mocker.patch.object(mlir_fw, "mlir_dialects", None)
+    assert mlir_fw.collect_api(SemanticTier.UTIL) == []
+
+    # test parser exception
+    mocker.patch.object(mlir_fw, "mlir_dialects", FakeMlir())
+    mocker.patch("builtins.open", side_effect=Exception)
+    assert mlir_fw.collect_api(SemanticTier.UTIL) == []
+
+    # test missing __path__
+    class FakeMlirNoPath:
+        pass
+
+    mocker.patch.object(mlir_fw, "mlir_dialects", FakeMlirNoPath())
+    assert mlir_fw.collect_api(SemanticTier.UTIL) == []
+
+
+def test_static_dsl_extractors() -> None:
+    """Test static DSL extractors."""
+    from ml_framework_snapshots.frameworks import html_dsl, latex_dsl, tikz, sass
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+
+    html_refs = html_dsl.collect_api(SemanticTier.UTIL)
+    assert len(html_refs) > 0
+    assert any(r.name == "div" for r in html_refs)
+    assert html_dsl.collect_api(SemanticTier.LAYER) == []
+
+    latex_refs = latex_dsl.collect_api(SemanticTier.UTIL)
+    assert len(latex_refs) > 0
+    assert any(r.name == "frac" for r in latex_refs)
+    assert latex_dsl.collect_api(SemanticTier.LAYER) == []
+
+    tikz_refs = tikz.collect_api(SemanticTier.UTIL)
+    assert len(tikz_refs) > 0
+    assert any(r.name == "draw" for r in tikz_refs)
+    assert any(r.name == "circle" for r in tikz_refs)
+    assert tikz.collect_api(SemanticTier.LAYER) == []
+
+    sass_refs = sass.collect_api(SemanticTier.UTIL)
+    assert len(sass_refs) > 0
+    assert any(r.name == "mixin" for r in sass_refs)
+    assert any(r.name == "color" for r in sass_refs)
+    assert sass.collect_api(SemanticTier.LAYER) == []

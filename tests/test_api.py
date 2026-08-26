@@ -436,3 +436,32 @@ def test_api_version_aliases(mocker: Any) -> None:
 
     mocker.patch("importlib.metadata.version", side_effect=Exception)
     assert api.get_pkg_version("unknown") == "unknown"
+
+
+def test_get_pkg_version_extra() -> None:
+    """Test get_pkg_version for extra packages."""
+    from ml_framework_snapshots.api import get_pkg_version
+    import unittest.mock as mock
+
+    with mock.patch("importlib.metadata.version") as mock_version:
+        mock_version.return_value = "1.2.3"
+        assert get_pkg_version("mlir") == "1.2.3"
+        mock_version.assert_called_with("jaxlib")
+
+    assert get_pkg_version("html_dsl") == "1.0.0"
+    assert get_pkg_version("latex_dsl") == "1.0.0"
+    assert get_pkg_version("tikz") == "1.0.0"
+    assert get_pkg_version("sass") == "1.0.0"
+
+
+def test_get_pkg_version_more() -> None:
+    """Test get_pkg_version for more packages."""
+    from ml_framework_snapshots.api import get_pkg_version
+    import unittest.mock as mock
+
+    with mock.patch("importlib.metadata.version") as mock_version:
+        mock_version.return_value = "1.2.3"
+        assert get_pkg_version("optax_shim") == "1.2.3"
+        assert get_pkg_version("huggingface") == "1.2.3"
+        assert get_pkg_version("orbax_checkpoint") == "1.2.3"
+        assert get_pkg_version("orbax") == "1.2.3"
