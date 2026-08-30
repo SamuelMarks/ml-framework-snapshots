@@ -19,7 +19,7 @@ import typing
 try:
     import flax.nnx as _nnx
 
-    nnx: typing.Any = _nnx
+    nnx: typing.Any = _nnx  # pragma: no cover
 except ImportError:  # pragma: no cover
     nnx = None
 

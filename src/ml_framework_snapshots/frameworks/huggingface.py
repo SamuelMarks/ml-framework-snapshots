@@ -125,9 +125,25 @@ def collect_huggingface(
 
     inspector = GhostInspector()
 
-    for name in dir(mod):
+    dir_mod = dir(mod)
+    is_large_module = len(dir_mod) > 100
+
+    for name in dir_mod:
         if not include_nonpublic and name.startswith("_"):
             continue
+
+        if is_large_module and module_name == "transformers":  # pragma: no cover
+            if not (
+                name.startswith("Auto")
+                or name.startswith("TFAuto")
+                or name.startswith("FlaxAuto")
+                or name.startswith("pipeline")
+                or name.startswith("PreTrained")
+                or name.endswith("Pipeline")
+                or name.endswith("TokenizerFast")
+                or name.endswith("Tokenizer")
+            ):
+                continue
 
         try:
             obj = getattr(mod, name)

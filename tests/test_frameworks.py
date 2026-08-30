@@ -1638,6 +1638,8 @@ def test_maxtext_collect(mocker: Any) -> None:
     from ml_switcheroo_ir.schema.ghost import SemanticTier
 
     class FakeMaxtext:
+        """Fake Maxtext module for testing."""
+
         __path__ = ["fake/path"]
 
     mocker.patch.object(maxtext_fw, "maxtext", FakeMaxtext())
@@ -1674,6 +1676,8 @@ def test_maxtext_collect(mocker: Any) -> None:
 
     # test missing __path__
     class FakeMaxtextNoPath:
+        """Fake Maxtext module without __path__."""
+
         pass
 
     mocker.patch.object(maxtext_fw, "maxtext", FakeMaxtextNoPath())
@@ -1690,6 +1694,8 @@ def test_mlir_collect(mocker: Any) -> None:
     from ml_switcheroo_ir.schema.ghost import SemanticTier
 
     class FakeMlir:
+        """Fake MLIR module for testing."""
+
         __path__ = ["fake/path"]
 
     mocker.patch.object(mlir_fw, "mlir_dialects", FakeMlir())
@@ -1743,6 +1749,8 @@ def test_mlir_collect(mocker: Any) -> None:
 
     # test missing __path__
     class FakeMlirNoPath:
+        """Fake MLIR module without __path__."""
+
         pass
 
     mocker.patch.object(mlir_fw, "mlir_dialects", FakeMlirNoPath())

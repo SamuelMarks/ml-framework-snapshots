@@ -20,7 +20,7 @@ try:
     import mlx.optimizers as _optimizers  # noqa: F401 # pragma: no cover
     import mlx as _mlx  # pragma: no cover
 
-    mlx: typing.Any = _mlx
+    mlx: typing.Any = _mlx  # pragma: no cover
 except ImportError:  # pragma: no cover
     mlx = None
 

@@ -18,7 +18,7 @@ import typing
 try:
     import jaxlib.mlir.dialects as _mlir_dialects
 
-    mlir_dialects: typing.Any = _mlir_dialects
+    mlir_dialects: typing.Any = _mlir_dialects  # pragma: no cover
 except ImportError:  # pragma: no cover
     mlir_dialects = None
 

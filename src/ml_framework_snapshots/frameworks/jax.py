@@ -17,7 +17,7 @@ from ml_framework_snapshots.frameworks.optax_shim import OptaxScanner
 try:
     import jax as _jax
 
-    jax: typing.Any = _jax
+    jax: typing.Any = _jax  # pragma: no cover
 except ImportError:  # pragma: no cover
     jax = None
 

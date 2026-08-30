@@ -18,9 +18,9 @@ try:
     import torch.optim as _optim  # pragma: no cover
     import torch.utils.data as _data  # pragma: no cover
 
-    nn: typing.Any = _nn
-    optim: typing.Any = _optim
-    data: typing.Any = _data
+    nn: typing.Any = _nn  # pragma: no cover
+    optim: typing.Any = _optim  # pragma: no cover
+    data: typing.Any = _data  # pragma: no cover
 except ImportError:  # pragma: no cover
     nn = None
     optim = None
