@@ -32,14 +32,18 @@ jobs:
     - name: Move ml-switcheroo-ir
       run: mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v10
+      with:
+        version: "latest"
+
     - name: Install dependencies
       run: |
-        python3 -m pip install --upgrade pip
-        python3 -m pip install pre-commit
+        uv pip install --system pre-commit
 
     - name: Set up virtual environment
       run: |
-        python3 -m pip install -e ".[test,generate]" build pytest pytest-cov
+        uv pip install --system -e ".[test,generate]" build pytest pytest-cov
 
     - name: Run pre-commit
       run: pre-commit run --all-files

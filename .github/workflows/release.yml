@@ -45,25 +45,67 @@ jobs:
           venv-3-10/bin/python3 -m pip install paxml "jaxlib==0.4.26"
           venv-3-10/bin/python3 scripts/generate_all_snapshots.py pax
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          version: "latest"
+
       - name: Set up Python 3.12 (for other frameworks)
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      - name: Install dependencies for other frameworks
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m venv venv-3-12
-          venv-3-12/bin/python3 -m pip install -U setuptools wheel pip
-          venv-3-12/bin/python3 -m pip install '.[frameworks,host,linux_x64,generate]' build
-
       - name: Generate remaining snapshots
         run: |
-          venv-3-12/bin/python3 scripts/generate_all_snapshots.py torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface triton sklearn onnxruntime
+          # Use uv to generate snapshots one framework at a time, each in its own environment
+          frameworks="torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface triton sklearn onnxruntime"
+          for fw in $frameworks; do
+            echo "::group::Generate snapshot for $fw"
+
+            # Skip mlx on non-macOS (ubuntu-latest in CI)
+            if [ "$fw" = "mlx" ] && [ "$RUNNER_OS" != "macOS" ]; then
+              echo "Skipping mlx on non-macOS"
+              echo "::endgroup::"
+              continue
+            fi
+
+            uv venv "venv-$fw" --python 3.12
+            uv pip install -p "venv-$fw" '.[generate]'
+
+            # Select dependencies for the specific framework
+            case $fw in
+              torch) PKGS="torch --index-url https://download.pytorch.org/whl/cpu" ;;
+              jax) PKGS="jax[cpu]" ;;
+              tensorflow) PKGS="tensorflow-cpu" ;;
+              keras) PKGS="keras" ;;
+              mlx) PKGS="mlx" ;;
+              numpy) PKGS="numpy<2.0.0" ;;
+              cupy) PKGS="cupy-cuda12x" ;;
+              dask) PKGS="dask" ;;
+              flax_nnx) PKGS="flax jax[cpu]" ;;
+              deepspeed) PKGS="deepspeed torch --index-url https://download.pytorch.org/whl/cpu" ;;
+              optax_shim) PKGS="optax jax[cpu]" ;;
+              orbax_checkpoint) PKGS="orbax-checkpoint jax[cpu]" ;;
+              huggingface) PKGS="transformers" ;;
+              triton) PKGS="triton" ;;
+              sklearn) PKGS="scikit-learn" ;;
+              onnxruntime) PKGS="onnxruntime" ;;
+              *) PKGS="" ;;
+            esac
+
+            if [ -n "$PKGS" ]; then
+              uv pip install -p "venv-$fw" $PKGS
+            fi
+
+            "venv-$fw/bin/python3" scripts/generate_all_snapshots.py $fw
+            echo "::endgroup::"
+          done
 
       - name: Build Wheel
         run: |
-          venv-3-12/bin/python3 -m build
+          uv venv venv-build --python 3.12
+          uv pip install -p venv-build build
+          venv-build/bin/python3 -m build
 
       - name: Release and Upload Assets
         uses: softprops/action-gh-release@v3
