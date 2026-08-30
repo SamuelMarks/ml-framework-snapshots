@@ -33,7 +33,7 @@ jobs:
       run: mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10
+      uses: astral-sh/setup-uv@v10.0.1
       with:
         version: "latest"
 

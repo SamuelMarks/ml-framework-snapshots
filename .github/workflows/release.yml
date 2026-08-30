@@ -11,15 +11,25 @@ permissions:
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Create required directories and set permissions
+      - name: Create required directories and set permissions (Linux)
         run: |
           sudo mkdir -p /Users/samuel/repos
-          sudo chown -R $(whoami) /Users
+          sudo chown -R $USER /Users
+        if: runner.os == 'Linux'
+
+      - name: Create required directories (macOS)
+        run: |
+          sudo mkdir -p /Users/samuel/repos
+          sudo chown -R $USER /Users/samuel
+        if: runner.os == 'macOS'
 
       - name: Checkout ml-switcheroo-ir
         uses: actions/checkout@v7
@@ -30,12 +40,28 @@ jobs:
       - name: Move ml-switcheroo-ir
         run: mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
+      - name: Setup GitHub Release
+        id: setup_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Release $GITHUB_REF_NAME" --notes "Automated release $GITHUB_REF_NAME"
+            gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' > current_assets.txt || touch current_assets.txt
+          else
+            touch current_assets.txt
+          fi
+
       - name: Set up Python 3.10 (for paxml)
         uses: actions/setup-python@v7
         with:
           python-version: "3.10"
+        if: runner.os == 'Linux'
 
       - name: Install dependencies and generate Paxml snapshot
+        if: runner.os == 'Linux'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 -m pip install --upgrade pip
           python3 -m venv venv-3-10
@@ -43,10 +69,22 @@ jobs:
           venv-3-10/bin/python3 -m pip install '.[generate]'
           venv-3-10/bin/python3 -m pip uninstall -y jaxlib jax optax
           venv-3-10/bin/python3 -m pip install paxml "jaxlib==0.4.26"
-          venv-3-10/bin/python3 scripts/generate_all_snapshots.py pax
+
+          # Check version
+          ver=$(venv-3-10/bin/python3 -c "import sys, os; sys.path.insert(0, 'src'); from ml_framework_snapshots.api import get_pkg_version; v = get_pkg_version('pax'); print(v.replace('+','_').replace(' ','_'))" || echo "unknown")
+          filename="pax_v${ver}.json"
+
+          if grep -Fq "$filename" current_assets.txt; then
+            echo "Snapshot for pax version $ver already exists. Skipping."
+          else
+            venv-3-10/bin/python3 scripts/generate_all_snapshots.py pax
+            if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              gh release upload "$GITHUB_REF_NAME" "src/ml_framework_snapshots/snapshots/$filename" --clobber
+            fi
+          fi
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "latest"
 
@@ -56,15 +94,21 @@ jobs:
           python-version: "3.12"
 
       - name: Generate remaining snapshots
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use uv to generate snapshots one framework at a time, each in its own environment
           frameworks="torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface triton sklearn onnxruntime"
           for fw in $frameworks; do
             echo "::group::Generate snapshot for $fw"
 
-            # Skip mlx on non-macOS (ubuntu-latest in CI)
             if [ "$fw" = "mlx" ] && [ "$RUNNER_OS" != "macOS" ]; then
               echo "Skipping mlx on non-macOS"
+              echo "::endgroup::"
+              continue
+            fi
+
+            if [ "$fw" != "mlx" ] && [ "$RUNNER_OS" == "macOS" ]; then
+              echo "Skipping $fw on macOS"
               echo "::endgroup::"
               continue
             fi
@@ -72,7 +116,6 @@ jobs:
             uv venv "venv-$fw" --python 3.12
             uv pip install -p "venv-$fw" '.[generate]'
 
-            # Select dependencies for the specific framework
             case $fw in
               torch) PKGS="torch --index-url https://download.pytorch.org/whl/cpu" ;;
               jax) PKGS="jax[cpu]" ;;
@@ -97,21 +140,34 @@ jobs:
               uv pip install -p "venv-$fw" $PKGS
             fi
 
-            "venv-$fw/bin/python3" scripts/generate_all_snapshots.py $fw
+            ver=$("venv-$fw/bin/python3" -c "import sys, os; sys.path.insert(0, 'src'); from ml_framework_snapshots.api import get_pkg_version; v = get_pkg_version('$fw'); print(v.replace('+','_').replace(' ','_'))" || echo "unknown")
+            filename="${fw}_v${ver}.json"
+
+            if grep -Fq "$filename" current_assets.txt; then
+              echo "Snapshot for $fw version $ver already exists. Skipping."
+            else
+              "venv-$fw/bin/python3" scripts/generate_all_snapshots.py $fw
+
+              if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+                if [ -f "src/ml_framework_snapshots/snapshots/$filename" ]; then
+                  gh release upload "$GITHUB_REF_NAME" "src/ml_framework_snapshots/snapshots/$filename" --clobber
+                else
+                  echo "Warning: Expected snapshot file src/ml_framework_snapshots/snapshots/$filename was not generated."
+                fi
+              fi
+            fi
+
             echo "::endgroup::"
           done
 
-      - name: Build Wheel
+      - name: Build and Upload Wheel
+        if: runner.os == 'Linux'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           uv venv venv-build --python 3.12
           uv pip install -p venv-build build
           venv-build/bin/python3 -m build
-
-      - name: Release and Upload Assets
-        uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            src/ml_framework_snapshots/snapshots/*.json
-            dist/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          fi
