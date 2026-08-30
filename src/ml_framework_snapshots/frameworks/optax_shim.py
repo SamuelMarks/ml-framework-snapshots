@@ -16,7 +16,7 @@ from typing import List
 
 try:
     import optax
-except ImportError:  # pragma: no cover
+except Exception:  # pragma: no cover
     optax = None
 
 from ml_framework_snapshots.models import GhostInspector

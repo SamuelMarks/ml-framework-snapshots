@@ -18,7 +18,7 @@ try:
     import jax as _jax
 
     jax: typing.Any = _jax  # pragma: no cover
-except ImportError:  # pragma: no cover
+except Exception:  # pragma: no cover
     jax = None
 
 

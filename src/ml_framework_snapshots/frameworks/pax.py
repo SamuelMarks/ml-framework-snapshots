@@ -10,7 +10,7 @@ try:
     import paxml
     import praxis  # pragma: no cover
     from praxis import layers  # pragma: no cover
-except ImportError:  # pragma: no cover
+except Exception:  # pragma: no cover
     paxml = None  # pragma: no cover
     praxis = None  # pragma: no cover
     layers = None  # pragma: no cover
