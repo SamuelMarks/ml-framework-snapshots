@@ -15,6 +15,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -52,6 +53,11 @@ jobs:
             touch current_assets.txt
           fi
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+
       - name: Set up Python 3.10 (for paxml)
         uses: actions/setup-python@v7
         with:
@@ -63,6 +69,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "::group::Pre-check Paxml version"
+          EXPECTED_VER=$(echo "paxml" | uv pip compile -p 3.10 -q - 2>/dev/null | grep -i "^paxml==" | head -n1 | sed -e 's/^[a-zA-Z0-9_-]*==//i' -e 's/;.*//' -e 's/^[ \t]*//' -e 's/[ \t]*$//' -e 's/+/_/g' -e 's/ /_/g')
+          if [ -n "$EXPECTED_VER" ]; then
+            FILENAME="pax_v${EXPECTED_VER}.json"
+            if grep -Fq "$FILENAME" current_assets.txt || [ -f "src/ml_framework_snapshots/snapshots/$FILENAME" ]; then
+              echo "Snapshot $FILENAME already exists. Skipping paxml."
+              echo "::endgroup::"
+              exit 0
+            else
+              echo "Will build pax (expected version $EXPECTED_VER)"
+            fi
+          else
+            echo "Could not pre-determine version for pax, will build."
+          fi
+          echo "::endgroup::"
+
           python3 -m pip install --upgrade pip
           python3 -m venv venv-3-10
           venv-3-10/bin/python3 -m pip install -U setuptools wheel pip
@@ -75,18 +97,13 @@ jobs:
           filename="pax_v${ver}.json"
 
           if grep -Fq "$filename" current_assets.txt; then
-            echo "Snapshot for pax version $ver already exists. Skipping."
+            echo "Snapshot for pax version $ver already exists (checked post-install). Skipping."
           else
             venv-3-10/bin/python3 scripts/generate_all_snapshots.py pax
             if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
               gh release upload "$GITHUB_REF_NAME" "src/ml_framework_snapshots/snapshots/$filename" --clobber
             fi
           fi
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v10.0.1
-        with:
-          version: "latest"
 
       - name: Set up Python 3.12 (for other frameworks)
         uses: actions/setup-python@v7
@@ -98,70 +115,151 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           frameworks="torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface triton sklearn onnxruntime"
+
+          echo "::group::Pre-check versions"
+          SKIP_LIST=" "
           for fw in $frameworks; do
-            echo "::group::Generate snapshot for $fw"
-
-            if [ "$fw" = "mlx" ] && [ "$RUNNER_OS" != "macOS" ]; then
-              echo "Skipping mlx on non-macOS"
-              echo "::endgroup::"
-              continue
-            fi
-
-            if [ "$fw" != "mlx" ] && [ "$RUNNER_OS" == "macOS" ]; then
-              echo "Skipping $fw on macOS"
-              echo "::endgroup::"
-              continue
-            fi
-
-            uv venv "venv-$fw" --python 3.12
-            uv pip install -p "venv-$fw" '.[generate]'
+            if [ "$fw" = "mlx" ] && [ "$RUNNER_OS" != "macOS" ]; then continue; fi
+            if [ "$fw" != "mlx" ] && [ "$RUNNER_OS" == "macOS" ]; then continue; fi
 
             case $fw in
-              torch) PKGS="torch --index-url https://download.pytorch.org/whl/cpu" ;;
-              jax) PKGS="jax[cpu]" ;;
-              tensorflow) PKGS="tensorflow-cpu" ;;
-              keras) PKGS="keras" ;;
-              mlx) PKGS="mlx" ;;
-              numpy) PKGS="numpy<2.0.0" ;;
-              cupy) PKGS="cupy-cuda12x" ;;
-              dask) PKGS="dask" ;;
-              flax_nnx) PKGS="flax jax[cpu]" ;;
-              deepspeed) PKGS="deepspeed torch --index-url https://download.pytorch.org/whl/cpu" ;;
-              optax_shim) PKGS="optax jax[cpu]" ;;
-              orbax_checkpoint) PKGS="orbax-checkpoint jax[cpu]" ;;
-              huggingface) PKGS="transformers" ;;
-              triton) PKGS="triton" ;;
-              sklearn) PKGS="scikit-learn" ;;
-              onnxruntime) PKGS="onnxruntime" ;;
-              *) PKGS="" ;;
+              torch) PKGS="torch"; INDEX="--index-url https://download.pytorch.org/whl/cpu"; PKG_NAME="torch" ;;
+              jax) PKGS="jax[cpu]"; INDEX=""; PKG_NAME="jax" ;;
+              tensorflow) PKGS="tensorflow-cpu"; INDEX=""; PKG_NAME="tensorflow-cpu" ;;
+              keras) PKGS="keras"; INDEX=""; PKG_NAME="keras" ;;
+              mlx) PKGS="mlx"; INDEX=""; PKG_NAME="mlx" ;;
+              numpy) PKGS="numpy<2.0.0"; INDEX=""; PKG_NAME="numpy" ;;
+              cupy) PKGS="cupy-cuda12x"; INDEX=""; PKG_NAME="cupy-cuda12x" ;;
+              dask) PKGS="dask"; INDEX=""; PKG_NAME="dask" ;;
+              flax_nnx) PKGS="flax"; INDEX=""; PKG_NAME="flax" ;;
+              deepspeed) PKGS="deepspeed"; INDEX="--index-url https://download.pytorch.org/whl/cpu"; PKG_NAME="deepspeed" ;;
+              optax_shim) PKGS="optax"; INDEX=""; PKG_NAME="optax" ;;
+              orbax_checkpoint) PKGS="orbax-checkpoint"; INDEX=""; PKG_NAME="orbax-checkpoint" ;;
+              huggingface) PKGS="transformers"; INDEX=""; PKG_NAME="transformers" ;;
+              triton) PKGS="triton"; INDEX=""; PKG_NAME="triton" ;;
+              sklearn) PKGS="scikit-learn"; INDEX=""; PKG_NAME="scikit-learn" ;;
+              onnxruntime) PKGS="onnxruntime"; INDEX=""; PKG_NAME="onnxruntime" ;;
+              *) PKGS=""; PKG_NAME="" ;;
             esac
 
             if [ -n "$PKGS" ]; then
-              uv pip install -p "venv-$fw" $PKGS
-            fi
-
-            ver=$("venv-$fw/bin/python3" -c "import sys, os; sys.path.insert(0, 'src'); from ml_framework_snapshots.api import get_pkg_version; v = get_pkg_version('$fw'); print(v.replace('+','_').replace(' ','_'))" || echo "unknown")
-            filename="${fw}_v${ver}.json"
-
-            if grep -Fq "$filename" current_assets.txt; then
-              echo "Snapshot for $fw version $ver already exists. Skipping."
-            else
-              "venv-$fw/bin/python3" scripts/generate_all_snapshots.py $fw
-
-              if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
-                if [ -f "src/ml_framework_snapshots/snapshots/$filename" ]; then
-                  gh release upload "$GITHUB_REF_NAME" "src/ml_framework_snapshots/snapshots/$filename" --clobber
+              EXPECTED_VER=$(echo "$PKGS" | uv pip compile $INDEX -p 3.12 -q - 2>/dev/null | grep -i "^${PKG_NAME}==" | head -n1 | sed -e 's/^[a-zA-Z0-9_-]*==//i' -e 's/;.*//' -e 's/^[ \t]*//' -e 's/[ \t]*$//' -e 's/+/_/g' -e 's/ /_/g')
+              if [ -n "$EXPECTED_VER" ]; then
+                FILENAME="${fw}_v${EXPECTED_VER}.json"
+                if grep -Fq "$FILENAME" current_assets.txt || [ -f "src/ml_framework_snapshots/snapshots/$FILENAME" ]; then
+                  echo "Snapshot $FILENAME already exists. Skipping $fw."
+                  SKIP_LIST="$SKIP_LIST $fw "
                 else
-                  echo "Warning: Expected snapshot file src/ml_framework_snapshots/snapshots/$filename was not generated."
+                  echo "Will build $fw (expected version $EXPECTED_VER)"
                 fi
+              else
+                echo "Could not pre-determine version for $fw, will build."
               fi
             fi
+          done
+          echo "::endgroup::"
 
-            echo "::endgroup::"
+          echo "::group::Generate snapshots"
+          PIDS=""
+          for fw in $frameworks; do
+            if [ "$fw" = "mlx" ] && [ "$RUNNER_OS" != "macOS" ]; then continue; fi
+            if [ "$fw" != "mlx" ] && [ "$RUNNER_OS" == "macOS" ]; then continue; fi
+
+            if [[ "$SKIP_LIST" == *" $fw "* ]]; then
+              continue
+            fi
+
+            (
+              echo "Starting $fw snapshot generation"
+              uv venv "venv-$fw" --python 3.12
+              uv pip install -p "venv-$fw" '.[generate]'
+
+              case $fw in
+                torch) PKGS="torch --index-url https://download.pytorch.org/whl/cpu" ;;
+                jax) PKGS="jax[cpu]" ;;
+                tensorflow) PKGS="tensorflow-cpu" ;;
+                keras) PKGS="keras" ;;
+                mlx) PKGS="mlx" ;;
+                numpy) PKGS="numpy<2.0.0" ;;
+                cupy) PKGS="cupy-cuda12x" ;;
+                dask) PKGS="dask" ;;
+                flax_nnx) PKGS="flax jax[cpu]" ;;
+                deepspeed) PKGS="deepspeed torch --index-url https://download.pytorch.org/whl/cpu" ;;
+                optax_shim) PKGS="optax jax[cpu]" ;;
+                orbax_checkpoint) PKGS="orbax-checkpoint jax[cpu]" ;;
+                huggingface) PKGS="transformers" ;;
+                triton) PKGS="triton" ;;
+                sklearn) PKGS="scikit-learn" ;;
+                onnxruntime) PKGS="onnxruntime" ;;
+                *) PKGS="" ;;
+              esac
+
+              if [ -n "$PKGS" ]; then
+                uv pip install -p "venv-$fw" $PKGS
+              fi
+
+              ver=$("venv-$fw/bin/python3" -c "import sys, os; sys.path.insert(0, 'src'); from ml_framework_snapshots.api import get_pkg_version; v = get_pkg_version('$fw'); print(v.replace('+','_').replace(' ','_'))" || echo "unknown")
+              filename="${fw}_v${ver}.json"
+
+              if grep -Fq "$filename" current_assets.txt; then
+                echo "Snapshot for $fw version $ver already exists (checked post-install). Skipping."
+              else
+                "venv-$fw/bin/python3" scripts/generate_all_snapshots.py $fw
+              fi
+              echo "Finished $fw"
+            ) &
+            PIDS="$PIDS $!"
           done
 
+          FAIL=0
+          for pid in $PIDS; do
+            wait $pid || FAIL=1
+          done
+
+          if [ $FAIL -ne 0 ]; then
+            echo "One or more parallel snapshot generation jobs failed."
+            exit 1
+          fi
+          echo "::endgroup::"
+
+          echo "::group::Upload snapshots"
+          if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            if ls src/ml_framework_snapshots/snapshots/*.json 1> /dev/null 2>&1; then
+              gh release upload "$GITHUB_REF_NAME" src/ml_framework_snapshots/snapshots/*.json --clobber
+            else
+              echo "No new snapshots generated to upload."
+            fi
+          fi
+          echo "::endgroup::"
+
+  build-wheel:
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Download release assets (Snapshots)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "$GITHUB_REF_NAME" ] && [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            # Download all json files from the release directly into the snapshots folder
+            gh release download "$GITHUB_REF_NAME" -D src/ml_framework_snapshots/snapshots/ -p "*.json" || true
+          fi
+
       - name: Build and Upload Wheel
-        if: runner.os == 'Linux'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

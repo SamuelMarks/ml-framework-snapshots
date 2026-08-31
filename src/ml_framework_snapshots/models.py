@@ -1,22 +1,6 @@
-"""Models for Ghost API representations."""
+"""Models for Ghost API representations.
 
-from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
-
-STANDARD_ARG_MAP = {
-    "x": "input",
-    "inputs": "input",
-    "input_tensor": "input",
-    "y": "other",
-    "other_tensor": "other",
-    "dim": "dim",
-    "axis": "dim",
-    "keepdim": "keepdims",
-    "keep_dims": "keepdims",
-    "keepdims": "keepdims",
-}
-
-_GRIFFE_CACHE = {}
-"""Ghost Core: Introspection Abstraction Layer.
+Ghost Core: Introspection Abstraction Layer.
 
 This module provides the data structures and inspection logic required to
 decouple framework analysis from the live environment. It enables the system
@@ -29,12 +13,34 @@ Updates:
 - Sanitizes default values to avoid serializing memory addresses.
 """
 
-import inspect  # noqa: E402
-import ast  # noqa: E402
-import re  # noqa: E402
-from typing import Any, Optional, Union, Callable, Dict  # noqa: E402
+import ast
+import contextlib
+import inspect
+import io
+import logging
+import re
+from typing import Any, Callable, Dict, Optional, Union
 
-from .utils import extract_c_extension_signature  # noqa: E402
+from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef
+
+from .utils import extract_c_extension_signature
+
+STANDARD_ARG_MAP: Dict[str, str] = {
+    "x": "input",
+    "inputs": "input",
+    "input_tensor": "input",
+    "y": "other",
+    "other_tensor": "other",
+    "dim": "dim",
+    "axis": "dim",
+    "keepdim": "keepdims",
+    "keep_dims": "keepdims",
+    "keepdims": "keepdims",
+}
+
+_GRIFFE_CACHE: Dict[str, Any] = {}
+
+logging.getLogger("griffe").setLevel(logging.CRITICAL)
 
 
 def sanitize_type_str(typ_str: Optional[str]) -> Optional[str]:
@@ -215,7 +221,8 @@ class GhostInspector:
 
         if doc:
             try:
-                cdd_ir = cdd_docstring_parsers.docstring(doc)
+                with contextlib.redirect_stderr(io.StringIO()):
+                    cdd_ir = cdd_docstring_parsers.docstring(doc)
                 if cdd_ir.get("returns") and "return_type" in cdd_ir["returns"]:
                     ret = cdd_ir["returns"]["return_type"]
                     returns_type = sanitize_type_str(ret.get("typ"))
@@ -276,13 +283,15 @@ class GhostInspector:
             if kind == "class":
                 import cdd.class_.parse
 
-                cdd_parsed_ir = cdd.class_.parse.class_(
-                    parsed_ast, merge_inner_function="__init__"
-                )
+                with contextlib.redirect_stderr(io.StringIO()):
+                    cdd_parsed_ir = cdd.class_.parse.class_(
+                        parsed_ast, merge_inner_function="__init__"
+                    )
             else:
                 import cdd.function.parse
 
-                cdd_parsed_ir = cdd.function.parse.function(parsed_ast)
+                with contextlib.redirect_stderr(io.StringIO()):
+                    cdd_parsed_ir = cdd.function.parse.function(parsed_ast)
 
             if cdd_parsed_ir and "params" in cdd_parsed_ir:  # pragma: no branch
                 for p_name, p_val in cdd_parsed_ir["params"].items():

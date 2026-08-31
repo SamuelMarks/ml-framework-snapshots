@@ -69,7 +69,7 @@ def cmd_capture(args: argparse.Namespace) -> None:
     import logging
     from rich.progress import Progress
 
-    logging.getLogger("griffe").setLevel(logging.ERROR)
+    logging.getLogger("griffe").setLevel(logging.CRITICAL)
 
     from ml_framework_snapshots.api import get_available_frameworks
 
