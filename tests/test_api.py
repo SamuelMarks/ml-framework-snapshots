@@ -465,3 +465,40 @@ def test_get_pkg_version_more() -> None:
         assert get_pkg_version("huggingface") == "1.2.3"
         assert get_pkg_version("orbax_checkpoint") == "1.2.3"
         assert get_pkg_version("orbax") == "1.2.3"
+
+
+def test_get_pkg_version_cupy_tensorflow() -> None:
+    """Test get_pkg_version for cupy and tensorflow branches."""
+    from ml_framework_snapshots.api import get_pkg_version
+    import unittest.mock as mock
+
+    # Cupy success
+    with mock.patch.dict("sys.modules", {"cupy": mock.MagicMock(__version__="1.0.0")}):
+        assert get_pkg_version("cupy") == "1.0.0"
+
+    # Cupy failure
+    with mock.patch.dict("sys.modules", {"cupy": None}):
+        with mock.patch("importlib.metadata.version") as mock_version:
+            mock_version.return_value = "2.0.0"
+            assert get_pkg_version("cupy") == "2.0.0"
+            mock_version.assert_called_with("cupy-cuda12x")
+
+    # Tensorflow success
+    with mock.patch.dict(
+        "sys.modules", {"tensorflow": mock.MagicMock(__version__="3.0.0")}
+    ):
+        assert get_pkg_version("tensorflow") == "3.0.0"
+
+    # Tensorflow macos
+    with mock.patch.dict("sys.modules", {"tensorflow": None}):
+        with mock.patch("importlib.metadata.version") as mock_version:
+            mock_version.side_effect = ["4.0.0"]
+            assert get_pkg_version("tensorflow") == "4.0.0"
+            mock_version.assert_called_with("tensorflow-macos")
+
+    # Tensorflow cpu
+    with mock.patch.dict("sys.modules", {"tensorflow": None}):
+        with mock.patch("importlib.metadata.version") as mock_version:
+            mock_version.side_effect = [Exception("error"), "5.0.0"]
+            assert get_pkg_version("tensorflow") == "5.0.0"
+            mock_version.assert_any_call("tensorflow-cpu")

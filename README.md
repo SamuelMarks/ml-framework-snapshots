@@ -23,13 +23,43 @@ Machine Learning frameworks frequently utilize heavy GPU-bound libraries, comple
 
 ## ✨ Core Features
 
-- **Multi-Framework Introspection**: Natively supports PyTorch, JAX, TensorFlow, Keras, MLX, Flax (NNX), NumPy, CuPy, Dask, Optax (Shim), Orbax Checkpoint, Pax, Scikit-Learn, HuggingFace, Triton, ONNXRuntime, and DeepSpeed.
+- **Multi-Framework Introspection**: Natively supports a wide array of machine learning libraries and toolkits (see [Supported Frameworks](#-supported-frameworks) below).
 - **Deep Static & Runtime Analysis**: Achieves maximum fidelity by cascading through AST parsers (`cdd-python`), static typing analyzers (`griffe`), and standard runtime reflection (`inspect`), before falling back to custom C-Extension docstring parsers.
 - **Rich Context Extraction**: Beyond standard arguments, it captures docstrings, parameter descriptions, function overloads, `raises` exceptions, return types, and environment execution tags (e.g., CUDA vs. CPU).
 - **Format Agnostic Exports**: Instantly convert captured API snapshots into OpenAPI specifications, JSON Schema, Pydantic V2 models, and Protobuf (`.proto`) definitions.
 - **Structural Diffing & Semantic Versioning**: Compare two API snapshots to generate markdown changelogs, detecting not just added/removed functions but highlighting potentially breaking signature changes.
 - **Python Stub Generation**: Export snapshots back into python via `.pyi` type stubs so that IDEs and language servers can understand the API without the framework installed.
 - **Compliance Checking**: Automatically test a new API implementation (like a transpiled module or a custom wrapper) against a canonical snapshot to measure coverage and highlight signature mismatches.
+
+---
+
+## 📦 Supported Frameworks
+
+| Framework | Link | Description |
+|-----------|------|-------------|
+| **CuPy** | [cupy.dev](https://cupy.dev/) | NumPy/SciPy-compatible Array Library for GPU-accelerated computing |
+| **Dask** | [dask.org](https://dask.org/) | Library for parallel computing in Python |
+| **DeepSpeed** | [deepspeed.ai](https://www.deepspeed.ai/) | Deep learning optimization library |
+| **Flax (NNX)** | [flax.readthedocs.io](https://flax.readthedocs.io/) | Neural network library and ecosystem for JAX |
+| **HTML DSL** | *Built-in* | HTML DSL API Snapshot Extractor |
+| **HuggingFace** | [huggingface.co](https://huggingface.co/) | Tools and models for NLP and more |
+| **JAX** | [jax.readthedocs.io](https://jax.readthedocs.io/) | Composable transformations of Python+NumPy programs |
+| **Keras** | [keras.io](https://keras.io/) | Deep learning API |
+| **LaTeX DSL** | *Built-in* | LaTeX DSL API Snapshot Extractor |
+| **MaxText** | [github.com/google/maxtext](https://github.com/google/maxtext) | A simple, performant and highly scalable Jax LLM |
+| **MLIR** | [mlir.llvm.org](https://mlir.llvm.org/) | Multi-Level Intermediate Representation |
+| **MLX** | [ml-explore.github.io/mlx](https://ml-explore.github.io/mlx/) | An array framework for Apple silicon |
+| **NumPy** | [numpy.org](https://numpy.org/) | The fundamental package for scientific computing with Python |
+| **ONNXRuntime** | [onnxruntime.ai](https://onnxruntime.ai/) | Cross-platform, high performance ML inferencing and training accelerator |
+| **Optax** | [optax.readthedocs.io](https://optax.readthedocs.io/) | Gradient processing and optimization library for JAX |
+| **Orbax** | [orbax.readthedocs.io](https://orbax.readthedocs.io/) | Checkpointing library for JAX |
+| **Pax** | [github.com/google/paxml](https://github.com/google/paxml) | Jax-based machine learning framework |
+| **PyTorch** | [pytorch.org](https://pytorch.org/) | Tensors and Dynamic neural networks in Python |
+| **SASS DSL** | *Built-in* | SASS DSL API Snapshot Extractor |
+| **Scikit-Learn** | [scikit-learn.org](https://scikit-learn.org/) | Machine learning in Python |
+| **TensorFlow** | [tensorflow.org](https://www.tensorflow.org/) | An end-to-end open source machine learning platform |
+| **TikZ DSL** | *Built-in* | TikZ DSL API Snapshot Extractor |
+| **Triton** | [triton-lang.org](https://triton-lang.org/) | An open-source Python-like programming language |
 
 ---
 

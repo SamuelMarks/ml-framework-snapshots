@@ -130,13 +130,15 @@ def get_pkg_version(package_name: str) -> str:
         elif package_name == "cupy":
             try:
                 import cupy
-                return cupy.__version__
+
+                return str(cupy.__version__)
             except ImportError:
                 return importlib.metadata.version("cupy-cuda12x")
         elif package_name == "tensorflow":
             try:
                 import tensorflow as tf
-                return tf.__version__
+
+                return str(tf.__version__)
             except ImportError:
                 try:
                     return importlib.metadata.version("tensorflow-macos")
