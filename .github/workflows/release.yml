@@ -123,16 +123,22 @@ jobs:
             if [ "$fw" != "mlx" ] && [ "$RUNNER_OS" == "macOS" ]; then continue; fi
 
             case $fw in
-              torch) PKGS="torch"; INDEX="--index-url https://download.pytorch.org/whl/cpu"; PKG_NAME="torch" ;;
+              torch) PKGS="torch"; INDEX="--extra-index-url https://download.pytorch.org/whl/cpu"; PKG_NAME="torch" ;;
               jax) PKGS="jax[cpu]"; INDEX=""; PKG_NAME="jax" ;;
-              tensorflow) PKGS="tensorflow-cpu"; INDEX=""; PKG_NAME="tensorflow-cpu" ;;
+              tensorflow)
+                if [ "$RUNNER_OS" == "macOS" ]; then
+                  PKGS="tensorflow-macos"; INDEX=""; PKG_NAME="tensorflow-macos"
+                else
+                  PKGS="tensorflow-cpu"; INDEX=""; PKG_NAME="tensorflow-cpu"
+                fi
+                ;;
               keras) PKGS="keras"; INDEX=""; PKG_NAME="keras" ;;
               mlx) PKGS="mlx"; INDEX=""; PKG_NAME="mlx" ;;
               numpy) PKGS="numpy<2.0.0"; INDEX=""; PKG_NAME="numpy" ;;
               cupy) PKGS="cupy-cuda12x"; INDEX=""; PKG_NAME="cupy-cuda12x" ;;
               dask) PKGS="dask"; INDEX=""; PKG_NAME="dask" ;;
               flax_nnx) PKGS="flax"; INDEX=""; PKG_NAME="flax" ;;
-              deepspeed) PKGS="deepspeed"; INDEX="--index-url https://download.pytorch.org/whl/cpu"; PKG_NAME="deepspeed" ;;
+              deepspeed) PKGS="deepspeed"; INDEX="--extra-index-url https://download.pytorch.org/whl/cpu"; PKG_NAME="deepspeed" ;;
               optax_shim) PKGS="optax"; INDEX=""; PKG_NAME="optax" ;;
               orbax_checkpoint) PKGS="orbax-checkpoint"; INDEX=""; PKG_NAME="orbax-checkpoint" ;;
               huggingface) PKGS="transformers"; INDEX=""; PKG_NAME="transformers" ;;
@@ -175,16 +181,22 @@ jobs:
               uv pip install -p "venv-$fw" '.[generate]'
 
               case $fw in
-                torch) PKGS="torch --index-url https://download.pytorch.org/whl/cpu" ;;
+                torch) PKGS="torch --extra-index-url https://download.pytorch.org/whl/cpu" ;;
                 jax) PKGS="jax[cpu]" ;;
-                tensorflow) PKGS="tensorflow-cpu" ;;
+                tensorflow)
+                  if [ "$RUNNER_OS" == "macOS" ]; then
+                    PKGS="tensorflow-macos"
+                  else
+                    PKGS="tensorflow-cpu"
+                  fi
+                  ;;
                 keras) PKGS="keras" ;;
                 mlx) PKGS="mlx" ;;
                 numpy) PKGS="numpy<2.0.0" ;;
                 cupy) PKGS="cupy-cuda12x" ;;
                 dask) PKGS="dask" ;;
                 flax_nnx) PKGS="flax jax[cpu]" ;;
-                deepspeed) PKGS="deepspeed torch --index-url https://download.pytorch.org/whl/cpu" ;;
+                deepspeed) PKGS="deepspeed torch --extra-index-url https://download.pytorch.org/whl/cpu" ;;
                 optax_shim) PKGS="optax jax[cpu]" ;;
                 orbax_checkpoint) PKGS="orbax-checkpoint jax[cpu]" ;;
                 huggingface) PKGS="transformers" ;;

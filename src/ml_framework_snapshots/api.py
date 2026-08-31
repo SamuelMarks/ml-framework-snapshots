@@ -127,6 +127,21 @@ def get_pkg_version(package_name: str) -> str:
             package_name = "orbax-checkpoint"
         elif package_name == "orbax":
             package_name = "orbax-checkpoint"
+        elif package_name == "cupy":
+            try:
+                import cupy
+                return cupy.__version__
+            except ImportError:
+                return importlib.metadata.version("cupy-cuda12x")
+        elif package_name == "tensorflow":
+            try:
+                import tensorflow as tf
+                return tf.__version__
+            except ImportError:
+                try:
+                    return importlib.metadata.version("tensorflow-macos")
+                except Exception:
+                    return importlib.metadata.version("tensorflow-cpu")
         elif package_name == "mlir":
             package_name = "jaxlib"
         elif package_name in ["html_dsl", "latex_dsl", "tikz", "sass"]:
