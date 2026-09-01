@@ -35,6 +35,7 @@ warn_unused_ignores = false
 exclude = [
     "/.venv_311",
     "/.venv*",
+    "/venv*",
     "/snapshots",
     "/test_out",
 ]

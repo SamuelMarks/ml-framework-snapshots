@@ -1,11 +1,9 @@
 """Keras API Snapshot Extractor.
 
-Provides functions to dynamically introspect the Keras library and generate
+Provides functions to statically introspect the Keras library using Griffe and generate
 GhostRefs for layers, losses, optimizers, and activations.
 """
 
-import inspect
-from ml_framework_snapshots.utils import get_all_members
 from typing import List, Any, Optional, Set
 
 from ml_framework_snapshots.models import GhostInspector
@@ -13,22 +11,35 @@ from ml_switcheroo_ir.schema.ghost import GhostRef
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 
 try:
-    import keras
+    import griffe
 except ImportError:  # pragma: no cover
-    keras = None
+    griffe = None  # type: ignore[assignment]
 
 
-def _scan_module(
-    module: Any,
+def _make_dummy_obj(name: str, kind: str) -> Any:
+    if kind == "class":
+        return type(name, (), {})
+    else:
+
+        def dummy_func() -> None:
+            """Dummy function."""
+            pass
+
+        dummy_func.__name__ = name
+        return dummy_func
+
+
+def _scan_griffe_module(
+    module_path: str,
     prefix: str,
     kind: str = "class",
     block_list: Optional[Set[str]] = None,
     include_nonpublic: bool = False,
 ) -> List[GhostRef]:
-    """Reflectively scans a Keras module for members of a specific kind.
+    """Statically scans a Keras module for members of a specific kind.
 
     Args:
-        module: The live Python module to inspect.
+        module_path: The griffe module path to inspect (e.g. 'keras.losses').
         prefix: The import prefix for the generated API path.
         kind: Expected kind ("class" or "function").
         block_list: A set of names to exclude from the scan.
@@ -36,29 +47,37 @@ def _scan_module(
 
     Returns:
         A list of GhostRef objects representing the discovered API members.
-
     """
-    if not module:
+    if not griffe:
         return []
+
     block_list = block_list or set()
     found = []
 
     try:
-        for name, obj in get_all_members(module):
-            if (not include_nonpublic and name.startswith("_")) or name in block_list:
-                continue
+        mod = griffe.load(module_path)
+    except Exception:
+        return []
 
-            if kind == "class" and inspect.isclass(obj):
-                found.append(GhostInspector.inspect(obj, f"{prefix}.{name}"))
-            elif kind == "function" and inspect.isfunction(obj):
-                found.append(GhostInspector.inspect(obj, f"{prefix}.{name}"))
-    except Exception:  # pragma: no cover
-        pass
+    for name, member in mod.members.items():
+        if (not include_nonpublic and name.startswith("_")) or name in block_list:
+            continue
+
+        is_class = member.is_class
+        is_function = member.is_function
+
+        if kind == "class" and is_class:
+            obj = _make_dummy_obj(name, "class")
+            found.append(GhostInspector.inspect(obj, f"{prefix}.{name}"))
+        elif kind == "function" and is_function:
+            obj = _make_dummy_obj(name, "function")
+            found.append(GhostInspector.inspect(obj, f"{prefix}.{name}"))
+
     return found
 
 
-def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[GhostRef]:
-    """Scan the live Keras library for a specific API category.
+def _collect_static(category: SemanticTier, include_nonpublic: bool) -> List[GhostRef]:
+    """Scan the Keras library for a specific API category via Griffe.
 
     Args:
         category: The SemanticTier enum value specifying what to scan.
@@ -66,16 +85,15 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
 
     Returns:
         A list of populated GhostRef objects.
-
     """
-    if not keras:
+    if not griffe:
         return []
 
     results = []
     if category == SemanticTier.LOSS:
         results.extend(
-            _scan_module(
-                getattr(keras, "losses", None),
+            _scan_griffe_module(
+                "keras.losses",
                 "keras.losses",
                 kind="class",
                 block_list={"Loss", "Container"},
@@ -84,8 +102,8 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
         )
     elif category == SemanticTier.OPTIMIZER:
         results.extend(
-            _scan_module(
-                getattr(keras, "optimizers", None),
+            _scan_griffe_module(
+                "keras.optimizers",
                 "keras.optimizers",
                 kind="class",
                 block_list={"Optimizer", "TFOptimizer"},
@@ -94,8 +112,8 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
         )
     elif category == SemanticTier.ACTIVATION:
         results.extend(
-            _scan_module(
-                getattr(keras, "activations", None),
+            _scan_griffe_module(
+                "keras.activations",
                 "keras.activations",
                 kind="function",
                 include_nonpublic=include_nonpublic,
@@ -103,8 +121,8 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
         )
     elif category == SemanticTier.LAYER:
         results.extend(
-            _scan_module(
-                getattr(keras, "layers", None),
+            _scan_griffe_module(
+                "keras.layers",
                 "keras.layers",
                 kind="class",
                 block_list={"Layer"},
@@ -113,8 +131,8 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
         )
     elif category == SemanticTier.SCHEDULER:
         results.extend(
-            _scan_module(
-                getattr(getattr(keras, "optimizers", None), "schedules", None),
+            _scan_griffe_module(
+                "keras.optimizers.schedules",
                 "keras.optimizers.schedules",
                 kind="class",
                 block_list={"LearningRateSchedule"},
@@ -123,8 +141,8 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
         )
     elif category == SemanticTier.INITIALIZER:
         results.extend(
-            _scan_module(
-                getattr(keras, "initializers", None),
+            _scan_griffe_module(
+                "keras.initializers",
                 "keras.initializers",
                 kind="class",
                 block_list={"Initializer"},
@@ -133,8 +151,8 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
         )
     elif category == SemanticTier.METRIC:
         results.extend(
-            _scan_module(
-                getattr(keras, "metrics", None),
+            _scan_griffe_module(
+                "keras.metrics",
                 "keras.metrics",
                 kind="class",
                 block_list={"Metric"},
@@ -156,6 +174,5 @@ def collect_api(
 
     Returns:
         A list of GhostRef items discovered for the requested category.
-
     """
-    return _collect_live(category, include_nonpublic)
+    return _collect_static(category, include_nonpublic)

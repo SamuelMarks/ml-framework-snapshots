@@ -126,6 +126,24 @@ def get_pkg_version(package_name: str) -> str:
             package_name = "optax"
         elif package_name == "huggingface":
             package_name = "transformers"
+        elif package_name == "keras":
+            try:
+                return importlib.metadata.version("keras")
+            except Exception:
+                try:
+                    import griffe
+
+                    k = griffe.load("keras")
+                    ver = k.members.get("__version__")
+                    if ver:
+                        if hasattr(ver, "target"):
+                            val = getattr(getattr(ver, "target", None), "value", None)
+                        else:
+                            val = getattr(ver, "value", None)
+                        if val is not None:
+                            return str(val).strip("'\"")
+                except Exception:
+                    pass
         elif package_name == "orbax_checkpoint":
             package_name = "orbax-checkpoint"
         elif package_name == "orbax":

@@ -527,3 +527,54 @@ def test_get_pkg_version_fallback() -> None:
         # Match subprocess exception
         with mock.patch("subprocess.run", side_effect=Exception):
             assert get_pkg_version("some_package") == "unknown"
+
+
+def test_get_pkg_version_keras(mocker: Any) -> None:
+    """Test get_pkg_version for keras.
+
+    Args:
+        mocker: Mock fixture.
+    """
+    from ml_framework_snapshots.api import get_pkg_version
+
+    mocker.patch("subprocess.run", side_effect=Exception)
+
+    # keras success with metadata
+    mocker.patch("importlib.metadata.version", return_value="1.2.3")
+    assert get_pkg_version("keras") == "1.2.3"
+
+    # keras griffe fallback - string version
+    mocker.patch("importlib.metadata.version", side_effect=Exception)
+    mock_griffe = mocker.MagicMock()
+    mock_mod = mocker.MagicMock()
+    mock_ver = mocker.MagicMock()
+    mock_ver.value = "'2.3.4'"
+    del mock_ver.target
+    mock_mod.members.get.return_value = mock_ver
+    mock_griffe.load.return_value = mock_mod
+
+    mocker.patch.dict("sys.modules", {"griffe": mock_griffe})
+    assert get_pkg_version("keras") == "2.3.4"
+
+    # keras griffe fallback - target version
+    mock_target = mocker.MagicMock()
+    mock_target.value = '"3.4.5"'
+    mock_ver.target = mock_target
+    mocker.patch.dict("sys.modules", {"griffe": mock_griffe})
+    assert get_pkg_version("keras") == "3.4.5"
+
+    # keras griffe fallback - target version missing value
+    mock_target2 = mocker.MagicMock(spec=[])
+    mock_ver.target = mock_target2
+    mocker.patch.dict("sys.modules", {"griffe": mock_griffe})
+    assert get_pkg_version("keras") == "unknown"
+
+    # keras griffe fallback - no __version__
+    mock_mod.members.get.return_value = None
+    mocker.patch.dict("sys.modules", {"griffe": mock_griffe})
+    assert get_pkg_version("keras") == "unknown"
+
+    # keras griffe fallback - exception
+    mock_griffe.load.side_effect = Exception
+    mocker.patch.dict("sys.modules", {"griffe": mock_griffe})
+    assert get_pkg_version("keras") == "unknown"

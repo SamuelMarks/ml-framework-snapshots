@@ -505,64 +505,61 @@ def test_keras_collect(mocker: Any) -> None:
         mocker: Parameter.
     """
     from ml_framework_snapshots.frameworks import keras as keras_fw
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
 
-    class MSELoss:
-        """Class docstring."""
+    class MockMember:
+        """Mock class for griffe member."""
 
-        pass
+        def __init__(self, is_class: bool = False, is_function: bool = False) -> None:
+            """Initialize MockMember.
 
-    class Adam:
-        """Class docstring."""
+            Args:
+                is_class: Is a class.
+                is_function: Is a function.
+            """
+            self.is_class = is_class
+            self.is_function = is_function
 
-        pass
+    class MockModule:
+        """Mock class for griffe module."""
 
-    def relu() -> Any:
-        """Function docstring."""
-        pass  # pragma: no cover
+        def __init__(self, members: dict[str, MockMember]) -> None:
+            """Initialize MockModule.
 
-    class DenseLayer:
-        """Class docstring."""
+            Args:
+                members: Dictionary of members.
+            """
+            self.members = members
 
-        pass
+    def mock_load(path: str) -> MockModule:
+        """Mock griffe.load function.
 
-    class CosineDecay:
-        """Class docstring."""
+        Args:
+            path: Module path.
 
-        pass
+        Returns:
+            MockModule: Mocked module.
 
-    class GlorotUniform:
-        """Class docstring."""
+        Raises:
+            Exception: If path is unknown.
+        """
+        if path == "keras.losses":
+            return MockModule({"MSELoss": MockMember(is_class=True)})
+        if path == "keras.optimizers":
+            return MockModule({"Adam": MockMember(is_class=True)})
+        if path == "keras.optimizers.schedules":
+            return MockModule({"CosineDecay": MockMember(is_class=True)})
+        if path == "keras.activations":
+            return MockModule({"relu": MockMember(is_function=True)})
+        if path == "keras.layers":
+            return MockModule({"DenseLayer": MockMember(is_class=True)})
+        if path == "keras.initializers":
+            return MockModule({"GlorotUniform": MockMember(is_class=True)})
+        if path == "keras.metrics":
+            return MockModule({"Accuracy": MockMember(is_class=True)})
+        raise Exception("Unknown path")
 
-        pass
-
-    class Accuracy:
-        """Class docstring."""
-
-        pass
-
-    fake_keras = create_module(
-        "keras",
-        {
-            "losses": create_module("losses", {"MSELoss": MSELoss}),
-            "optimizers": create_module(
-                "optimizers",
-                {
-                    "Adam": Adam,
-                    "schedules": create_module(
-                        "schedules", {"CosineDecay": CosineDecay}
-                    ),
-                },
-            ),
-            "activations": create_module("activations", {"relu": relu}),
-            "layers": create_module("layers", {"DenseLayer": DenseLayer}),
-            "initializers": create_module(
-                "initializers", {"GlorotUniform": GlorotUniform}
-            ),
-            "metrics": create_module("metrics", {"Accuracy": Accuracy}),
-        },
-    )
-
-    mocker.patch.object(keras_fw, "keras", fake_keras)
+    mocker.patch.object(keras_fw.griffe, "load", mock_load)  # type: ignore[attr-defined]
 
     losses = keras_fw.collect_api(SemanticTier.LOSS)
     assert any(x.name == "MSELoss" for x in losses)
@@ -588,31 +585,45 @@ def test_keras_collect(mocker: Any) -> None:
     assert keras_fw.collect_api("unknown") == []
 
     # Test blocklist logic: module doesn't exist, block_list skipping, etc.
-    assert keras_fw._scan_module(None, "foo") == []
+    assert keras_fw._scan_griffe_module("missing.module", "foo") == []
 
-    class Metric:
-        """Class docstring."""
+    def mock_load_metrics(path: str) -> MockModule:
+        """Mock load for metrics.
 
-        pass
+        Args:
+            path: Module path.
 
-    fake_metrics2 = create_module("metrics", {"Metric": Metric, "_priv": Metric})
+        Returns:
+            MockModule: Mocked module.
 
-    mocker.patch.object(
-        keras_fw,
-        "keras",
-        create_module("keras", {"metrics": fake_metrics2}),
-    )
+        Raises:
+            Exception: If path is unknown.
+        """
+        if path == "keras.metrics":
+            return MockModule(
+                {
+                    "Metric": MockMember(is_class=True),
+                    "_priv": MockMember(is_class=True),
+                    "neither": MockMember(is_class=False, is_function=False),
+                }
+            )
+        raise Exception("Unknown path")
+
+    mocker.patch.object(keras_fw.griffe, "load", mock_load_metrics)  # type: ignore[attr-defined]
     mets2 = keras_fw.collect_api(SemanticTier.METRIC)
     assert not any(x.name == "Metric" for x in mets2)
 
+    # Trigger dummy func for coverage
+    dummy = keras_fw._make_dummy_obj("test_func", "function")
+    dummy()
+
     # Exception branch coverage
-    mocker.patch(
-        "ml_framework_snapshots.frameworks.tensorflow.get_all_members",
-        side_effect=Exception,
-    )
+    mocker.patch.object(keras_fw.griffe, "load", side_effect=Exception)  # type: ignore[attr-defined]
     assert keras_fw.collect_api(SemanticTier.LAYER) == []
 
-    mocker.patch.object(keras_fw, "keras", None)
+    # Missing griffe branch coverage
+    keras_fw.griffe = None  # type: ignore[attr-defined, assignment]
+    assert keras_fw._scan_griffe_module("keras.losses", "keras.losses") == []
     assert keras_fw.collect_api(SemanticTier.LOSS) == []
 
 
