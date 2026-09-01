@@ -47,4 +47,4 @@ def my_overloaded_func(a: Any, b: Any = None) -> Any:
     assert ref.overloads[1].params[1].annotation == "str"
     assert ref.overloads[1].returns_type == "str"
 
-    p.unlink()
+    p.unlink(missing_ok=True)

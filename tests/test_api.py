@@ -502,3 +502,28 @@ def test_get_pkg_version_cupy_tensorflow() -> None:
             mock_version.side_effect = [Exception("error"), "5.0.0"]
             assert get_pkg_version("tensorflow") == "5.0.0"
             mock_version.assert_any_call("tensorflow-cpu")
+
+
+def test_get_pkg_version_fallback() -> None:
+    """Test get_pkg_version fallback using pip freeze."""
+    from ml_framework_snapshots.api import get_pkg_version
+    import unittest.mock as mock
+
+    with mock.patch("importlib.metadata.version", side_effect=Exception):
+        # Match exact package version
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value = mock.MagicMock(
+                stdout="some-package==1.2.3\nother==2.0.0"
+            )
+            assert get_pkg_version("some_package") == "1.2.3"
+
+        # Match git/url package version
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value = mock.MagicMock(
+                stdout="some-package @ git+https://example.com/repo.git\nother==2.0.0"
+            )
+            assert get_pkg_version("some_package") == "unknown"
+
+        # Match subprocess exception
+        with mock.patch("subprocess.run", side_effect=Exception):
+            assert get_pkg_version("some_package") == "unknown"

@@ -110,6 +110,9 @@ def get_pkg_version(package_name: str) -> str:
         The version string, or "unknown" if not installed.
 
     """
+    import subprocess
+    import sys
+
     try:
         if package_name == "flax_nnx":
             package_name = "flax"
@@ -151,6 +154,23 @@ def get_pkg_version(package_name: str) -> str:
 
         return importlib.metadata.version(package_name)
     except Exception:
+        try:
+            # Fallback to pip freeze
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "freeze"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            search_name = package_name.lower().replace("_", "-")
+            for line in result.stdout.splitlines():
+                line = line.strip().lower()
+                if line.startswith(f"{search_name}=="):
+                    return line.split("==")[1].strip()
+                elif line.startswith(f"{search_name} @"):
+                    return "unknown"  # Can't easily determine version from direct URL
+        except Exception:
+            pass
         return "unknown"
 
 
