@@ -9,7 +9,8 @@ def test_ghost_inspector_overloads() -> None:
     import pathlib
 
     p = pathlib.Path("test_overload_mock_unique.py")
-    p.write_text("""
+    p.write_text(
+        """
 from typing import overload, Any
 
 @overload
@@ -20,7 +21,8 @@ def my_overloaded_func(a: str, b: str) -> str: ...
 
 def my_overloaded_func(a: Any, b: Any = None) -> Any:
     pass
-""")
+"""
+    )
 
     import sys
     from ml_framework_snapshots.models import _GRIFFE_CACHE

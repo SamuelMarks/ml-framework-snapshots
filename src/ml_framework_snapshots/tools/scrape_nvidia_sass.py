@@ -12,8 +12,6 @@ def main() -> None:
     output_path = os.path.join(
         os.path.dirname(__file__),
         "..",
-        "src",
-        "ml_framework_snapshots",
         "frameworks",
         "nvidia_sass_exhaustive.json",
     )

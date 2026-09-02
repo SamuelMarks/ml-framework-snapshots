@@ -5,7 +5,7 @@ import os
 import tempfile
 from unittest import mock
 
-from scripts import scrape_nvidia_sass
+from ml_framework_snapshots.tools import scrape_nvidia_sass
 
 import typing
 
@@ -49,9 +49,7 @@ def test_scrape_nvidia_sass() -> None:
                 ],
             }
         },
-        "invalid_entry": {
-            "parsed": {}  # No base_name
-        },
+        "invalid_entry": {"parsed": {}},  # No base_name
         "duplicate_entry": {
             "parsed": {
                 "base_name": "FADD",
@@ -72,7 +70,9 @@ def test_scrape_nvidia_sass() -> None:
             json.dump(mock_input_data, f)
 
         # Patch the file paths in the script
-        with mock.patch("scripts.scrape_nvidia_sass.open") as mock_open:
+        with mock.patch(
+            "ml_framework_snapshots.tools.scrape_nvidia_sass.open"
+        ) as mock_open:
             # We want to use the real open, but intercept the paths
             original_open = open
 

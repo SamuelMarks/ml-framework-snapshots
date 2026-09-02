@@ -23,7 +23,7 @@ Machine Learning frameworks frequently utilize heavy GPU-bound libraries, comple
 
 ## ✨ Core Features
 
-- **Multi-Framework Introspection**: Natively supports a wide array of machine learning libraries and toolkits (see [Supported Frameworks](#-supported-frameworks) below).
+- **Multi-Framework Introspection**: Natively supports a wide array of machine learning libraries and toolkits (see [Supported Frameworks](#-supported-frameworks) below), including non-Python domains like NVIDIA SASS and AMD RDNA instruction sets via static JSON extraction.
 - **Deep Static & Runtime Analysis**: Achieves maximum fidelity by cascading through AST parsers (`cdd-python`), static typing analyzers (`griffe`), and standard runtime reflection (`inspect`), before falling back to custom C-Extension docstring parsers.
 - **Rich Context Extraction**: Beyond standard arguments, it captures docstrings, parameter descriptions, function overloads, `raises` exceptions, return types, and environment execution tags (e.g., CUDA vs. CPU).
 - **Format Agnostic Exports**: Instantly convert captured API snapshots into OpenAPI specifications, JSON Schema, Pydantic V2 models, and Protobuf (`.proto`) definitions.
@@ -51,6 +51,7 @@ Machine Learning frameworks frequently utilize heavy GPU-bound libraries, comple
 | **MLX** | [ml-explore.github.io/mlx](https://ml-explore.github.io/mlx/) | An array framework for Apple silicon |
 | **NumPy** | [numpy.org](https://numpy.org/) | The fundamental package for scientific computing with Python |
 | **NVIDIA SASS** | *Built-in* | NVIDIA SASS Assembly Snapshot Extractor |
+| **AMD RDNA** | *Built-in* | AMD RDNA Assembly Snapshot Extractor |
 | **ONNXRuntime** | [onnxruntime.ai](https://onnxruntime.ai/) | Cross-platform, high performance ML inferencing and training accelerator |
 | **Optax** | [optax.readthedocs.io](https://optax.readthedocs.io/) | Gradient processing and optimization library for JAX |
 | **Orbax** | [orbax.readthedocs.io](https://orbax.readthedocs.io/) | Checkpointing library for JAX |

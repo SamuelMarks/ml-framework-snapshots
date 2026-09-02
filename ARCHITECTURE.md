@@ -60,8 +60,9 @@ Machine learning frameworks are notoriously difficult to introspect due to compl
 4. **`inspect.signature` (Runtime Fallback):** The standard Python library fallback for python-native functions if AST parsers fail.
 5. **C-Extension Parsing:** Many operations (e.g., `torch.relu`) exist purely in compiled C++ layers and throw `ValueError` on `inspect.signature`. The system catches this and attempts to regex-parse the C-Extension docstring to synthetically recreate the Python signature. If all else fails, it defaults to a catch-all `(*args, **kwargs)`.
 6. **Memory Address Scrubbing:** Default argument values can leak memory addresses (e.g., `<function mean at 0x1023a1a60>`). These are systematically scrubbed and replaced with `None` or `<unrepresentable>` to ensure deterministic JSON snapshots across different runs.
+7. **Static & Pre-Compiled Data Sources:** For targets that lack a Python runtime environment or are not inherently Pythonic (such as the raw NVIDIA SASS and AMD RDNA instruction sets), the system utilizes statically scraped JSON dumps. Offline extraction scripts (e.g., `scripts/scrape_nvidia_sass.py`, `scripts/scrape_amd_rdna.py`) parse instruction tables into exhaustive local files (`nvidia_sass_exhaustive.json`, `amd_rdna_exhaustive.json`). The framework collector (`nvidia_sass.py`, `amd_rdna.py`) then maps this raw instruction and operand data structurally into `GhostRef` and `GhostParam` models at capture time.
 
-## 4. Advanced Pipelines
+## 5. Advanced Pipelines
 
 Once API data is in the JSON snapshot format, it unlocks a host of downstream architectural benefits:
 

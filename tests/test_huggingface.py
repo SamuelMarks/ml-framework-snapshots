@@ -1,14 +1,14 @@
 """Module docstring."""
 
 from typing import Any
-
-
 from unittest.mock import patch, MagicMock
-from ml_switcheroo_ir.schema.ghost import SemanticTier
+
+from ml_switcheroo_ir.schema.ghost import SemanticTier, GhostRef
 from ml_framework_snapshots.frameworks.huggingface import (
     collect_transformers,
     collect_diffusers,
     collect_tokenizers,
+    _parse_pretrained_config,
 )
 
 
@@ -150,10 +150,6 @@ def test_collect_tokenizers() -> None:
         res = collect_tokenizers(SemanticTier.MODEL)
         assert len(res) == 1
         assert res[0].name == "DummyTokenizer"
-
-
-from ml_framework_snapshots.frameworks.huggingface import _parse_pretrained_config  # noqa: E402
-from ml_switcheroo_ir.schema.ghost import GhostRef  # noqa: E402
 
 
 def test_parse_pretrained_config_with_empty_annotations() -> None:

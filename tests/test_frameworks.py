@@ -1659,13 +1659,15 @@ def test_maxtext_collect(mocker: Any) -> None:
 
     mocker.patch("glob.glob", return_value=["fake/path/models/fake_model.py"])
 
-    mock_file_content = textwrap.dedent("""
+    mock_file_content = textwrap.dedent(
+        """
         class FakeModel:
             def __init__(self, arg1, *, kwarg1=1):
                 pass
         class NotAModel:
             pass
-    """)
+    """
+    )
 
     mocker.patch("builtins.open", mocker.mock_open(read_data=mock_file_content))
 
@@ -1715,7 +1717,8 @@ def test_mlir_collect(mocker: Any) -> None:
 
     mocker.patch("glob.glob", return_value=["fake/path/_arith_ops_gen.py"])
 
-    mock_file_content = textwrap.dedent("""
+    mock_file_content = textwrap.dedent(
+        """
         class AddFOp:
             OPERATION_NAME = "arith.addf"
             def __init__(self, lhs, *, loc=None):
@@ -1730,7 +1733,8 @@ def test_mlir_collect(mocker: Any) -> None:
             OPERATION_NAME = get_name()
             # Operation target is something else
             some_other_var = "value"
-    """)
+    """
+    )
 
     mocker.patch("builtins.open", mocker.mock_open(read_data=mock_file_content))
     mocker.patch(

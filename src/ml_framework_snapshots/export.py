@@ -196,9 +196,11 @@ def to_protobuf(ref: GhostRef, package: str = "ml_framework") -> str:
         "",
         f"package {package};",
         "",
-        f"// {ref.docstring}"
-        if ref.docstring
-        else f"// Generated message for {ref.api_path}",
+        (
+            f"// {ref.docstring}"
+            if ref.docstring
+            else f"// Generated message for {ref.api_path}"
+        ),
         f"message {ref.name} {{",
     ]
 

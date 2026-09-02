@@ -167,7 +167,13 @@ def get_pkg_version(package_name: str) -> str:
                     return importlib.metadata.version("tensorflow-cpu")
         elif package_name == "mlir":
             package_name = "jaxlib"
-        elif package_name in ["html_dsl", "latex_dsl", "tikz", "nvidia_sass"]:
+        elif package_name in [
+            "html_dsl",
+            "latex_dsl",
+            "tikz",
+            "nvidia_sass",
+            "amd_rdna",
+        ]:
             return "1.0.0"
 
         return importlib.metadata.version(package_name)

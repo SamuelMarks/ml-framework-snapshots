@@ -574,9 +574,11 @@ class GhostInspector:
                             anno_val = (
                                 param.annotation.__name__
                                 if hasattr(param.annotation, "__name__")
-                                else str(param.annotation)
-                                if param.annotation is not inspect.Parameter.empty
-                                else None
+                                else (
+                                    str(param.annotation)
+                                    if param.annotation is not inspect.Parameter.empty
+                                    else None
+                                )
                             )
                             anno_val = sanitize_type_str(anno_val)
                             extracted_params.append(

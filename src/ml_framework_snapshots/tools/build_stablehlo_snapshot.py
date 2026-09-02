@@ -150,9 +150,7 @@ def main() -> None:
 
     snapshot_data = {"categories": {"stablehlo_op": ghost_refs}}
 
-    out_dir = os.path.join(
-        os.path.dirname(__file__), "..", "src", "ml_framework_snapshots", "snapshots"
-    )
+    out_dir = os.path.join(os.path.dirname(__file__), "..", "snapshots")
     out_path = os.path.abspath(os.path.join(out_dir, "stablehlo_v1.0.json"))
 
     with open(out_path, "w") as f:

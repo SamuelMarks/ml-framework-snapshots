@@ -4,7 +4,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from scripts.matrix_runner import build_and_run, upload_to_s3, main, DEFAULT_MATRIX
+from ml_framework_snapshots.tools.matrix_runner import (
+    build_and_run,
+    upload_to_s3,
+    main,
+    DEFAULT_MATRIX,
+)
 
 
 def test_build_and_run(mocker: Any, tmp_path: Path) -> None:
@@ -112,7 +117,9 @@ def test_main_default(mocker: Any, tmp_path: Path) -> None:
         tmp_path: Parameter.
     """
     mocker.patch("sys.argv", ["matrix_runner.py", "--output-dir", str(tmp_path)])
-    mock_build = mocker.patch("scripts.matrix_runner.build_and_run")
+    mock_build = mocker.patch(
+        "ml_framework_snapshots.tools.matrix_runner.build_and_run"
+    )
 
     main()
 
@@ -143,8 +150,12 @@ def test_main_with_matrix_and_s3(mocker: Any, tmp_path: Path) -> None:
             "test-bucket",
         ],
     )
-    mock_build = mocker.patch("scripts.matrix_runner.build_and_run")
-    mock_upload = mocker.patch("scripts.matrix_runner.upload_to_s3")
+    mock_build = mocker.patch(
+        "ml_framework_snapshots.tools.matrix_runner.build_and_run"
+    )
+    mock_upload = mocker.patch(
+        "ml_framework_snapshots.tools.matrix_runner.upload_to_s3"
+    )
 
     main()
 

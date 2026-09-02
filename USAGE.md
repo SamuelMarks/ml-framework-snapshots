@@ -63,3 +63,26 @@ Missing APIs (2):
 | [ ] | jax | jax.numpy | zeros | jax.numpy.zeros | `(shape, dtype=None, ...)` | Return a new array of given shape and type, filled with zeros. |
 | [ ] | jax | jax.numpy | ones | jax.numpy.ones | `(shape, dtype=None, ...)` | Return a new array of given shape and type, filled with ones. |
 ```
+
+## Capturing Non-Python APIs (e.g., NVIDIA SASS, AMD RDNA)
+
+The tool can also capture API snapshots for non-Python domains using static JSON extractors. For instance, you can extract the exhaustive set of NVIDIA SASS or AMD RDNA instructions:
+
+```bash
+ml-framework-snapshots capture nvidia_sass
+ml-framework-snapshots capture amd_rdna
+```
+
+To update the exhaustive JSON dumps for these architectures (e.g., when a new GPU architecture is released), run the underlying scraping scripts:
+
+```bash
+python scripts/scrape_nvidia_sass.py
+python scripts/scrape_amd_rdna.py
+```
+
+**Output:**
+```text
+Capturing nvidia_sass...
+Extracted signatures from nvidia_sass.
+Saved nvidia_sass snapshot to ./snapshots/nvidia_sass_<version>.json
+```
