@@ -61,7 +61,7 @@ def test_main_success(
         "html_dsl",
         "latex_dsl",
         "tikz",
-        "sass",
+        "nvidia_sass",
     ]
 
     assert mock_extract.call_count == len(frameworks)
@@ -125,7 +125,7 @@ def test_main_failure(
         "html_dsl",
         "latex_dsl",
         "tikz",
-        "sass",
+        "nvidia_sass",
     ]
 
     assert mock_extract.call_count == len(frameworks)

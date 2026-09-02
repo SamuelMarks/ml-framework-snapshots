@@ -15,6 +15,9 @@ def create_module(name: str, attrs: dict[str, Any]) -> types.ModuleType:
     Args:
         name: Parameter.
         attrs: Parameter.
+
+    Returns:
+        The created mock module.
     """
     mod = types.ModuleType(name)
     for k, v in attrs.items():
@@ -70,6 +73,12 @@ def test_cupy_collect(mocker: Any) -> None:
             obj: Parameter.
             fqn: Parameter.
             is_public: Parameter.
+
+        Returns:
+            The inspected object.
+
+        Raises:
+            ValueError: On error.
         """
         if fqn == "cupy.exp":
             raise ValueError("mock error")
@@ -132,6 +141,12 @@ def test_dask_collect(mocker: Any) -> None:
             obj: Parameter.
             fqn: Parameter.
             is_public: Parameter.
+
+        Returns:
+            The inspected object.
+
+        Raises:
+            ValueError: On error.
         """
         if fqn == "dask.array._private":
             raise ValueError("mock error")

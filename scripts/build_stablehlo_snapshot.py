@@ -14,7 +14,14 @@ SPEC_URL = "https://raw.githubusercontent.com/openxla/stablehlo/main/docs/spec.m
 
 
 def is_attribute(type_str: str) -> bool:
-    """Determine if a spec type string represents an attribute rather than an operand."""
+    """Determine if a spec type string represents an attribute rather than an operand.
+
+    Args:
+        type_str: The type string from the specification.
+
+    Returns:
+        True if the type represents an attribute, False otherwise.
+    """
     t = type_str.lower()
     return (
         "constant" in t
@@ -30,7 +37,11 @@ def is_attribute(type_str: str) -> bool:
 
 
 def extract_ops() -> List[Dict[str, Any]]:
-    """Download and parse spec.md to extract ops."""
+    """Download and parse spec.md to extract ops.
+
+    Returns:
+        List of parsed operations as dictionary objects.
+    """
     print(f"Downloading {SPEC_URL}...")
     content = urllib.request.urlopen(SPEC_URL).read().decode("utf-8")
     print("Parsing operations...")

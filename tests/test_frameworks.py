@@ -607,7 +607,7 @@ def test_keras_collect(mocker: Any) -> None:
                     "neither": MockMember(is_class=False, is_function=False),
                 }
             )
-        raise Exception("Unknown path")
+        raise Exception("Unknown path")  # pragma: no cover
 
     mocker.patch.object(keras_fw.griffe, "load", mock_load_metrics)  # type: ignore[attr-defined]
     mets2 = keras_fw.collect_api(SemanticTier.METRIC)
@@ -1770,7 +1770,7 @@ def test_mlir_collect(mocker: Any) -> None:
 
 def test_static_dsl_extractors() -> None:
     """Test static DSL extractors."""
-    from ml_framework_snapshots.frameworks import html_dsl, latex_dsl, tikz, sass
+    from ml_framework_snapshots.frameworks import html_dsl, latex_dsl, tikz, nvidia_sass
     from ml_switcheroo_ir.schema.ghost import SemanticTier
 
     html_refs = html_dsl.collect_api(SemanticTier.UTIL)
@@ -1789,8 +1789,8 @@ def test_static_dsl_extractors() -> None:
     assert any(r.name == "circle" for r in tikz_refs)
     assert tikz.collect_api(SemanticTier.LAYER) == []
 
-    sass_refs = sass.collect_api(SemanticTier.UTIL)
+    sass_refs = nvidia_sass.collect_api(SemanticTier.UTIL)
     assert len(sass_refs) > 0
-    assert any(r.name == "mixin" for r in sass_refs)
-    assert any(r.name == "color" for r in sass_refs)
-    assert sass.collect_api(SemanticTier.LAYER) == []
+    assert any(r.name == "FADD" for r in sass_refs)
+    assert any(r.name == "MOV" for r in sass_refs)
+    assert nvidia_sass.collect_api(SemanticTier.LAYER) == []

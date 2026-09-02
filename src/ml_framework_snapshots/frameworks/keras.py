@@ -17,6 +17,15 @@ except ImportError:  # pragma: no cover
 
 
 def _make_dummy_obj(name: str, kind: str) -> Any:
+    """Create a dummy object of the given kind with the given name.
+
+    Args:
+        name: The name of the dummy object.
+        kind: The kind of the dummy object ("class" or "function").
+
+    Returns:
+        The constructed dummy object.
+    """
     if kind == "class":
         return type(name, (), {})
     else:

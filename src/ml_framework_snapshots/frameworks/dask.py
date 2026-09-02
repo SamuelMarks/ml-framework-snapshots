@@ -21,8 +21,11 @@ def collect_api(
     """Collect dask API.
 
     Args:
-        category: Parameter.
-        include_nonpublic: Parameter.
+        category: The semantic tier to target.
+        include_nonpublic: Whether to include non-public APIs.
+
+    Returns:
+        List of gathered API references.
     """
     results: List[GhostRef] = []
     if not da:

@@ -21,7 +21,11 @@ def test_is_attribute() -> None:
 
 @mock.patch("urllib.request.urlopen")
 def test_extract_ops(mock_urlopen: mock.MagicMock) -> None:
-    """Test extract ops."""
+    """Test extract ops.
+
+    Args:
+        mock_urlopen: Mocked urlopen.
+    """
     # Mock spec.md content
     mock_content = b"""
 # StableHLO Specification
@@ -111,7 +115,12 @@ Dot general op.
 @mock.patch("build_stablehlo_snapshot.extract_ops")
 @mock.patch("builtins.open", new_callable=mock.mock_open)
 def test_main(mock_open: mock.MagicMock, mock_extract: mock.MagicMock) -> None:
-    """Test main."""
+    """Test main.
+
+    Args:
+        mock_open: Mocked open.
+        mock_extract: Mocked extract.
+    """
     mock_extract.return_value = [{"name": "fake_op"}]
     build_stablehlo_snapshot.main()
     mock_extract.assert_called_once()
@@ -127,7 +136,11 @@ def test_main(mock_open: mock.MagicMock, mock_extract: mock.MagicMock) -> None:
 
 @mock.patch("urllib.request.urlopen")
 def test_extract_ops_empty_op(mock_urlopen: mock.MagicMock) -> None:
-    """Test extract ops empty op."""
+    """Test extract ops empty op.
+
+    Args:
+        mock_urlopen: Mocked urlopen.
+    """
     # Mock spec.md content with no inputs/outputs
     mock_content = b"""
 # StableHLO Specification
@@ -147,7 +160,11 @@ Empty op.
 
 @mock.patch("urllib.request.urlopen")
 def test_extract_ops_missing_semantics(mock_urlopen: mock.MagicMock) -> None:
-    """Test extract ops missing semantics."""
+    """Test extract ops missing semantics.
+
+    Args:
+        mock_urlopen: Mocked urlopen.
+    """
     # Mock spec.md content with no semantics
     mock_content = b"""
 # StableHLO Specification
@@ -171,7 +188,11 @@ def test_extract_ops_missing_semantics(mock_urlopen: mock.MagicMock) -> None:
 
 @mock.patch("urllib.request.urlopen")
 def test_extract_ops_multi_output(mock_urlopen: mock.MagicMock) -> None:
-    """Test extract ops multi output."""
+    """Test extract ops multi output.
+
+    Args:
+        mock_urlopen: Mocked urlopen.
+    """
     mock_content = b"""
 # StableHLO Specification
 
@@ -201,7 +222,11 @@ def test_extract_ops_multi_output(mock_urlopen: mock.MagicMock) -> None:
 
 @mock.patch("urllib.request.urlopen")
 def test_extract_ops_ignore_unnamed_columns(mock_urlopen: mock.MagicMock) -> None:
-    """Test extract ops ignore unnamed columns."""
+    """Test extract ops ignore unnamed columns.
+
+    Args:
+        mock_urlopen: Mocked urlopen.
+    """
     # Tests a case where parts don't meet len >= 2 or contain "---" or "Label"
     mock_content = b"""
 # StableHLO Specification
@@ -230,7 +255,11 @@ def test_extract_ops_ignore_unnamed_columns(mock_urlopen: mock.MagicMock) -> Non
 
 @mock.patch("urllib.request.urlopen")
 def test_extract_ops_missing_type_column_outputs(mock_urlopen: mock.MagicMock) -> None:
-    """Test extract ops missing type column outputs."""
+    """Test extract ops missing type column outputs.
+
+    Args:
+        mock_urlopen: Mocked urlopen.
+    """
     # Tests an output row that only has a Name
     mock_content = b"""
 # StableHLO Specification
@@ -258,7 +287,11 @@ def test_extract_ops_missing_type_column_outputs(mock_urlopen: mock.MagicMock) -
 
 @mock.patch("urllib.request.urlopen")
 def test_extract_ops_coverage_gaps(mock_urlopen: mock.MagicMock) -> None:
-    """Test extract ops coverage gaps."""
+    """Test extract ops coverage gaps.
+
+    Args:
+        mock_urlopen: Mocked urlopen.
+    """
     # Tests a case with an invalid op name and an unknown section
     mock_content = b"""
 # StableHLO Specification

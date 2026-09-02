@@ -142,7 +142,15 @@ class OptaxScanner:
 def collect_api(
     category: SemanticTier, include_nonpublic: bool = False
 ) -> List[GhostRef]:
-    """Collect optax APIs."""
+    """Collect optax APIs.
+
+    Args:
+        category: The semantic tier to target.
+        include_nonpublic: Whether to include non-public APIs.
+
+    Returns:
+        List of gathered API references.
+    """
     if category == SemanticTier.OPTIMIZER:
         return OptaxScanner.scan_optimizers(include_nonpublic)
     elif category == SemanticTier.LOSS:

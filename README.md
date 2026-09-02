@@ -4,7 +4,7 @@ ml-framework-snapshots
 [![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/SamuelMarks/ml-framework-snapshots/actions/workflows/ci.yml/badge.svg)](https://github.com/SamuelMarks/ml-framework-snapshots/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-100%25-brightgreen.svg)]()
-[![Docs](https://img.shields.io/badge/docs-99.3%25-brightgreen.svg)]()
+[![Docs](https://img.shields.io/badge/docs-100%25-brightgreen.svg)]()
 
 **ML Framework Snapshots** is a core component of the **ml-switcheroo** ecosystem. It is a toolset designed to statically extract and formalize API signatures from major machine learning frameworks into stable, serializable `GhostRef` schemas (as defined in `ml_switcheroo_ir`).
 
@@ -50,12 +50,12 @@ Machine Learning frameworks frequently utilize heavy GPU-bound libraries, comple
 | **MLIR** | [mlir.llvm.org](https://mlir.llvm.org/) | Multi-Level Intermediate Representation |
 | **MLX** | [ml-explore.github.io/mlx](https://ml-explore.github.io/mlx/) | An array framework for Apple silicon |
 | **NumPy** | [numpy.org](https://numpy.org/) | The fundamental package for scientific computing with Python |
+| **NVIDIA SASS** | *Built-in* | NVIDIA SASS Assembly Snapshot Extractor |
 | **ONNXRuntime** | [onnxruntime.ai](https://onnxruntime.ai/) | Cross-platform, high performance ML inferencing and training accelerator |
 | **Optax** | [optax.readthedocs.io](https://optax.readthedocs.io/) | Gradient processing and optimization library for JAX |
 | **Orbax** | [orbax.readthedocs.io](https://orbax.readthedocs.io/) | Checkpointing library for JAX |
 | **Pax** | [github.com/google/paxml](https://github.com/google/paxml) | Jax-based machine learning framework |
 | **PyTorch** | [pytorch.org](https://pytorch.org/) | Tensors and Dynamic neural networks in Python |
-| **SASS DSL** | *Built-in* | SASS DSL API Snapshot Extractor |
 | **Scikit-Learn** | [scikit-learn.org](https://scikit-learn.org/) | Machine learning in Python |
 | **TensorFlow** | [tensorflow.org](https://www.tensorflow.org/) | An end-to-end open source machine learning platform |
 | **TikZ DSL** | *Built-in* | TikZ DSL API Snapshot Extractor |

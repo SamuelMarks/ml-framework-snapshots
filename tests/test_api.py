@@ -451,7 +451,7 @@ def test_get_pkg_version_extra() -> None:
     assert get_pkg_version("html_dsl") == "1.0.0"
     assert get_pkg_version("latex_dsl") == "1.0.0"
     assert get_pkg_version("tikz") == "1.0.0"
-    assert get_pkg_version("sass") == "1.0.0"
+    assert get_pkg_version("nvidia_sass") == "1.0.0"
 
 
 def test_get_pkg_version_more() -> None:
