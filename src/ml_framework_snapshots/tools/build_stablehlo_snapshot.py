@@ -154,7 +154,7 @@ def main() -> None:
     out_path = os.path.abspath(os.path.join(out_dir, "stablehlo_v1.0.json"))
 
     with open(out_path, "w") as f:
-        json.dump(snapshot_data, f, indent=2)
+        json.dump(snapshot_data, f, indent=2, sort_keys=True)
         f.write("\n")
 
     print(f"Wrote {len(ghost_refs)} ops to {out_path}")

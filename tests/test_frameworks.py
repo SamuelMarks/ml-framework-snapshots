@@ -1017,7 +1017,7 @@ def test_sklearn_collect(mocker: Any) -> None:
 
     mock_sklearn = types.ModuleType("sklearn")
     mock_sklearn.base = types.ModuleType("sklearn.base")  # type: ignore
-    mock_sklearn.base.BaseEstimator = BaseEstimator  # type: ignore[attr-defined]
+    setattr(mock_sklearn.base, "BaseEstimator", BaseEstimator)
 
     mock_ensemble = types.ModuleType("sklearn.ensemble")
     mock_ensemble.RandomForestClassifier = RandomForestClassifier  # type: ignore[attr-defined]
@@ -1706,69 +1706,44 @@ def test_mlir_collect(mocker: Any) -> None:
     from ml_framework_snapshots.frameworks import mlir as mlir_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
 
-    class FakeMlir:
-        """Fake MLIR module for testing."""
+    mocker.patch("os.path.exists", return_value=True)
 
-        __path__ = ["fake/path"]
+    mock_json_data = [
+        {
+            "api_path": "arith.addf",
+            "dialect": "arith",
+            "class_name": "AddFOp",
+            "operands": ["lhs", "rhs"],
+            "attributes": ["fastmath"],
+            "description": "Floating point addition operation",
+        }
+    ]
 
-    mocker.patch.object(mlir_fw, "mlir_dialects", FakeMlir())
+    import json
 
-    import textwrap
-
-    mocker.patch("glob.glob", return_value=["fake/path/_arith_ops_gen.py"])
-
-    mock_file_content = textwrap.dedent(
-        """
-        class AddFOp:
-            OPERATION_NAME = "arith.addf"
-            def __init__(self, lhs, *, loc=None):
-                pass
-        class NotAnOp:
-            pass
-        class PartialOp:
-            OPERATION_NAME = "arith.partial"
-            # missing __init__
-        class WeirdOp:
-            # Operation name is not a constant
-            OPERATION_NAME = get_name()
-            # Operation target is something else
-            some_other_var = "value"
-    """
-    )
-
-    mocker.patch("builtins.open", mocker.mock_open(read_data=mock_file_content))
     mocker.patch(
-        "glob.glob",
-        return_value=[
-            "fake/path/_arith_ops_gen.py",
-            "fake/path/not_ops_gen.py",
-            "fake/path/not_started_with_us_ops_gen.py",
-        ],
+        "builtins.open", mocker.mock_open(read_data=json.dumps(mock_json_data))
     )
 
-    ops = mlir_fw.collect_api(SemanticTier.UTIL)
-    assert len(ops) == 2
-    names = [x.name for x in ops]
-    assert "AddFOp" in names
-    assert "PartialOp" in names
+    api = mlir_fw.collect_api(SemanticTier.UTIL)
+    assert len(api) == 1
+    assert api[0].name == "AddFOp"
+    assert api[0].api_path == "arith.addf"
+    assert len(api[0].params) == 3
+    assert api[0].params[0].name == "lhs"
+    assert api[0].params[1].name == "rhs"
+    assert api[0].params[2].name == "fastmath"
+    assert api[0].params[2].kind == "KEYWORD_ONLY"
 
+    # Test wrong category
     assert mlir_fw.collect_api(SemanticTier.LAYER) == []
 
-    mocker.patch.object(mlir_fw, "mlir_dialects", None)
+    # Test parser exception
+    mocker.patch("builtins.open", side_effect=OSError)
     assert mlir_fw.collect_api(SemanticTier.UTIL) == []
 
-    # test parser exception
-    mocker.patch.object(mlir_fw, "mlir_dialects", FakeMlir())
-    mocker.patch("builtins.open", side_effect=Exception)
-    assert mlir_fw.collect_api(SemanticTier.UTIL) == []
-
-    # test missing __path__
-    class FakeMlirNoPath:
-        """Fake MLIR module without __path__."""
-
-        pass
-
-    mocker.patch.object(mlir_fw, "mlir_dialects", FakeMlirNoPath())
+    # Test file missing
+    mocker.patch("os.path.exists", return_value=False)
     assert mlir_fw.collect_api(SemanticTier.UTIL) == []
 
 

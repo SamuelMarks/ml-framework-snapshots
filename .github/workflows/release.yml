@@ -110,11 +110,17 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Generate stablehlo snapshot
+        run: |
+          if [ ! -f "src/ml_framework_snapshots/snapshots/stablehlo_v1.0.json" ]; then
+            python3 src/ml_framework_snapshots/tools/build_stablehlo_snapshot.py
+          fi
+
       - name: Generate remaining snapshots
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          frameworks="torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface triton sklearn onnxruntime nvidia_sass html_dsl latex_dsl tikz"
+          frameworks="torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface triton sklearn onnxruntime nvidia_sass html_dsl latex_dsl tikz maxtext mlir amd_rdna"
 
           echo "::group::Pre-check versions"
           SKIP_LIST=" "
@@ -145,6 +151,8 @@ jobs:
               triton) PKGS="triton"; INDEX=""; PKG_NAME="triton" ;;
               sklearn) PKGS="scikit-learn"; INDEX=""; PKG_NAME="scikit-learn" ;;
               onnxruntime) PKGS="onnxruntime"; INDEX=""; PKG_NAME="onnxruntime" ;;
+              maxtext) PKGS="maxtext"; INDEX=""; PKG_NAME="maxtext" ;;
+              mlir) PKGS="jaxlib"; INDEX=""; PKG_NAME="jaxlib" ;;
               *) PKGS=""; PKG_NAME="" ;;
             esac
 
@@ -203,6 +211,8 @@ jobs:
                 triton) PKGS="triton" ;;
                 sklearn) PKGS="scikit-learn" ;;
                 onnxruntime) PKGS="onnxruntime" ;;
+                maxtext) PKGS="maxtext" ;;
+                mlir) PKGS="jaxlib" ;;
                 *) PKGS="" ;;
               esac
 

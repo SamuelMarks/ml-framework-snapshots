@@ -80,7 +80,8 @@ def main() -> None:
         )
 
     with open(output_path, "w") as f:
-        json.dump(exhaustive_list, f, indent=4)
+        json.dump(exhaustive_list, f, indent=2, sort_keys=True)
+        f.write("\n")
     print(f"Dumped {len(exhaustive_list)} SASS instructions to {output_path}")
 
 

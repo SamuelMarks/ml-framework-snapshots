@@ -362,5 +362,6 @@ def write_snapshot(
 
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(snapshot_data, f, indent=2, sort_keys=True)
+        f.write("\n")
 
     return str(file_path)

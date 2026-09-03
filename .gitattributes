@@ -1,3 +1,4 @@
 * text=auto eol=lf
 *.json text eol=lf
 snapshots/*.json text eol=lf
+src/ml_framework_snapshots/frameworks/*_exhaustive.json linguist-generated=true

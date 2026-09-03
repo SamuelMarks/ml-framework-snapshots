@@ -1,0 +1,1308 @@
+[
+    {
+        "api_path": "stablehlo.abs",
+        "dialect": "stablehlo",
+        "class_name": "AbsOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise abs operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.add",
+        "dialect": "stablehlo",
+        "class_name": "AddOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise addition of two tensors `lhs` and `rhs` and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.after_all",
+        "dialect": "stablehlo",
+        "class_name": "AfterAllOp",
+        "operands": [
+            "inputs"
+        ],
+        "attributes": [],
+        "description": "Ensures that the operations producing the `inputs` are executed before any operations that depend on `result`. Execution of this operation does nothing, it only exists to establish data dependencies from `result` to `inputs`."
+    },
+    {
+        "api_path": "stablehlo.all_gather",
+        "dialect": "stablehlo",
+        "class_name": "AllGatherOp",
+        "operands": [
+            "operands",
+            "all_gather_dim",
+            "replica_groups",
+            "channel_id",
+            "use_global_device_ids"
+        ],
+        "attributes": [],
+        "description": "Within each process group in the StableHLO process grid, concatenates the values of the `operands` tensors from each process along `all_gather_dim` and produces `results` tensors."
+    },
+    {
+        "api_path": "stablehlo.all_reduce",
+        "dialect": "stablehlo",
+        "class_name": "AllReduceOp",
+        "operands": [
+            "operands",
+            "replica_groups",
+            "channel_id",
+            "use_global_device_ids",
+            "computation"
+        ],
+        "attributes": [],
+        "description": "Within each process group in the StableHLO process grid, applies a reduction function `computation` to the values of the `operands` tensors from each process and produces `results` tensors."
+    },
+    {
+        "api_path": "stablehlo.all_to_all",
+        "dialect": "stablehlo",
+        "class_name": "AllToAllOp",
+        "operands": [
+            "operands",
+            "split_dimension",
+            "concat_dimension",
+            "split_count",
+            "replica_groups",
+            "channel_id"
+        ],
+        "attributes": [],
+        "description": "![all_to_all](images/spec/all_to_all.svg)"
+    },
+    {
+        "api_path": "stablehlo.and",
+        "dialect": "stablehlo",
+        "class_name": "AndOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise AND of two tensors `lhs` and `rhs` and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.async_done",
+        "dialect": "stablehlo",
+        "class_name": "AsyncDoneOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Waits for an asynchronous operation to complete and returns its value."
+    },
+    {
+        "api_path": "stablehlo.async_start",
+        "dialect": "stablehlo",
+        "class_name": "AsyncStartOp",
+        "operands": [
+            "operands",
+            "body"
+        ],
+        "attributes": [],
+        "description": "Performs a computation asynchronously."
+    },
+    {
+        "api_path": "stablehlo.atan2",
+        "dialect": "stablehlo",
+        "class_name": "Atan2Op",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise atan2 operation on `lhs` and `rhs` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.batch_norm_grad",
+        "dialect": "stablehlo",
+        "class_name": "BatchNormGradOp",
+        "operands": [
+            "operand",
+            "scale",
+            "mean",
+            "variance",
+            "grad_output",
+            "epsilon",
+            "feature_index"
+        ],
+        "attributes": [],
+        "description": "Computes gradients of several inputs of `batch_norm_training` backpropagating from `grad_output`, and produces `grad_operand`, `grad_scale` and `grad_offset` tensors. More formally, this operation can be expressed as a decomposition to existing StableHLO operations using Python syntax as follows:"
+    },
+    {
+        "api_path": "stablehlo.batch_norm_inference",
+        "dialect": "stablehlo",
+        "class_name": "BatchNormInferenceOp",
+        "operands": [
+            "operand",
+            "scale",
+            "offset",
+            "mean",
+            "variance",
+            "epsilon",
+            "feature_index"
+        ],
+        "attributes": [],
+        "description": "Normalizes the `operand` tensor across all dimensions except for the `feature_index` dimension and produces a `result` tensor. More formally, this operation can be expressed as a decomposition to existing StableHLO operations using Python syntax as follows:"
+    },
+    {
+        "api_path": "stablehlo.batch_norm_training",
+        "dialect": "stablehlo",
+        "class_name": "BatchNormTrainingOp",
+        "operands": [
+            "operand",
+            "scale",
+            "offset",
+            "epsilon",
+            "feature_index"
+        ],
+        "attributes": [],
+        "description": "Computes mean and variance across all dimensions except for the `feature_index` dimension and normalizes the `operand` tensor producing `output`, `batch_mean` and `batch_var` tensors. More formally, this operation can be expressed as a decomposition to existing StableHLO operations using Python syntax as follows:"
+    },
+    {
+        "api_path": "stablehlo.bitcast_convert",
+        "dialect": "stablehlo",
+        "class_name": "BitcastConvertOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs a bitcast operation on `operand` tensor and produces a `result` tensor where the bits of the entire `operand` tensor are reinterpreted using the type of the `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.broadcast_in_dim",
+        "dialect": "stablehlo",
+        "class_name": "BroadcastInDimOp",
+        "operands": [
+            "operand",
+            "broadcast_dimensions"
+        ],
+        "attributes": [],
+        "description": "![broadcast_in_dim](images/spec/broadcast_in_dim.svg)"
+    },
+    {
+        "api_path": "stablehlo.case",
+        "dialect": "stablehlo",
+        "class_name": "CaseOp",
+        "operands": [
+            "index",
+            "branches"
+        ],
+        "attributes": [],
+        "description": "Produces the output from executing exactly one function from `branches` depending on the value of `index`. More formally, `result = selected_branch()` where:"
+    },
+    {
+        "api_path": "stablehlo.cbrt",
+        "dialect": "stablehlo",
+        "class_name": "CbrtOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise cubic root operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.ceil",
+        "dialect": "stablehlo",
+        "class_name": "CeilOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise ceil of `operand` tensor and produces a `result` tensor. Implements the `roundToIntegralTowardPositive` operation from the IEEE-754 specification. For quantized types, performs `dequantize_op_quantize(ceil, operand, type(result))`."
+    },
+    {
+        "api_path": "stablehlo.cholesky",
+        "dialect": "stablehlo",
+        "class_name": "CholeskyOp",
+        "operands": [
+            "a",
+            "lower"
+        ],
+        "attributes": [],
+        "description": "Computes the Cholesky decomposition of a batch of matrices."
+    },
+    {
+        "api_path": "stablehlo.clamp",
+        "dialect": "stablehlo",
+        "class_name": "ClampOp",
+        "operands": [
+            "min",
+            "operand",
+            "max"
+        ],
+        "attributes": [],
+        "description": "Clamps every element of the `operand` tensor between a minimum and maximum value and produces a `result` tensor. More formally, `result[result_index] = minimum(maximum(operand[result_index], min_element), max_element)`, where `min_element = rank(min) = 0 ? min[] : min[result_index]`, `max_element = rank(max) = 0 ? max[] : max[result_index]`. For quantized types, performs `dequantize_op_quantize(clamp, min, operand, max, type(result))`."
+    },
+    {
+        "api_path": "stablehlo.collective_broadcast",
+        "dialect": "stablehlo",
+        "class_name": "CollectiveBroadcastOp",
+        "operands": [
+            "operands",
+            "replica_groups",
+            "channel_id",
+            "has_dynamic_root"
+        ],
+        "attributes": [],
+        "description": "Within each process group in the StableHLO process grid, send the value of the `operands` tensors from the source process to the target processes and produce `results` tensors."
+    },
+    {
+        "api_path": "stablehlo.collective_permute",
+        "dialect": "stablehlo",
+        "class_name": "CollectivePermuteOp",
+        "operands": [
+            "operand",
+            "source_target_pairs",
+            "channel_id"
+        ],
+        "attributes": [],
+        "description": "Within each process group in the StableHLO process grid, sends the value of the `operand` tensor from the source process to the target process and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.collective_reduce",
+        "dialect": "stablehlo",
+        "class_name": "CollectiveReduceOp",
+        "operands": [
+            "operands",
+            "replica_groups",
+            "channel_id",
+            "has_dynamic_root",
+            "computation"
+        ],
+        "attributes": [],
+        "description": "Within each process group in the StableHLO process grid, send the value of the `operands` tensor to the source process, applies a reduction function `computation` to the values of the `operands` tensors from each process and produces `results` tensors and saves the `results` tensors only on the source process."
+    },
+    {
+        "api_path": "stablehlo.compare",
+        "dialect": "stablehlo",
+        "class_name": "CompareOp",
+        "operands": [
+            "lhs",
+            "rhs",
+            "comparison_direction",
+            "compare_type"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise comparison of `lhs` and `rhs` tensors according to `comparison_direction` and `compare_type`, and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.complex",
+        "dialect": "stablehlo",
+        "class_name": "ComplexOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise conversion to a complex value from a pair of real and imaginary values, `lhs` and `rhs`, and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.composite",
+        "dialect": "stablehlo",
+        "class_name": "CompositeOp",
+        "operands": [
+            "inputs",
+            "name",
+            "composite_attributes",
+            "decomposition",
+            "version",
+            "regions"
+        ],
+        "attributes": [],
+        "description": "Encapsulates an operation made up (composed) of other StableHLO operations, taking `inputs`, `composite_attributes` and `regions` and producing `results`. The semantics of the op are implemented by the `decomposition` attribute. The `composite` op can be replaced with its decomposition without changing program semantics. In cases where inlining the decomposition does not provide the same op semantics, prefer using `custom_call`."
+    },
+    {
+        "api_path": "stablehlo.concatenate",
+        "dialect": "stablehlo",
+        "class_name": "ConcatenateOp",
+        "operands": [
+            "inputs",
+            "dimension"
+        ],
+        "attributes": [],
+        "description": "Concatenates `inputs` along `dimension` dimension in the same order as the given arguments and produces a `result` tensor. More formally, `result[i0, ..., id, ..., iR-1] = inputs[k][i0, ..., kd, ..., iR-1]`, where:"
+    },
+    {
+        "api_path": "stablehlo.constant",
+        "dialect": "stablehlo",
+        "class_name": "ConstantOp",
+        "operands": [
+            "value"
+        ],
+        "attributes": [],
+        "description": "Produces an `output` tensor from a constant `value`."
+    },
+    {
+        "api_path": "stablehlo.convert",
+        "dialect": "stablehlo",
+        "class_name": "ConvertOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs an element-wise conversion from one element type to another on `operand` tensor and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.convolution",
+        "dialect": "stablehlo",
+        "class_name": "ConvolutionOp",
+        "operands": [
+            "lhs",
+            "rhs",
+            "window_strides",
+            "padding",
+            "lhs_dilation",
+            "rhs_dilation",
+            "window_reversal",
+            "input_batch_dimension",
+            "input_feature_dimension",
+            "input_spatial_dimensions",
+            "kernel_input_feature_dimension",
+            "kernel_output_feature_dimension",
+            "kernel_spatial_dimensions",
+            "output_batch_dimension",
+            "output_feature_dimension",
+            "output_spatial_dimensions",
+            "feature_group_count",
+            "batch_group_count",
+            "precision_config"
+        ],
+        "attributes": [],
+        "description": "Computes dot products between windows of `lhs` and slices of `rhs` and produces `result`. The following diagram shows how elements in `result` are computed from `lhs` and `rhs` using a concrete example."
+    },
+    {
+        "api_path": "stablehlo.cosine",
+        "dialect": "stablehlo",
+        "class_name": "CosineOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise cosine operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.count_leading_zeros",
+        "dialect": "stablehlo",
+        "class_name": "CountLeadingZerosOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise count of the number of leading zero bits in the `operand` tensor and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.custom_call",
+        "dialect": "stablehlo",
+        "class_name": "CustomCallOp",
+        "operands": [
+            "inputs",
+            "call_target_name",
+            "has_side_effect",
+            "backend_config",
+            "api_version",
+            "called_computations",
+            "output_operand_aliases"
+        ],
+        "attributes": [],
+        "description": "Encapsulates an implementation-defined operation `call_target_name` that takes `inputs` and `called_computations` and produces `results`. `has_side_effect`, `backend_config` and `api_version` may be used to provide additional implementation-defined metadata."
+    },
+    {
+        "api_path": "stablehlo.divide",
+        "dialect": "stablehlo",
+        "class_name": "DivideOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise division of dividend `lhs` and divisor `rhs` tensors and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.dot_general",
+        "dialect": "stablehlo",
+        "class_name": "DotGeneralOp",
+        "operands": [
+            "lhs",
+            "rhs",
+            "lhs_batching_dimensions",
+            "rhs_batching_dimensions",
+            "lhs_contracting_dimensions",
+            "rhs_contracting_dimensions",
+            "precision_config",
+            "lhs_precision_type",
+            "rhs_precision_type",
+            "accumulation_type",
+            "lhs_component_count",
+            "rhs_component_count",
+            "num_primitive_operations",
+            "allow_imprecise_accumulation"
+        ],
+        "attributes": [],
+        "description": "Computes dot products between slices of `lhs` and slices of `rhs` and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.dynamic_broadcast_in_dim",
+        "dialect": "stablehlo",
+        "class_name": "DynamicBroadcastInDimOp",
+        "operands": [
+            "operand",
+            "output_dimensions",
+            "broadcast_dimensions",
+            "known_expanding_dimensions",
+            "known_nonexpanding_dimensions"
+        ],
+        "attributes": [],
+        "description": "This operation is functionally identical to [broadcast_in_dim](https://github.com/openxla/stablehlo/blob/main/docs/spec.md#broadcast_in_dim) op, but the result shape is specified dynamically via `output_dimensions`."
+    },
+    {
+        "api_path": "stablehlo.dynamic_conv",
+        "dialect": "stablehlo",
+        "class_name": "DynamicConvOp",
+        "operands": [
+            "lhs",
+            "rhs",
+            "padding",
+            "window_strides",
+            "lhs_dilation",
+            "rhs_dilation",
+            "window_reversal",
+            "input_batch_dimension",
+            "input_feature_dimension",
+            "input_spatial_dimensions",
+            "kernel_input_feature_dimension",
+            "kernel_output_feature_dimension",
+            "kernel_spatial_dimensions",
+            "output_batch_dimension",
+            "output_feature_dimension",
+            "output_spatial_dimensions",
+            "feature_group_count",
+            "batch_group_count",
+            "precision_config"
+        ],
+        "attributes": [],
+        "description": "This operation is functionally identical to [convolution](https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convolution) op, but the padding is specified dynamically via `padding`."
+    },
+    {
+        "api_path": "stablehlo.dynamic_gather",
+        "dialect": "stablehlo",
+        "class_name": "DynamicGatherOp",
+        "operands": [
+            "operand",
+            "start_indices",
+            "slice_sizes",
+            "offset_dims",
+            "collapsed_slice_dims",
+            "start_index_map",
+            "index_vector_dim",
+            "indices_are_sorted"
+        ],
+        "attributes": [],
+        "description": "This operation is functionally identical to [gather](https://github.com/openxla/stablehlo/blob/main/docs/spec.md#gather) op, with the `slice_sizes` specified dynamically as a value."
+    },
+    {
+        "api_path": "stablehlo.dynamic_iota",
+        "dialect": "stablehlo",
+        "class_name": "DynamicIotaOp",
+        "operands": [
+            "output_shape",
+            "iota_dimension"
+        ],
+        "attributes": [],
+        "description": "This operation is functionally identical to [iota](https://github.com/openxla/stablehlo/blob/main/docs/spec.md#iota) op, but the result shape is specified dynamically via `output_shape`."
+    },
+    {
+        "api_path": "stablehlo.dynamic_pad",
+        "dialect": "stablehlo",
+        "class_name": "DynamicPadOp",
+        "operands": [
+            "operand",
+            "padding_value",
+            "edge_padding_low",
+            "edge_padding_high",
+            "interior_padding"
+        ],
+        "attributes": [],
+        "description": "This operation is functionally identical to [pad](https://github.com/openxla/stablehlo/blob/main/docs/spec.md#pad) op, but with `edge_padding_low`, `edge_padding_high`, and `interior_padding` specified dynamically as values."
+    },
+    {
+        "api_path": "stablehlo.dynamic_reshape",
+        "dialect": "stablehlo",
+        "class_name": "DynamicReshapeOp",
+        "operands": [
+            "operand",
+            "output_shape"
+        ],
+        "attributes": [],
+        "description": "This operation is functionally identical to [reshape](https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reshape) op, but the result shape is specified dynamically via `output_shape`."
+    },
+    {
+        "api_path": "stablehlo.dynamic_slice",
+        "dialect": "stablehlo",
+        "class_name": "DynamicSliceOp",
+        "operands": [
+            "operand",
+            "start_indices",
+            "slice_sizes"
+        ],
+        "attributes": [],
+        "description": "Extracts a slice from the `operand` using dynamically-computed starting indices and produces a `result` tensor. `start_indices` contain the starting indices of the slice for each dimension subject to potential adjustment, and `slice_sizes` contain the sizes of the slice for each dimension. More formally, `result[result_index] = operand[operand_index]` where:"
+    },
+    {
+        "api_path": "stablehlo.dynamic_update_slice",
+        "dialect": "stablehlo",
+        "class_name": "DynamicUpdateSliceOp",
+        "operands": [
+            "operand",
+            "update",
+            "start_indices"
+        ],
+        "attributes": [],
+        "description": "Produces a `result` tensor which is equal to the `operand` tensor except that the slice starting at `start_indices` is updated with the values in `update`. More formally, `result[result_index]` is defined as:"
+    },
+    {
+        "api_path": "stablehlo.exponential",
+        "dialect": "stablehlo",
+        "class_name": "ExponentialOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise exponential operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.exponential_minus_one",
+        "dialect": "stablehlo",
+        "class_name": "ExponentialMinusOneOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise exponential minus one operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.fft",
+        "dialect": "stablehlo",
+        "class_name": "FftOp",
+        "operands": [
+            "operand",
+            "fft_type",
+            "fft_length"
+        ],
+        "attributes": [],
+        "description": "Performs the forward and inverse Fourier transforms for real and complex inputs/outputs."
+    },
+    {
+        "api_path": "stablehlo.floor",
+        "dialect": "stablehlo",
+        "class_name": "FloorOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise floor of `operand` tensor and produces a `result` tensor. Implements the `roundToIntegralTowardNegative` operation from the IEEE-754 specification. For quantized types, performs `dequantize_op_quantize(floor, operand, type(result))`."
+    },
+    {
+        "api_path": "stablehlo.gather",
+        "dialect": "stablehlo",
+        "class_name": "GatherOp",
+        "operands": [
+            "operand",
+            "start_indices",
+            "offset_dims",
+            "collapsed_slice_dims",
+            "operand_batching_dims",
+            "start_indices_batching_dims",
+            "start_index_map",
+            "index_vector_dim",
+            "slice_sizes",
+            "indices_are_sorted"
+        ],
+        "attributes": [],
+        "description": "Gathers slices from `operand` tensor from offsets specified in `start_indices` and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.get_dimension_size",
+        "dialect": "stablehlo",
+        "class_name": "GetDimensionSizeOp",
+        "operands": [
+            "operand",
+            "dimension"
+        ],
+        "attributes": [],
+        "description": "Produces the size of the given `dimension` of the `operand`. More formally, `result = dim(operand, dimension)`. The Semantics concerns only with the shape component of the type. The element-type could be anything."
+    },
+    {
+        "api_path": "stablehlo.get_tuple_element",
+        "dialect": "stablehlo",
+        "class_name": "GetTupleElementOp",
+        "operands": [
+            "operand",
+            "index"
+        ],
+        "attributes": [],
+        "description": "Extracts element at `index` position of the `operand` tuple and produces a `result`. More formally, `result = operand[index]`."
+    },
+    {
+        "api_path": "stablehlo.if",
+        "dialect": "stablehlo",
+        "class_name": "IfOp",
+        "operands": [
+            "pred",
+            "true_branch",
+            "false_branch"
+        ],
+        "attributes": [],
+        "description": "Produces the output from executing exactly one function from `true_branch` or `false_branch` depending on the value of `pred`. More formally, `result = pred ? true_branch() : false_branch()`."
+    },
+    {
+        "api_path": "stablehlo.imag",
+        "dialect": "stablehlo",
+        "class_name": "ImagOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Extracts the imaginary part, element-wise, from the `operand` and produces a `result` tensor. More formally, for each element `x`: `imag(x) = is_complex(x) ? imaginary_part(x) : constant(0, element_type(result))`."
+    },
+    {
+        "api_path": "stablehlo.infeed",
+        "dialect": "stablehlo",
+        "class_name": "InfeedOp",
+        "operands": [
+            "token",
+            "infeed_config"
+        ],
+        "attributes": [],
+        "description": "Reads data from the infeed and produces `results`."
+    },
+    {
+        "api_path": "stablehlo.iota",
+        "dialect": "stablehlo",
+        "class_name": "IotaOp",
+        "operands": [
+            "iota_dimension"
+        ],
+        "attributes": [],
+        "description": "Fills an `output` tensor with values in increasing order starting from zero along the `iota_dimension` dimension. More formally,"
+    },
+    {
+        "api_path": "stablehlo.is_finite",
+        "dialect": "stablehlo",
+        "class_name": "IsFiniteOp",
+        "operands": [
+            "x"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise check whether the value in `x` is finite (i.e. is neither +Inf, -Inf, nor NaN) and produces a `y` tensor. Implements the `isFinite` operation from the IEEE-754 specification. For quantized types, the result is always `true`."
+    },
+    {
+        "api_path": "stablehlo.log",
+        "dialect": "stablehlo",
+        "class_name": "LogOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise logarithm operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.log_plus_one",
+        "dialect": "stablehlo",
+        "class_name": "LogPlusOneOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise logarithm plus one operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.logistic",
+        "dialect": "stablehlo",
+        "class_name": "LogisticOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise logistic operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.map",
+        "dialect": "stablehlo",
+        "class_name": "MapOp",
+        "operands": [
+            "inputs",
+            "dimensions",
+            "computation"
+        ],
+        "attributes": [],
+        "description": "Applies a map function `computation` to `inputs` along the `dimensions` and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.maximum",
+        "dialect": "stablehlo",
+        "class_name": "MaximumOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise max operation on tensors `lhs` and `rhs` and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.minimum",
+        "dialect": "stablehlo",
+        "class_name": "MinimumOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise min operation on tensors `lhs` and `rhs` and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.multiply",
+        "dialect": "stablehlo",
+        "class_name": "MultiplyOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise product of two tensors `lhs` and `rhs` and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.negate",
+        "dialect": "stablehlo",
+        "class_name": "NegateOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise negation of `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.not",
+        "dialect": "stablehlo",
+        "class_name": "NotOp",
+        "operands": [],
+        "attributes": [],
+        "description": "Performs element-wise NOT of tensor `operand` and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.optimization_barrier",
+        "dialect": "stablehlo",
+        "class_name": "OptimizationBarrierOp",
+        "operands": [],
+        "attributes": [],
+        "description": "Ensures that the operations that produce the `operand` are executed before any operations that depend on the `result` and prevents compiler transformations from moving operations across the barrier. Other than that, the operation is an identity, i.e. `result = operand`."
+    },
+    {
+        "api_path": "stablehlo.or",
+        "dialect": "stablehlo",
+        "class_name": "OrOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise OR of two tensors `lhs` and `rhs` and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.outfeed",
+        "dialect": "stablehlo",
+        "class_name": "OutfeedOp",
+        "operands": [
+            "inputs",
+            "token",
+            "outfeed_config"
+        ],
+        "attributes": [],
+        "description": "Writes `inputs` to the outfeed and produces a `result` token."
+    },
+    {
+        "api_path": "stablehlo.pad",
+        "dialect": "stablehlo",
+        "class_name": "PadOp",
+        "operands": [
+            "operand",
+            "padding_value",
+            "edge_padding_low",
+            "edge_padding_high",
+            "interior_padding"
+        ],
+        "attributes": [],
+        "description": "Expands `operand` by padding around the tensor as well as between the elements of the tensor with the given `padding_value`."
+    },
+    {
+        "api_path": "stablehlo.partition_id",
+        "dialect": "stablehlo",
+        "class_name": "PartitionIdOp",
+        "operands": [],
+        "attributes": [],
+        "description": "Produces `partition_id` of the current process."
+    },
+    {
+        "api_path": "stablehlo.popcnt",
+        "dialect": "stablehlo",
+        "class_name": "PopcntOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise count of the number of bits set in the `operand` tensor and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.power",
+        "dialect": "stablehlo",
+        "class_name": "PowerOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise exponentiation of `lhs` tensor by `rhs` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.real",
+        "dialect": "stablehlo",
+        "class_name": "RealOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Extracts the real part, element-wise, from the `operand` and produces a `result` tensor. More formally, for each element `x`: `real(x) = is_complex(x) ? real_part(x) : x`."
+    },
+    {
+        "api_path": "stablehlo.recv",
+        "dialect": "stablehlo",
+        "class_name": "RecvOp",
+        "operands": [
+            "token",
+            "channel_id",
+            "channel_type",
+            "is_host_transfer",
+            "source_target_pairs"
+        ],
+        "attributes": [],
+        "description": "Receives data from a channel with `channel_id` and produces `results`."
+    },
+    {
+        "api_path": "stablehlo.reduce",
+        "dialect": "stablehlo",
+        "class_name": "ReduceOp",
+        "operands": [
+            "inputs",
+            "init_values",
+            "dimensions",
+            "body"
+        ],
+        "attributes": [],
+        "description": "Applies a reduction function `body` to `inputs` and `init_values` along the `dimensions` and produces `results` tensors."
+    },
+    {
+        "api_path": "stablehlo.reduce_precision",
+        "dialect": "stablehlo",
+        "class_name": "ReducePrecisionOp",
+        "operands": [
+            "operand",
+            "exponent_bits",
+            "mantissa_bits"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise conversion of `operand` to another floating-point type that uses `exponent_bits` and `mantissa_bits` and back to the original floating-point type and produces an `output` tensor."
+    },
+    {
+        "api_path": "stablehlo.reduce_scatter",
+        "dialect": "stablehlo",
+        "class_name": "ReduceScatterOp",
+        "operands": [
+            "operand",
+            "scatter_dimension",
+            "replica_groups",
+            "channel_id",
+            "use_global_device_ids",
+            "computation"
+        ],
+        "attributes": [],
+        "description": "![reduce_scatter](images/spec/reduce_scatter.svg)"
+    },
+    {
+        "api_path": "stablehlo.reduce_window",
+        "dialect": "stablehlo",
+        "class_name": "ReduceWindowOp",
+        "operands": [
+            "inputs",
+            "init_values",
+            "window_dimensions",
+            "window_strides",
+            "base_dilations",
+            "window_dilations",
+            "padding",
+            "body"
+        ],
+        "attributes": [],
+        "description": "Applies a reduction function `body` to windows of `inputs` and `init_values` and produces `results`."
+    },
+    {
+        "api_path": "stablehlo.remainder",
+        "dialect": "stablehlo",
+        "class_name": "RemainderOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise remainder of dividend `lhs` and divisor `rhs` tensors and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.replica_id",
+        "dialect": "stablehlo",
+        "class_name": "ReplicaIdOp",
+        "operands": [],
+        "attributes": [],
+        "description": "Produces `replica_id` of the current process."
+    },
+    {
+        "api_path": "stablehlo.reshape",
+        "dialect": "stablehlo",
+        "class_name": "ReshapeOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs reshape of `operand` tensor to a `result` tensor. Conceptually, it amounts to keeping the same canonical representation but potentially changing the shape, e.g. from `tensor<2x3xf32>` to `tensor<3x2xf32>` or `tensor<6xf32>`."
+    },
+    {
+        "api_path": "stablehlo.reverse",
+        "dialect": "stablehlo",
+        "class_name": "ReverseOp",
+        "operands": [
+            "operand",
+            "dimensions"
+        ],
+        "attributes": [],
+        "description": "Reverses the order of elements in the `operand` along the specified `dimensions` and produces a `result` tensor. More formally, `result[result_index] = operand[operand_index]` where:"
+    },
+    {
+        "api_path": "stablehlo.rng",
+        "dialect": "stablehlo",
+        "class_name": "RngOp",
+        "operands": [
+            "a",
+            "b",
+            "shape",
+            "rng_distribution"
+        ],
+        "attributes": [],
+        "description": "Generates random numbers using the `rng_distribution` algorithm and produces a `result` tensor of a given shape `shape`."
+    },
+    {
+        "api_path": "stablehlo.rng_bit_generator",
+        "dialect": "stablehlo",
+        "class_name": "RngBitGeneratorOp",
+        "operands": [
+            "rng_algorithm",
+            "initial_state"
+        ],
+        "attributes": [],
+        "description": "Returns an `output` filled with uniform random bits and an updated output state `output_state` using the pseudorandom number generator algorithm `rng_algorithm` given an initial state `initial_state`. The output is guaranteed to be deterministic function of `initial_state`, but it is not guaranteed to be deterministic between implementations."
+    },
+    {
+        "api_path": "stablehlo.round_nearest_afz",
+        "dialect": "stablehlo",
+        "class_name": "RoundNearestAfzOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise rounding towards the nearest integer, breaking ties away from zero, on the `operand` tensor and produces a `result` tensor. Implements the `roundToIntegralTiesToAway` operation from the IEEE-754 specification. For quantized types, performs `dequantize_op_quantize(round_nearest_afz, operand, type(result))`."
+    },
+    {
+        "api_path": "stablehlo.round_nearest_even",
+        "dialect": "stablehlo",
+        "class_name": "RoundNearestEvenOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise rounding towards the nearest integer, breaking ties towards the even integer, on the `operand` tensor and produces a `result` tensor. Implements the `roundToIntegralTiesToEven` operation from the IEEE-754 specification. For quantized types, performs `dequantize_op_quantize(round_nearest_even, operand, type(result))`."
+    },
+    {
+        "api_path": "stablehlo.rsqrt",
+        "dialect": "stablehlo",
+        "class_name": "RsqrtOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise reciprocal square root operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.scatter",
+        "dialect": "stablehlo",
+        "class_name": "ScatterOp",
+        "operands": [
+            "inputs",
+            "scatter_indices",
+            "updates",
+            "update_window_dims",
+            "inserted_window_dims",
+            "input_batching_dims",
+            "scatter_indices_batching_dims",
+            "scatter_dims_to_operand_dims",
+            "index_vector_dim",
+            "indices_are_sorted",
+            "unique_indices",
+            "update_computation"
+        ],
+        "attributes": [],
+        "description": "Produces `results` tensors which are equal to `inputs` tensors except that several slices specified by `scatter_indices` are updated with the values `updates` using `update_computation`."
+    },
+    {
+        "api_path": "stablehlo.select",
+        "dialect": "stablehlo",
+        "class_name": "SelectOp",
+        "operands": [
+            "pred",
+            "on_true",
+            "on_false"
+        ],
+        "attributes": [],
+        "description": "Produces a `result` tensor where each element is selected from `on_true` or `on_false` tensor based on the value of the corresponding element of `pred`. More formally, `result[result_index] = pred_element ? on_true[result_index] : on_false[result_index]`, where `pred_element = rank(pred) = 0 ? pred[] : pred[result_index]`. For quantized types, performs `dequantize_select_quantize(pred, on_true, on_false, type(result))`."
+    },
+    {
+        "api_path": "stablehlo.select_and_scatter",
+        "dialect": "stablehlo",
+        "class_name": "SelectAndScatterOp",
+        "operands": [
+            "operand",
+            "source",
+            "init_value",
+            "window_dimensions",
+            "window_strides",
+            "padding",
+            "select",
+            "scatter"
+        ],
+        "attributes": [],
+        "description": "Scatters the values from the `source` tensor using `scatter` based on the outcome of `reduce_window` of the `input` tensor using `select` and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.send",
+        "dialect": "stablehlo",
+        "class_name": "SendOp",
+        "operands": [
+            "inputs",
+            "token",
+            "channel_id",
+            "channel_type",
+            "is_host_transfer",
+            "source_target_pairs"
+        ],
+        "attributes": [],
+        "description": "Sends `inputs` to a channel `channel_id`. Inputs are then sent to other devices in the order specified by `source_target_pairs`. The operation produces a `result` token."
+    },
+    {
+        "api_path": "stablehlo.shift_left",
+        "dialect": "stablehlo",
+        "class_name": "ShiftLeftOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise left-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.shift_right_arithmetic",
+        "dialect": "stablehlo",
+        "class_name": "ShiftRightArithmeticOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise arithmetic right-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.shift_right_logical",
+        "dialect": "stablehlo",
+        "class_name": "ShiftRightLogicalOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise logical right-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor."
+    },
+    {
+        "api_path": "stablehlo.sign",
+        "dialect": "stablehlo",
+        "class_name": "SignOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Returns the sign of the `operand` element-wise and produces a `result` tensor. More formally, for each element `x`, the semantics can be expressed using Python syntax as follows:"
+    },
+    {
+        "api_path": "stablehlo.sine",
+        "dialect": "stablehlo",
+        "class_name": "SineOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise sine operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.slice",
+        "dialect": "stablehlo",
+        "class_name": "SliceOp",
+        "operands": [
+            "operand",
+            "start_indices",
+            "limit_indices",
+            "strides"
+        ],
+        "attributes": [],
+        "description": "Extracts a slice from the `operand` using statically-computed starting indices and produces a `result` tensor. `start_indices` contain the starting indices of the slice for each dimension, `limit_indices` contain the ending indices (exclusive) for the slice for each dimension, and `strides` contain the strides for each dimension."
+    },
+    {
+        "api_path": "stablehlo.sort",
+        "dialect": "stablehlo",
+        "class_name": "SortOp",
+        "operands": [
+            "inputs",
+            "dimension",
+            "is_stable",
+            "comparator"
+        ],
+        "attributes": [],
+        "description": "Sorts 1-dimensional slices of `inputs` along the dimension `dimension` together, according to a `comparator` and produces `results`."
+    },
+    {
+        "api_path": "stablehlo.sqrt",
+        "dialect": "stablehlo",
+        "class_name": "SqrtOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise square root operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.subtract",
+        "dialect": "stablehlo",
+        "class_name": "SubtractOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise subtraction of two tensors `lhs` and `rhs` and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.tan",
+        "dialect": "stablehlo",
+        "class_name": "TanOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise tangent operation on the `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.tanh",
+        "dialect": "stablehlo",
+        "class_name": "TanhOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise hyperbolic tangent operation on `operand` tensor and produces a `result` tensor. Depending on the element type, does the following:"
+    },
+    {
+        "api_path": "stablehlo.transpose",
+        "dialect": "stablehlo",
+        "class_name": "TransposeOp",
+        "operands": [
+            "operand",
+            "permutation"
+        ],
+        "attributes": [],
+        "description": "Permutes the dimensions of `operand` tensor using `permutation` and produces a `result` tensor. More formally, `result[result_index] = operand[operand_index]` where `result_index[d] = operand_index[permutation[d]]`."
+    },
+    {
+        "api_path": "stablehlo.triangular_solve",
+        "dialect": "stablehlo",
+        "class_name": "TriangularSolveOp",
+        "operands": [
+            "a",
+            "b",
+            "left_side",
+            "lower",
+            "unit_diagonal",
+            "transpose_a"
+        ],
+        "attributes": [],
+        "description": "Solves batches of systems of linear equations with lower or upper triangular coefficient matrices."
+    },
+    {
+        "api_path": "stablehlo.tuple",
+        "dialect": "stablehlo",
+        "class_name": "TupleOp",
+        "operands": [
+            "val"
+        ],
+        "attributes": [],
+        "description": "Produces a `result` tuple from values `val`."
+    },
+    {
+        "api_path": "stablehlo.uniform_dequantize",
+        "dialect": "stablehlo",
+        "class_name": "UniformDequantizeOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise conversion of quantized tensor `operand` to a floating-point tensor `result` according to the quantization parameters defined by the `operand` type."
+    },
+    {
+        "api_path": "stablehlo.uniform_quantize",
+        "dialect": "stablehlo",
+        "class_name": "UniformQuantizeOp",
+        "operands": [
+            "operand"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise conversion of floating-point tensor or quantized tensor `operand` to a quantized tensor `result` according to the quantization parameters defined by the `result` type."
+    },
+    {
+        "api_path": "stablehlo.while",
+        "dialect": "stablehlo",
+        "class_name": "WhileOp",
+        "operands": [
+            "operand",
+            "cond",
+            "body"
+        ],
+        "attributes": [],
+        "description": "Produces the output from executing `body` function 0 or more times while the `cond` function outputs `true`. More formally, the semantics can be expressed using Python syntax as follows:"
+    },
+    {
+        "api_path": "stablehlo.xor",
+        "dialect": "stablehlo",
+        "class_name": "XorOp",
+        "operands": [
+            "lhs",
+            "rhs"
+        ],
+        "attributes": [],
+        "description": "Performs element-wise XOR of two tensors `lhs` and `rhs` and produces a `result` tensor. Depending on the element type, does the following:"
+    }
+]

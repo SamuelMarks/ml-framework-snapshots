@@ -79,6 +79,16 @@ def test_scrape_nvidia_sass() -> None:
             def side_effect(
                 path: str, *args: typing.Any, **kwargs: typing.Any
             ) -> typing.Any:
+                """Mock open side effect.
+
+                Args:
+                    path: The file path.
+                    *args: Additional args.
+                    **kwargs: Additional kwargs.
+
+                Returns:
+                    The mocked file object.
+                """
                 if "/tmp/isa.json" in path:
                     return original_open(input_path, *args, **kwargs)
                 if "nvidia_sass_exhaustive.json" in path:

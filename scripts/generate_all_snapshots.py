@@ -34,6 +34,7 @@ def main() -> None:
         "latex_dsl",
         "tikz",
         "nvidia_sass",
+        "amd_rdna",
     ]
     frameworks = sys.argv[1:] if len(sys.argv) > 1 else all_frameworks
     has_error = False

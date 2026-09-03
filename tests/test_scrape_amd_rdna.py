@@ -48,6 +48,14 @@ def S_MOV_B32 : SOP1_Pseudo <"s_mov_b32">;
             # Only return content for the first file to simulate
             # one file having content and the rest being empty or similar
             def fetch_side_effect(filename: str) -> str:
+                """Mock fetch_td_file side effect.
+
+                Args:
+                    filename: The filename to fetch.
+
+                Returns:
+                    The mocked content.
+                """
                 if filename == "VOP1Instructions.td":
                     return mock_td_content
                 return ""
@@ -62,6 +70,16 @@ def S_MOV_B32 : SOP1_Pseudo <"s_mov_b32">;
                 def open_side_effect(
                     path: str, *args: typing.Any, **kwargs: typing.Any
                 ) -> typing.Any:
+                    """Mock open side effect.
+
+                    Args:
+                        path: The file path.
+                        *args: Additional args.
+                        **kwargs: Additional kwargs.
+
+                    Returns:
+                        The mocked file object.
+                    """
                     if "amd_rdna_exhaustive.json" in path:
                         return original_open(output_path, *args, **kwargs)
                     return original_open(path, *args, **kwargs)  # pragma: no cover

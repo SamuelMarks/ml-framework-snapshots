@@ -62,6 +62,7 @@ def test_main_success(
         "latex_dsl",
         "tikz",
         "nvidia_sass",
+        "amd_rdna",
     ]
 
     assert mock_extract.call_count == len(frameworks)
@@ -126,6 +127,7 @@ def test_main_failure(
         "latex_dsl",
         "tikz",
         "nvidia_sass",
+        "amd_rdna",
     ]
 
     assert mock_extract.call_count == len(frameworks)

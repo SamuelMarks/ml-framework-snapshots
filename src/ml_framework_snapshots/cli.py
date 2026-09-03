@@ -176,7 +176,8 @@ def cmd_export(args: argparse.Namespace) -> None:
         openapi_spec = to_openapi(refs)
         out_path = os.path.join(args.out_dir, "openapi.json")
         with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(openapi_spec, f, indent=2)
+            json.dump(openapi_spec, f, indent=2, sort_keys=True)
+            f.write("\n")
         print(f"Exported OpenAPI spec to {out_path}")
     elif args.format == "json_schema":
         from ml_framework_snapshots.export import to_json_schema
@@ -185,7 +186,8 @@ def cmd_export(args: argparse.Namespace) -> None:
             schema = to_json_schema(ref)
             out_path = os.path.join(args.out_dir, f"{ref.name}.schema.json")
             with open(out_path, "w", encoding="utf-8") as f:
-                json.dump(schema, f, indent=2)
+                json.dump(schema, f, indent=2, sort_keys=True)
+                f.write("\n")
         print(f"Exported {len(refs)} JSON schemas to {args.out_dir}")
     elif args.format == "pydantic":
         from ml_framework_snapshots.export import to_pydantic
