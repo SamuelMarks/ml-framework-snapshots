@@ -59,6 +59,13 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                 "tanh",
                 "softmax",
                 "elu",
+                "mish",
+                "hardswish",
+                "leaky_relu",
+                "prelu",
+                "selu",
+                "step",
+                "log_softmax",
             }
             for name, obj in get_all_members(mlx.nn):
                 if (
@@ -88,10 +95,52 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                         GhostInspector.inspect(obj, f"mlx.optimizers.{name}")
                     )
         elif category == SemanticTier.ARRAY_API:
-            for name in ["abs", "mean"]:
-                obj = getattr(mlx.core, name, None)
-                if obj:
-                    results.append(GhostInspector.inspect(obj, f"mlx.core.{name}"))
+            core_mod = getattr(mlx, "core", None)
+            if core_mod:
+                for name, obj in get_all_members(core_mod):
+                    if (
+                        (include_nonpublic or not name.startswith("_"))
+                        and callable(obj)
+                        and not inspect.isclass(obj)
+                    ):
+                        try:
+                            results.append(
+                                GhostInspector.inspect(obj, f"mlx.core.{name}")
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
+
+                fft_mod = getattr(core_mod, "fft", None)
+                if fft_mod:
+                    for name, obj in get_all_members(fft_mod):
+                        if (
+                            (include_nonpublic or not name.startswith("_"))
+                            and callable(obj)
+                            and not inspect.isclass(obj)
+                        ):
+                            try:
+                                results.append(
+                                    GhostInspector.inspect(obj, f"mlx.core.fft.{name}")
+                                )
+                            except Exception:  # pragma: no cover
+                                pass
+
+                linalg_mod = getattr(core_mod, "linalg", None)
+                if linalg_mod:
+                    for name, obj in get_all_members(linalg_mod):
+                        if (
+                            (include_nonpublic or not name.startswith("_"))
+                            and callable(obj)
+                            and not inspect.isclass(obj)
+                        ):
+                            try:
+                                results.append(
+                                    GhostInspector.inspect(
+                                        obj, f"mlx.core.linalg.{name}"
+                                    )
+                                )
+                            except Exception:  # pragma: no cover
+                                pass
     except Exception:  # pragma: no cover
         pass
 

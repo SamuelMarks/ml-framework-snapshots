@@ -6,7 +6,7 @@ GhostRefs for layers, losses, optimizers, and activations.
 
 import inspect
 from ml_framework_snapshots.utils import get_all_members
-from typing import List
+from typing import List, Set
 from ml_framework_snapshots.models import GhostInspector
 from ml_switcheroo_ir.schema.ghost import GhostRef
 from ml_switcheroo_ir.schema.ghost import SemanticTier
@@ -77,6 +77,30 @@ def _scan_optimizers(include_nonpublic: bool) -> List[GhostRef]:
     return found
 
 
+def _get_activation_names() -> Set[str]:
+    """Retrieve all activation module names from torch.nn.modules.activation with fallback."""
+    names: Set[str] = set()
+    try:
+        import torch.nn.modules.activation as act_mod
+
+        for name, obj in get_all_members(act_mod):
+            if inspect.isclass(obj) and issubclass(obj, nn.Module):
+                names.add(name)
+    except Exception:
+        pass
+    if not names:
+        names = {
+            "ReLU",
+            "Sigmoid",
+            "Tanh",
+            "GELU",
+            "SiLU",
+            "Softmax",
+            "LeakyReLU",
+        }
+    return names
+
+
 def _scan_activations(include_nonpublic: bool) -> List[GhostRef]:
     """Scan `torch.nn` for activation functions.
 
@@ -90,22 +114,15 @@ def _scan_activations(include_nonpublic: bool) -> List[GhostRef]:
     if not nn:
         return []
     found = []
+    target_activations = _get_activation_names()
+
     for name, obj in get_all_members(nn):
         if inspect.isclass(obj):
             if not include_nonpublic and name.startswith("_"):
                 continue
             try:
-                if issubclass(obj, nn.Module):
-                    if name in [
-                        "ReLU",
-                        "Sigmoid",
-                        "Tanh",
-                        "GELU",
-                        "SiLU",
-                        "Softmax",
-                        "LeakyReLU",
-                    ]:
-                        found.append(GhostInspector.inspect(obj, f"torch.nn.{name}"))
+                if issubclass(obj, nn.Module) and name in target_activations:
+                    found.append(GhostInspector.inspect(obj, f"torch.nn.{name}"))
             except TypeError:  # pragma: no cover
                 pass
     return found
@@ -124,21 +141,15 @@ def _scan_layers(include_nonpublic: bool) -> List[GhostRef]:
     if not nn:
         return []
     found = []
+    target_activations = _get_activation_names()
+
     for name, obj in get_all_members(nn):
         if inspect.isclass(obj):
             if not include_nonpublic and name.startswith("_"):
                 continue
             try:
                 if issubclass(obj, nn.Module):
-                    if not name.endswith("Loss") and name not in [
-                        "ReLU",
-                        "Sigmoid",
-                        "Tanh",
-                        "GELU",
-                        "SiLU",
-                        "Softmax",
-                        "LeakyReLU",
-                    ]:
+                    if not name.endswith("Loss") and name not in target_activations:
                         found.append(GhostInspector.inspect(obj, f"torch.nn.{name}"))
             except TypeError:  # pragma: no cover
                 pass
@@ -190,7 +201,7 @@ def _scan_initializers(include_nonpublic: bool) -> List[GhostRef]:
 
 
 def _scan_metrics(include_nonpublic: bool) -> List[GhostRef]:
-    """Scan for metrics (returns empty for base PyTorch).
+    """Scan for metrics (delegates to torchmetrics if installed, otherwise returns empty).
 
     Args:
         include_nonpublic: Whether to include non-public APIs.
@@ -199,7 +210,19 @@ def _scan_metrics(include_nonpublic: bool) -> List[GhostRef]:
         A list of GhostRef objects representing found metrics.
 
     """
-    return []
+    found = []
+    try:
+        import torchmetrics
+
+        for name, obj in get_all_members(torchmetrics):
+            if inspect.isclass(obj) and (include_nonpublic or not name.startswith("_")):
+                try:
+                    found.append(GhostInspector.inspect(obj, f"torchmetrics.{name}"))
+                except Exception:  # pragma: no cover
+                    pass
+    except ImportError:
+        pass
+    return found
 
 
 def _scan_dataloaders(include_nonpublic: bool) -> List[GhostRef]:
@@ -224,7 +247,14 @@ def _scan_dataloaders(include_nonpublic: bool) -> List[GhostRef]:
 
 
 def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
-    """Scan top-level PyTorch module for array API functions and some builtins.
+    """Scan top-level PyTorch module for array API functions and submodules.
+
+    Exhaustively discovers:
+        - All public operations in `torch.*`
+        - `torch.linalg.*`
+        - `torch.special.*`
+        - `torch.fft.*`
+        - `torch.nn.functional.*` (convolutions, pooling, linear, activations, attention, loss)
 
     Args:
         include_nonpublic: Whether to include non-public APIs.
@@ -236,68 +266,114 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
     try:
         import torch
 
-        # Top-level array API functions
-        for name in [
-            "abs",
-            "mean",
-            "load",
-            "save",
-            "divide",
-            "true_divide",
-            "add",
-            "sub",
-            "mul",
-            "trunc",
-            "fmod",
-            "sum",
-            "max",
-            "min",
-            "prod",
-            "all",
-            "any",
-            "erfinv",
-            "nan_to_num",
-            "arange",
-            "zeros",
-            "ones",
-            "full",
-            "reshape",
-            "sort",
-            "argsort",
-            "allclose",
-            "stft",
-            "istft",
-            "hann_window",
-            "hamming_window",
-            "kaiser_window",
-            "argmax",
-            "argmin",
-        ]:
-            obj = getattr(torch, name, None)
-            if obj:
-                found.append(GhostInspector.inspect(obj, f"torch.{name}"))
+        # 1. Top-level array API functions
+        for name, obj in get_all_members(torch):
+            if not include_nonpublic and name.startswith("_"):
+                continue
+            if callable(obj) and not inspect.isclass(obj) and not inspect.ismodule(obj):
+                try:
+                    found.append(GhostInspector.inspect(obj, f"torch.{name}"))
+                except Exception:  # pragma: no cover
+                    pass
 
-        # fft module
+        # 2. linalg module
+        if hasattr(torch, "linalg"):
+            for name, obj in get_all_members(torch.linalg):
+                if (
+                    (include_nonpublic or not name.startswith("_"))
+                    and callable(obj)
+                    and not inspect.isclass(obj)
+                ):
+                    try:
+                        found.append(
+                            GhostInspector.inspect(obj, f"torch.linalg.{name}")
+                        )
+                    except Exception:  # pragma: no cover
+                        pass
+
+        # 3. special module
+        if hasattr(torch, "special"):
+            for name, obj in get_all_members(torch.special):
+                if (
+                    (include_nonpublic or not name.startswith("_"))
+                    and callable(obj)
+                    and not inspect.isclass(obj)
+                ):
+                    try:
+                        found.append(
+                            GhostInspector.inspect(obj, f"torch.special.{name}")
+                        )
+                    except Exception:  # pragma: no cover
+                        pass
+
+        # 4. fft module
         if hasattr(torch, "fft"):
-            for name in dir(torch.fft):
-                if not name.startswith("_"):
-                    obj = getattr(torch.fft, name)
-                    if callable(obj):
-                        found.append(GhostInspector.inspect(obj, f"torch.fft.{name}"))
+            for name, obj in get_all_members(torch.fft):
+                if not name.startswith("_") or include_nonpublic:
+                    if callable(obj) and not inspect.isclass(obj):
+                        try:
+                            found.append(
+                                GhostInspector.inspect(obj, f"torch.fft.{name}")
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
 
-        # nn.functional module (vision/others)
+        # 5. Exhaustive nn.functional module
         if hasattr(torch, "nn") and hasattr(torch.nn, "functional"):
-            for name in ["interpolate", "affine_grid", "grid_sample"]:
-                obj = getattr(torch.nn.functional, name, None)
-                if obj:
-                    found.append(
-                        GhostInspector.inspect(obj, f"torch.nn.functional.{name}")
-                    )
+            for name, obj in get_all_members(torch.nn.functional):
+                if not name.startswith("_") or include_nonpublic:
+                    if callable(obj) and not inspect.isclass(obj):
+                        try:
+                            found.append(
+                                GhostInspector.inspect(
+                                    obj, f"torch.nn.functional.{name}"
+                                )
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
+
+        # 6. autograd functions
+        if hasattr(torch, "autograd"):
+            for name, obj in get_all_members(torch.autograd):
+                if not name.startswith("_") or include_nonpublic:
+                    if callable(obj) and not inspect.isclass(obj):
+                        try:
+                            found.append(
+                                GhostInspector.inspect(obj, f"torch.autograd.{name}")
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
+
+        # 7. distributed functions
+        if hasattr(torch, "distributed"):
+            for name, obj in get_all_members(torch.distributed):
+                if not name.startswith("_") or include_nonpublic:
+                    if callable(obj) and not inspect.isclass(obj):
+                        try:
+                            found.append(
+                                GhostInspector.inspect(obj, f"torch.distributed.{name}")
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
+
+        # 8. torch.Tensor instance methods
+        if hasattr(torch, "Tensor"):
+            for name, obj in inspect.getmembers(torch.Tensor):
+                if not include_nonpublic and name.startswith("_"):
+                    continue
+                if callable(obj) and not inspect.isclass(obj):
+                    try:
+                        found.append(
+                            GhostInspector.inspect(
+                                obj, f"torch.Tensor.{name}", kind="method"
+                            )
+                        )
+                    except Exception:  # pragma: no cover
+                        pass
 
     except ImportError:
         pass
 
-    found.append(GhostInspector.inspect(float, "float"))
     return found
 
 

@@ -31,6 +31,10 @@ ignore_missing_imports = true
 strict = true
 warn_unused_ignores = false
 
+[[tool.mypy.overrides]]
+module = "ml_framework_snapshots.models"
+disallow_subclassing_any = false
+
 [tool.hatch.build.targets.sdist]
 exclude = [
     "/.venv_311",

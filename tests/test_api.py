@@ -578,3 +578,14 @@ def test_get_pkg_version_keras(mocker: Any) -> None:
     mock_griffe.load.side_effect = Exception
     mocker.patch.dict("sys.modules", {"griffe": mock_griffe})
     assert get_pkg_version("keras") == "unknown"
+
+
+def test_extract_snapshot_stablehlo_zero_dep() -> None:
+    """Verify that extract_snapshot('stablehlo') returns non-empty categories and version 1.0.0."""
+    assert get_pkg_version("stablehlo") == "1.0.0"
+    snap = extract_snapshot("stablehlo")
+    assert snap["version"] == "1.0.0"
+    assert "categories" in snap
+    assert len(snap["categories"]) > 0
+    total_ops = sum(len(ops) for ops in snap["categories"].values())
+    assert total_ops > 0

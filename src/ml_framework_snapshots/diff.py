@@ -4,7 +4,7 @@ Provides functions to diff two snapshots and detect additions, removals,
 and signature changes.
 """
 
-from typing import Dict, Any, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field
 
 
@@ -31,18 +31,36 @@ class DiffResult(BaseModel):
 
 
 def _is_breaking_change(
-    p1_list: List[Dict[str, Any]], p2_list: List[Dict[str, Any]]
+    p1_list: List[Dict[str, Any]],
+    p2_list: List[Dict[str, Any]],
+    meta1: Optional[Dict[str, Any]] = None,
+    meta2: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """Determine if a signature change is backwards-incompatible.
 
     Args:
         p1_list: Old parameter list.
         p2_list: New parameter list.
+        meta1: Optional old domain metadata (modifiers, architectures).
+        meta2: Optional new domain metadata.
 
     Returns:
         True if breaking, False otherwise.
 
     """
+    if meta1 and meta2:
+        # Check removed modifiers (breaking in assembly)
+        m1_mods = set(meta1.get("modifiers", []))
+        m2_mods = set(meta2.get("modifiers", []))
+        if m1_mods - m2_mods:
+            return True
+
+        # Check removed architectures (breaking)
+        m1_archs = set(meta1.get("valid_architectures", []))
+        m2_archs = set(meta2.get("valid_architectures", []))
+        if m1_archs - m2_archs:
+            return True
+
     p1_map = {p.get("name"): p for p in p1_list}
     p2_map = {p.get("name"): p for p in p2_list}
 
@@ -160,11 +178,13 @@ def diff_snapshots(snap1: Dict[str, Any], snap2: Dict[str, Any]) -> DiffResult:
 
             sig1 = [sig_tuple(p) for p in p1]
             sig2 = [sig_tuple(p) for p in p2]
+            meta1 = item1.get("domain_metadata")
+            meta2 = item2.get("domain_metadata")
 
-            # evaluate if non-public changes are breaking
-            if sig1 != sig2:
+            # evaluate if changes are breaking
+            if sig1 != sig2 or (meta1 and meta2 and meta1 != meta2):
                 signature_changed.append(display_path)
-                if _is_breaking_change(p1, p2):
+                if _is_breaking_change(p1, p2, meta1, meta2):
                     breaking_signature_changed.append(display_path)
                 else:
                     non_breaking_signature_changed.append(display_path)

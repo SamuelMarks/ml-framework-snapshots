@@ -322,6 +322,67 @@ def test_cli_export_protobuf(mocker: Any, capsys: Any) -> None:
     assert "Exported 1 Protobuf definitions to out" in captured.out
 
 
+def test_cli_export_llm_prompt(mocker: Any, capsys: Any) -> None:
+    """Test the export command with llm_prompt format.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
+    mocker.patch(
+        "sys.argv",
+        [
+            "ml-snapshots",
+            "export",
+            "--input",
+            "in.json",
+            "--out-dir",
+            "out",
+            "--format",
+            "llm_prompt",
+        ],
+    )
+
+    mock_snap = {
+        "categories": {
+            "test": [
+                {
+                    "name": "Linear",
+                    "api_path": "torch.nn.Linear",
+                    "kind": "class",
+                    "params": [],
+                }
+            ]
+        }
+    }
+
+    mocker.patch("builtins.open", mock_open(read_data="{}"))
+    mocker.patch("json.load", return_value=mock_snap)
+    mocker.patch("os.makedirs")
+
+    mock_export = mocker.patch(
+        "ml_framework_snapshots.export.export_llm_prompt_context",
+        return_value="### `torch.nn.Linear`",
+    )
+
+    main()
+    captured = capsys.readouterr()
+    mock_export.assert_called_once()
+    assert "Exported LLM prompt context" in captured.out
+
+
+def test_cli_mcp(mocker: Any) -> None:
+    """Test the mcp command invoker.
+
+    Args:
+        mocker: Parameter.
+    """
+    mocker.patch("sys.argv", ["ml-snapshots", "mcp"])
+    mock_run = mocker.patch("ml_framework_snapshots.mcp_server.run_mcp_server")
+    main()
+    mock_run.assert_called_once()
+
+
 def test_cli_export_unknown_format(mocker: Any, capsys: Any) -> None:
     """Function docstring.
 
@@ -461,3 +522,35 @@ def test_cmd_capture_missing(capsys: Any) -> None:
 
     captured = capsys.readouterr()
     assert "Skipping mock_fw" in captured.out
+
+
+def test_cmd_list_snapshots(capsys: Any) -> None:
+    """Test cmd_list_snapshots prints available snapshots.
+
+    Args:
+        capsys: Parameter.
+    """
+    from ml_framework_snapshots.cli import cmd_list_snapshots
+    import argparse
+
+    args = argparse.Namespace()
+    cmd_list_snapshots(args)
+    captured = capsys.readouterr()
+    assert "Available Snapshots:" in captured.out
+
+
+def test_cmd_list_snapshots_empty(capsys: Any, mocker: Any) -> None:
+    """Test cmd_list_snapshots when no snapshots exist.
+
+    Args:
+        capsys: Parameter.
+        mocker: Parameter.
+    """
+    from ml_framework_snapshots.cli import cmd_list_snapshots
+    import argparse
+
+    mocker.patch("os.path.isdir", return_value=False)
+    args = argparse.Namespace()
+    cmd_list_snapshots(args)
+    captured = capsys.readouterr()
+    assert "No snapshot files found." in captured.out

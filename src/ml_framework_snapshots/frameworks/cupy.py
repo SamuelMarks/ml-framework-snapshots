@@ -10,7 +10,7 @@ try:
     import cupy as _cp
 
     cp: typing.Any = _cp
-except ImportError:  # pragma: no cover
+except Exception:  # pragma: no cover
     cp = None  # pragma: no cover
 
 

@@ -6,7 +6,7 @@ Provides the entrypoint for generating framework snapshots from the terminal.
 import argparse
 import json
 import os
-from typing import List
+from typing import Any, Dict, List
 
 from ml_framework_snapshots.api import (
     extract_snapshot,
@@ -32,30 +32,46 @@ def resolve_snapshot_path(path: str) -> str:
     if os.path.exists(path + ".json"):
         return path + ".json"
 
-    # Try looking in the project's snapshots directory
+    # Try looking in project or package-bundled snapshots/frameworks directories
     basename = os.path.basename(path)
     pkg_dir = os.path.dirname(__file__)
     repo_root = os.path.dirname(os.path.dirname(pkg_dir))
-    snapshots_dir = os.path.join(repo_root, "snapshots")
 
-    candidates = [
-        os.path.join(snapshots_dir, basename),
-        os.path.join(snapshots_dir, basename + ".json"),
+    search_dirs: List[str] = [
+        os.path.join(repo_root, "snapshots"),
+        os.path.join(pkg_dir, "snapshots"),
+        os.path.join(pkg_dir, "frameworks"),
+        os.path.join(os.getcwd(), "snapshots"),
     ]
 
-    for candidate in candidates:
-        if os.path.exists(candidate):
-            return candidate
+    seen_dirs = set()
+    candidate_dirs: List[str] = []
+    for d in search_dirs:
+        norm_d = os.path.normpath(d)
+        if norm_d not in seen_dirs and os.path.isdir(norm_d):
+            seen_dirs.add(norm_d)
+            candidate_dirs.append(norm_d)
 
-    # Try prefix matching
-    if os.path.isdir(snapshots_dir):
-        import glob
+    for d in candidate_dirs:
+        exact_candidate = os.path.join(d, basename)
+        if os.path.exists(exact_candidate):
+            return exact_candidate
+        json_candidate = os.path.join(d, basename + ".json")
+        if os.path.exists(json_candidate):
+            return json_candidate
 
-        matches = glob.glob(os.path.join(snapshots_dir, f"{basename}*.json"))
-        if len(matches) == 1:
-            return matches[0]
-        elif len(matches) > 1:
-            return sorted(matches)[-1]
+    import glob
+
+    all_matches: List[str] = []
+    for d in candidate_dirs:
+        matches = glob.glob(os.path.join(d, f"{basename}*.json"))
+        if matches:
+            all_matches.extend(matches)
+
+    if len(all_matches) == 1:
+        return all_matches[0]
+    elif len(all_matches) > 1:
+        return sorted(all_matches)[-1]
 
     return path
 
@@ -207,8 +223,27 @@ def cmd_export(args: argparse.Namespace) -> None:
             with open(out_path, "w", encoding="utf-8") as f:
                 f.write(code)
         print(f"Exported {len(refs)} Protobuf definitions to {args.out_dir}")
+    elif args.format == "llm_prompt":
+        from ml_framework_snapshots.export import export_llm_prompt_context
+
+        content = export_llm_prompt_context(refs)
+        out_path = os.path.join(args.out_dir, "llm_context.md")
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"Exported LLM prompt context to {out_path}")
     else:
         raise ValueError(f"Unknown format: {args.format}")
+
+
+def cmd_mcp(args: argparse.Namespace) -> None:
+    """Handle the mcp command to start Model Context Protocol JSON-RPC server.
+
+    Args:
+        args: Parsed command line arguments.
+    """
+    from ml_framework_snapshots.mcp_server import run_mcp_server
+
+    run_mcp_server()
 
 
 def cmd_check(args: argparse.Namespace) -> None:
@@ -327,6 +362,36 @@ def cmd_check(args: argparse.Namespace) -> None:
             print(f"  ~ ... and {len(mismatched) - 20} more")
 
 
+def cmd_list_snapshots(args: argparse.Namespace) -> None:
+    """List pre-bundled or locally available snapshot files.
+
+    Args:
+        args: Parsed command line arguments.
+    """
+    snapshots_dirs = [
+        os.path.join(os.path.dirname(__file__), "snapshots"),
+        os.path.join(os.path.dirname(__file__), "frameworks"),
+    ]
+    found_snapshots: List[Dict[str, Any]] = []
+    for d in snapshots_dirs:
+        if os.path.isdir(d):
+            for fname in sorted(os.listdir(d)):
+                if fname.endswith(".json"):
+                    full_path = os.path.join(d, fname)
+                    size = os.path.getsize(full_path)
+                    found_snapshots.append(
+                        {"file": fname, "path": full_path, "size": size}
+                    )
+
+    if not found_snapshots:
+        print("No snapshot files found.")
+        return
+
+    print("Available Snapshots:")
+    for s in found_snapshots:
+        print(f"  - {s['file']} ({s['size']} bytes)")
+
+
 def main() -> None:
     """Parse arguments and route to subcommands."""
     parser = argparse.ArgumentParser(description="ML Framework Snapshots CLI")
@@ -384,11 +449,17 @@ def main() -> None:
     )
     parser_export.add_argument(
         "--format",
-        choices=["openapi", "json_schema", "pydantic", "protobuf"],
+        choices=["openapi", "json_schema", "pydantic", "protobuf", "llm_prompt"],
         required=True,
         help="Format to export",
     )
     parser_export.set_defaults(func=cmd_export)
+
+    # mcp
+    parser_mcp = subparsers.add_parser(
+        "mcp", help="Start Model Context Protocol (MCP) JSON-RPC tool server"
+    )
+    parser_mcp.set_defaults(func=cmd_mcp)
 
     # check
     parser_check = subparsers.add_parser(
@@ -416,6 +487,12 @@ def main() -> None:
         help="Module prefix in reference (e.g., jax)",
     )
     parser_check.set_defaults(func=cmd_check)
+
+    # list-snapshots
+    parser_list = subparsers.add_parser(
+        "list-snapshots", help="List available pre-bundled snapshots"
+    )
+    parser_list.set_defaults(func=cmd_list_snapshots)
 
     args = parser.parse_args()
 

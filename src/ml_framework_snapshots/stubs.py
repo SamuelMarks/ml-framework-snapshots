@@ -143,5 +143,24 @@ def generate_stubs(
                 lines.append(f"def {obj_name}({sig}){ret_str}: ...")
                 lines.append("")
 
+        stub_content = "\n".join(lines) + "\n"
+        validate_pyi_stub(stub_content)
+
         with open(init_file, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines) + "\n")
+            f.write(stub_content)
+
+
+def validate_pyi_stub(stub_content: str) -> bool:
+    """Validate that a generated .pyi stub compiles into valid Python AST.
+
+    Args:
+        stub_content: The string content of the .pyi stub file.
+
+    Returns:
+        True if the stub compiles without syntax errors.
+
+    Raises:
+        SyntaxError: If the stub content is syntactically invalid.
+    """
+    ast.parse(stub_content)
+    return True

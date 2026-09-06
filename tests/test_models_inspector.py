@@ -160,6 +160,10 @@ def test_models_raises_no_typ(mocker: Any) -> None:
         "cdd.docstring.parse.docstring",
         return_value={"raises": [{"not_typ": "KeyError"}]},
     )
+    mocker.patch(
+        "ml_framework_snapshots.models.extract_griffe_docstring_metadata",
+        return_value={"params": {}, "returns": None, "raises": []},
+    )
     ref = GhostInspector.inspect(
         dummy_func_with_docstring, "tests.dummy_func_with_docstring"
     )

@@ -135,6 +135,59 @@ ml_framework_snapshots export --input ./snapshots/torch_v2.0.0.json --format ope
 
 ---
 
+## 🤖 Model Context Protocol (MCP) Server Setup
+
+`ml-framework-snapshots` provides a built-in Model Context Protocol (MCP) server that exposes zero-dependency ground-truth validation, real-time signature inspection, anti-hallucination guards, and GPU/compiler verification tools to AI agents.
+
+Launch directly via CLI:
+```bash
+ml_framework_snapshots mcp
+```
+
+### Cursor Integration
+
+Add to your `.cursor/mcp.json` or Global Cursor Settings:
+```json
+{
+  "mcpServers": {
+    "ml-framework-snapshots": {
+      "command": "python",
+      "args": ["-m", "ml_framework_snapshots.mcp_server"]
+    }
+  }
+}
+```
+
+### Claude Desktop Integration
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%/Claude/claude_desktop_config.json` (Windows):
+```json
+{
+  "mcpServers": {
+    "ml-framework-snapshots": {
+      "command": "python",
+      "args": ["-m", "ml_framework_snapshots.mcp_server"]
+    }
+  }
+}
+```
+
+### Gemini CLI Integration
+
+Configure in your Gemini CLI agent settings or invoke via stdio:
+```json
+{
+  "mcpServers": {
+    "ml-framework-snapshots": {
+      "command": "python",
+      "args": ["-m", "ml_framework_snapshots.mcp_server"]
+    }
+  }
+}
+```
+
+---
+
 ## 🛠️ SDK Usage
 
 You can also integrate the snapshot engine programmatically into your own python applications.

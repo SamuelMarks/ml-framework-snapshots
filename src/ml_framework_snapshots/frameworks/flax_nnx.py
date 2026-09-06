@@ -70,7 +70,7 @@ def collect_api(
         A list of GhostRef items discovered for the requested category.
 
     """
-    # Use core JAX scanning for losses, optimizers, activations
+    # Use core JAX scanning for losses, optimizers, activations, and array ops
     if category in [
         SemanticTier.LOSS,
         SemanticTier.OPTIMIZER,
@@ -79,6 +79,7 @@ def collect_api(
         SemanticTier.INITIALIZER,
         SemanticTier.METRIC,
         SemanticTier.DATALOADER,
+        SemanticTier.ARRAY_API,
     ]:
         return jax_collect_api(category, include_nonpublic)
 

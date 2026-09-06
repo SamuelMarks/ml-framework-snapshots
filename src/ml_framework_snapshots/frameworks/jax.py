@@ -75,7 +75,7 @@ def _scan_jax_initializers(include_nonpublic: bool) -> List[GhostRef]:
 
 
 def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
-    """Scan jax.numpy for array API.
+    """Scan JAX for array API functions, primitives, random generation, and transforms.
 
     Args:
         include_nonpublic: Include non-public APIs.
@@ -85,69 +85,77 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
     """
     found = []
     try:
+        import jax
         import jax.numpy as jnp
         import numpy as np
 
-        for name in ["abs", "mean"]:
-            obj = getattr(jnp, name, None)
-            if obj:
-                found.append(GhostInspector.inspect(obj, f"jax.numpy.{name}"))
+        # 1. Exhaustive jax.numpy.*
+        for name, obj in get_all_members(jnp):
+            if not include_nonpublic and name.startswith("_"):
+                continue
+            if callable(obj) and not inspect.isclass(obj):
+                try:
+                    found.append(GhostInspector.inspect(obj, f"jax.numpy.{name}"))
+                except Exception:  # pragma: no cover
+                    pass
+
+        # 2. Core primitive operations in jax.lax.*
+        if hasattr(jax, "lax"):
+            for name, obj in get_all_members(jax.lax):
+                if (
+                    (include_nonpublic or not name.startswith("_"))
+                    and callable(obj)
+                    and not inspect.isclass(obj)
+                ):
+                    try:
+                        found.append(GhostInspector.inspect(obj, f"jax.lax.{name}"))
+                    except Exception:  # pragma: no cover
+                        pass
+
+        # 3. Random generation APIs in jax.random.*
+        if hasattr(jax, "random"):
+            for name, obj in get_all_members(jax.random):
+                if (
+                    (include_nonpublic or not name.startswith("_"))
+                    and callable(obj)
+                    and not inspect.isclass(obj)
+                ):
+                    try:
+                        found.append(GhostInspector.inspect(obj, f"jax.random.{name}"))
+                    except Exception:  # pragma: no cover
+                        pass
+
+        # 4. Transformations (jax.jit, jax.grad, jax.vmap, jax.pmap, jax.checkpoint)
+        for transform_name in ["jit", "grad", "vmap", "pmap", "checkpoint"]:
+            obj = getattr(jax, transform_name, None)
+            if obj and callable(obj):
+                try:
+                    found.append(GhostInspector.inspect(obj, f"jax.{transform_name}"))
+                except Exception:  # pragma: no cover
+                    pass
 
         obj = getattr(jnp, "transpose", None)
-        if obj:
+        if obj and not any(r.name == "transpose" for r in found):
             found.append(GhostInspector.inspect(obj, "jnp.transpose"))
 
         found.append(GhostInspector.inspect(np.float32, "jax.numpy.float32"))
+
+        # 5. jax.Array member methods
+        if hasattr(jax, "Array"):
+            for name, obj in inspect.getmembers(jax.Array):
+                if not include_nonpublic and name.startswith("_"):
+                    continue
+                if callable(obj) and not inspect.isclass(obj):
+                    try:
+                        found.append(
+                            GhostInspector.inspect(
+                                obj, f"jax.Array.{name}", kind="method"
+                            )
+                        )
+                    except Exception:  # pragma: no cover
+                        pass
     except ImportError:
         pass
-
-    # Dummy functions for AST and IO methods
-    def astype(self: typing.Any, dtype: typing.Any) -> None:
-        """Represent a dummy function.
-
-        Args:
-            self: Parameter.
-            dtype: Parameter.
-        """
-        pass  # pragma: no cover
-
-    def load(
-        file: typing.Any,
-        mmap_mode: typing.Any = None,
-        allow_pickle: bool = False,
-        fix_imports: bool = True,
-        encoding: str = "ASCII",
-    ) -> None:
-        """Represent a dummy function.
-
-        Args:
-            file: Parameter.
-            mmap_mode: Parameter.
-            allow_pickle: Parameter.
-            fix_imports: Parameter.
-            encoding: Parameter.
-        """
-        pass  # pragma: no cover
-
-    def save(
-        file: typing.Any,
-        arr: typing.Any,
-        allow_pickle: bool = True,
-        fix_imports: bool = True,
-    ) -> None:
-        """Represent a dummy function.
-
-        Args:
-            file: Parameter.
-            arr: Parameter.
-            allow_pickle: Parameter.
-            fix_imports: Parameter.
-        """
-        pass  # pragma: no cover
-
-    found.append(GhostInspector.inspect(astype, "astype"))
-    found.append(GhostInspector.inspect(load, "load"))
-    found.append(GhostInspector.inspect(save, "save"))
 
     return found
 

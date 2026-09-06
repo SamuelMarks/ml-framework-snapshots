@@ -15,15 +15,23 @@ Updates:
 
 import ast
 import contextlib
+from enum import Enum
 import inspect
 import io
 import logging
 import re
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
-from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef
+from pydantic import BaseModel, Field, ConfigDict
+from ml_switcheroo_ir.schema.ghost import GhostParam as GhostParam, GhostRef as GhostRef
 
-from .utils import extract_c_extension_signature
+from .utils import (
+    extract_c_extension_signature,
+    get_framework_docstring_parser,
+    resolve_griffe_parser,
+    extract_griffe_docstring_metadata,
+    strip_sphinx_roles,
+)
 
 STANDARD_ARG_MAP: Dict[str, str] = {
     "x": "input",
@@ -38,9 +46,134 @@ STANDARD_ARG_MAP: Dict[str, str] = {
     "keepdims": "keepdims",
 }
 
+FRAMEWORK_CAPABILITIES: Dict[str, List[str]] = {
+    "torch": ["cpu", "cuda", "rocm", "metal"],
+    "tensorflow": ["cpu", "cuda", "rocm", "tpu", "metal"],
+    "tf": ["cpu", "cuda", "rocm", "tpu", "metal"],
+    "jax": ["cpu", "cuda", "rocm", "tpu", "metal"],
+    "mlx": ["cpu", "metal"],
+    "triton": ["cuda", "rocm"],
+    "cupy": ["cuda", "rocm"],
+    "numpy": ["cpu"],
+    "sklearn": ["cpu"],
+    "scikit_learn": ["cpu"],
+    "scipy": ["cpu"],
+    "deepspeed": ["cpu", "cuda", "rocm"],
+    "onnxruntime": ["cpu", "cuda", "rocm", "metal"],
+    "nvidia_sass": ["cuda"],
+    "amd_rdna": ["rocm"],
+    "mlir": ["cpu", "cuda", "rocm", "tpu"],
+    "stablehlo": ["cpu", "cuda", "rocm", "tpu"],
+}
+
+
+class OperandDirection(str, Enum):
+    """Structured operand directionality for assembly and low-level instructions."""
+
+    READ = "READ"
+    WRITE = "WRITE"
+    READ_WRITE = "READ_WRITE"
+    PREDICATE = "PREDICATE"
+
+
+class IRParameterRole(str, Enum):
+    """Distinguishes parameter roles for compiler intermediate representations."""
+
+    OPERAND = "OPERAND"
+    ATTRIBUTE = "ATTRIBUTE"
+    RESULT = "RESULT"
+    SUCCESSOR = "SUCCESSOR"
+    REGION = "REGION"
+
+
+class GhostResult(BaseModel):
+    """Structured SSA return or result for compiler IR operations."""
+
+    model_config = ConfigDict(extra="allow")
+
+    name: Optional[str] = Field(
+        default=None, description="Result SSA name or output identifier."
+    )
+    type: Optional[str] = Field(
+        default=None, description="Result type (e.g. tensor<?x?xf32>)."
+    )
+    description: Optional[str] = Field(
+        default=None, description="Description of the result."
+    )
+
+
+class ExtendedGhostParam(GhostParam):
+    """Extended GhostParam supporting operand directionality and IR parameter roles."""
+
+    model_config = ConfigDict(extra="allow")
+
+    direction: Optional[OperandDirection] = Field(
+        default=None,
+        description="Operand directionality (READ, WRITE, READ_WRITE, PREDICATE).",
+    )
+    role: Optional[IRParameterRole] = Field(
+        default=None,
+        description="IR parameter role (OPERAND, ATTRIBUTE, RESULT, etc.).",
+    )
+
+
+class ExtendedGhostRef(GhostRef):
+    """Extended GhostRef with support for domain metadata, multiple SSA returns, and IR operands."""
+
+    model_config = ConfigDict(extra="allow")
+
+    returns: Optional[List[GhostResult]] = Field(
+        default=None, description="Multiple SSA returns or results."
+    )
+    domain_metadata: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Structured domain metadata for ISAs and compilers.",
+    )
+
+
+class GhostPythonRef(ExtendedGhostRef):
+    """GhostRef specialized for high-level Python ML frameworks (PyTorch, JAX, TF, Keras)."""
+
+    model_config = ConfigDict(extra="allow")
+    domain_type: Literal["python"] = "python"
+
+
+class GhostIsaRef(ExtendedGhostRef):
+    """GhostRef specialized for GPU assembly ISAs (NVIDIA SASS, AMD RDNA/CDNA)."""
+
+    model_config = ConfigDict(extra="allow")
+    domain_type: Literal["isa"] = "isa"
+
+
+class GhostMlirRef(ExtendedGhostRef):
+    """GhostRef specialized for compiler IR dialects (Core MLIR and StableHLO)."""
+
+    model_config = ConfigDict(extra="allow")
+    domain_type: Literal["mlir"] = "mlir"
+
+
 _GRIFFE_CACHE: Dict[str, Any] = {}
 
 logging.getLogger("griffe").setLevel(logging.CRITICAL)
+
+
+def preload_griffe_cache(frameworks: Optional[List[str]] = None) -> None:
+    """Preload Griffe AST for specified frameworks into _GRIFFE_CACHE.
+
+    Args:
+        frameworks: Optional list of package names to preload. If None,
+            preloads common ML packages if installed.
+    """
+    import griffe
+
+    targets = frameworks or ["torch", "jax", "tensorflow", "keras", "mlx", "scipy"]
+    for target in targets:
+        if target not in _GRIFFE_CACHE:
+            try:
+                parser = resolve_griffe_parser(get_framework_docstring_parser(target))
+                _GRIFFE_CACHE[target] = griffe.load(target, docstring_parser=parser)
+            except Exception:
+                pass
 
 
 def sanitize_type_str(typ_str: Optional[str]) -> Optional[str]:
@@ -52,6 +185,11 @@ def sanitize_type_str(typ_str: Optional[str]) -> Optional[str]:
     Returns:
         The sanitized type string.
     """
+    if not typ_str:
+        return typ_str
+
+    # Clean Sphinx roles like :class:`~torch.Tensor` -> torch.Tensor
+    typ_str = strip_sphinx_roles(typ_str)
     if not typ_str:
         return typ_str
 
@@ -168,7 +306,9 @@ class GhostInspector:
         obj: Union[Any, Callable[..., Any]],
         api_path: str,
         is_public: Optional[bool] = None,
-    ) -> "GhostRef":
+        environment_tags: Optional[List[str]] = None,
+        kind: Optional[str] = None,
+    ) -> GhostRef:
         """Create a GhostRef from a live Python object.
 
         Gracefully handles C-Extensions and builtins that resist introspection.
@@ -177,6 +317,8 @@ class GhostInspector:
             obj: The live class or function to inspect.
             api_path: The canonical string path (e.g. 'torch.nn.ReLU').
             is_public: Optional override for public visibility.
+            environment_tags: Optional explicit execution tags (e.g. ['cpu', 'cuda']).
+            kind: Optional explicit kind override (e.g. 'function', 'class', 'method').
 
         Returns:
             A populated GhostRef object.
@@ -202,9 +344,33 @@ class GhostInspector:
                 break
         obj = unwrapped_obj
 
-        name = getattr(obj, "__name__", api_path.split(".")[-1])
-        kind = "class" if inspect.isclass(obj) else "function"
-        doc = inspect.getdoc(obj)
+        is_griffe_node = hasattr(obj, "is_class") and hasattr(obj, "is_function")
+        if is_griffe_node:
+            name = getattr(obj, "name", api_path.split(".")[-1])
+            determined_kind = (
+                kind
+                if kind is not None
+                else ("class" if getattr(obj, "is_class", False) else "function")
+            )
+            doc_obj = getattr(obj, "docstring", None)
+            doc = (
+                str(doc_obj.value)
+                if doc_obj and hasattr(doc_obj, "value")
+                else (str(doc_obj) if doc_obj else None)
+            )
+            griffe_node = obj
+        else:
+            name = getattr(obj, "__name__", api_path.split(".")[-1])
+            if name == "<lambda>":
+                name = api_path.split(".")[-1]
+            determined_kind = (
+                kind
+                if kind is not None
+                else ("class" if inspect.isclass(obj) else "function")
+            )
+            doc = inspect.getdoc(obj)
+            griffe_node = None
+        kind = determined_kind
         params = []
         has_varargs = False
 
@@ -213,11 +379,14 @@ class GhostInspector:
         if is_public is not None:
             determined_is_public = is_public
 
-        # 1. Try to load docstring information via cdd
+        # 1. Try to load docstring information via cdd and griffe reST/Sphinx enumeration
         cdd_params = {}
         returns_type = None
         returns_description = None
         raises = []
+
+        top_level = api_path.split(".")[0] if api_path else ""
+        docstring_parser_name = get_framework_docstring_parser(top_level, doc)
 
         if doc:
             try:
@@ -242,6 +411,36 @@ class GhostInspector:
                         if "typ" in exc_dict:
                             raises.append(exc_dict["typ"])
 
+            except Exception:  # pragma: no cover
+                pass
+
+            # Supplement with Griffe's structured docstring enumeration
+            try:
+                griffe_meta = extract_griffe_docstring_metadata(
+                    doc, parser_name=docstring_parser_name
+                )
+                if griffe_meta.get("returns"):
+                    ret_meta = griffe_meta["returns"]
+                    if ret_meta.get("typ") and not returns_type:
+                        returns_type = sanitize_type_str(ret_meta["typ"])
+                    if ret_meta.get("doc") and not returns_description:
+                        returns_description = ret_meta["doc"]
+
+                for exc in griffe_meta.get("raises", []):
+                    if exc not in raises:
+                        raises.append(exc)
+                    # If CDD misclassified an exception into cdd_params, remove it
+                    if exc in cdd_params:
+                        del cdd_params[exc]
+
+                for p_name, p_data in griffe_meta.get("params", {}).items():
+                    if p_name not in cdd_params:
+                        cdd_params[p_name] = p_data
+                    else:
+                        if p_data.get("doc") and not cdd_params[p_name].get("doc"):
+                            cdd_params[p_name]["doc"] = p_data["doc"]
+                        if p_data.get("typ") and not cdd_params[p_name].get("typ"):
+                            cdd_params[p_name]["typ"] = p_data["typ"]
             except Exception:  # pragma: no cover
                 pass
 
@@ -303,26 +502,29 @@ class GhostInspector:
             pass
 
         # 2.5 Try to load AST information via griffe (fallback)
-        griffe_node = None
-        try:
-            import griffe
+        if griffe_node is None:
+            try:
+                import griffe
 
-            if hasattr(griffe.load, "return_value") or hasattr(
-                griffe.load, "side_effect"
-            ):  # Mocked
-                griffe_node = griffe.load(api_path)
-            else:
-                top_level = api_path.split(".")[0]
-                if top_level not in _GRIFFE_CACHE:
-                    _GRIFFE_CACHE[top_level] = griffe.load(top_level)
+                resolved_parser = resolve_griffe_parser(docstring_parser_name)
+                if hasattr(griffe.load, "return_value") or hasattr(
+                    griffe.load, "side_effect"
+                ):  # Mocked
+                    griffe_node = griffe.load(api_path)
+                else:
+                    top_level = api_path.split(".")[0]
+                    if top_level not in _GRIFFE_CACHE:
+                        _GRIFFE_CACHE[top_level] = griffe.load(
+                            top_level, docstring_parser=resolved_parser
+                        )
 
-                parts = api_path.split(".")
-                current = _GRIFFE_CACHE[top_level]
-                for part in parts[1:]:
-                    current = current.members[part]
-                griffe_node = current
-        except Exception:  # pragma: no cover  # pragma: no cover
-            pass
+                    parts = api_path.split(".")
+                    current = _GRIFFE_CACHE[top_level]
+                    for part in parts[1:]:
+                        current = current.members[part]
+                    griffe_node = current
+            except Exception:  # pragma: no cover  # pragma: no cover
+                pass
 
         if is_public is None:
             if griffe_node is not None and hasattr(griffe_node, "is_public"):
@@ -333,23 +535,39 @@ class GhostInspector:
         import typing
 
         resolved_hints = {}
-        try:
-            resolved_hints = typing.get_type_hints(target)
-            if "return" in resolved_hints and returns_type is None:
-                returns_type = sanitize_type_str(str(resolved_hints["return"]))
-        except Exception:  # pragma: no cover  # pragma: no cover
-            pass
+        if not is_griffe_node:
+            try:
+                resolved_hints = typing.get_type_hints(target)
+                if "return" in resolved_hints and returns_type is None:
+                    returns_type = sanitize_type_str(str(resolved_hints["return"]))
+            except Exception:  # pragma: no cover  # pragma: no cover
+                pass
+
+        if griffe_node is not None and returns_type is None:
+            try:
+                g_ret = getattr(griffe_node, "returns", None)
+                if g_ret:
+                    returns_type = sanitize_type_str(str(g_ret))
+            except Exception:
+                pass
 
         # 3. Parameter Extraction Strategy (CDD -> Griffe -> Standard -> C-Extension Fallback)
         extracted_params = []
+        c_ext_params = None
 
         griffe_params = None
         has_griffe_params = False
         try:
-            griffe_params = getattr(griffe_node, "parameters", None)
-            if griffe_params and len(griffe_params) > 0:
-                has_griffe_params = True
-        except Exception:
+            if griffe_node is not None:
+                griffe_params = getattr(griffe_node, "parameters", None)
+                if griffe_params is None and getattr(griffe_node, "is_class", False):
+                    members = getattr(griffe_node, "members", {})
+                    init_node = members.get("__init__") or members.get("__new__")
+                    if init_node:
+                        griffe_params = getattr(init_node, "parameters", None)
+                if griffe_params and len(griffe_params) > 0:
+                    has_griffe_params = True
+        except Exception:  # pragma: no cover
             pass
 
         if cdd_ast_params:
@@ -539,6 +757,10 @@ class GhostInspector:
                 # Try parsing C-Extension docstring signature as a fallback
                 c_ext_params = extract_c_extension_signature(target, name)
                 if c_ext_params is not None:
+                    if (returns_type is None or returns_type == "NoneType") and getattr(
+                        c_ext_params, "returns_type", None
+                    ):
+                        returns_type = sanitize_type_str(c_ext_params.returns_type)
                     for pn, pk, pd, pa in c_ext_params:
                         if pk == "VAR_POSITIONAL":
                             has_varargs = True  # pragma: no cover
@@ -550,6 +772,10 @@ class GhostInspector:
                     has_varargs = True
                     extracted_params.append(("args", "VAR_POSITIONAL", None, None))
                     extracted_params.append(("kwargs", "VAR_KEYWORD", None, None))
+                    if environment_tags is None:
+                        environment_tags = []
+                    if "inexact_signature" not in environment_tags:
+                        environment_tags.append("inexact_signature")
 
         if has_super_kwargs_call and hasattr(obj, "__mro__") and len(obj.__mro__) > 1:
             for parent in obj.__mro__[1:]:
@@ -587,6 +813,36 @@ class GhostInspector:
                 except Exception:  # pragma: no cover
                     pass
 
+        # 3.5 Promote documented **kwargs into formal KEYWORD_ONLY GhostParams
+        has_var_kw = any(ep[1] == "VAR_KEYWORD" for ep in extracted_params)
+        if has_var_kw and cdd_params:
+            existing_names = {ep[0] for ep in extracted_params}
+            var_kw_idx = next(
+                i for i, ep in enumerate(extracted_params) if ep[1] == "VAR_KEYWORD"
+            )
+            promoted_params = []
+            for p_name, p_data in cdd_params.items():
+                if (
+                    p_name not in existing_names
+                    and p_name not in ("kwargs", "args", "self")
+                    and not p_name.startswith("_")
+                ):
+                    p_typ = (
+                        sanitize_type_str(p_data.get("typ"))
+                        if p_data.get("typ")
+                        else None
+                    )
+                    p_def = p_data.get("default")
+                    promoted_params.append((p_name, "KEYWORD_ONLY", p_def, p_typ))
+                    existing_names.add(p_name)
+
+            if promoted_params:
+                extracted_params = (
+                    extracted_params[:var_kw_idx]
+                    + promoted_params
+                    + extracted_params[var_kw_idx:]
+                )
+
         # 4. Finalize GhostParams by merging in CDD docstring descriptions
         for p_name, p_kind, p_default, p_anno in extracted_params:
             p_desc = None
@@ -595,11 +851,11 @@ class GhostInspector:
             elif p_name in cdd_ast_params and cdd_ast_params[p_name].get("doc"):
                 p_desc = cdd_ast_params[p_name].get("doc")
 
-            # If griffe/inspect missed annotation, try CDD
-            if not p_anno:
-                if p_name in cdd_params and "typ" in cdd_params[p_name]:
+            # If griffe/inspect missed annotation or gave Any, try CDD / docstring
+            if not p_anno or p_anno == "Any":
+                if p_name in cdd_params and cdd_params[p_name].get("typ"):
                     p_anno = sanitize_type_str(cdd_params[p_name]["typ"])
-                elif p_name in cdd_ast_params and "typ" in cdd_ast_params[p_name]:
+                elif p_name in cdd_ast_params and cdd_ast_params[p_name].get("typ"):
                     p_anno = sanitize_type_str(cdd_ast_params[p_name]["typ"])
 
             params.append(
@@ -613,20 +869,11 @@ class GhostInspector:
                 )
             )
 
-        import sys
-
-        env_tags = [sys.platform]
-        try:
-            import torch
-
-            if hasattr(torch, "cuda") and torch.cuda.is_available():
-                env_tags.append("cuda")
-            else:
-                env_tags.append("cpu")
-        except ImportError:
-            env_tags.append(
-                "cpu"
-            )  # Default if we don't know, or maybe we omit it. We'll add 'cpu' for now to match the test.
+        if environment_tags is not None:
+            env_tags = list(environment_tags)
+        else:
+            top_pkg = api_path.split(".")[0].lower() if api_path else ""
+            env_tags = list(FRAMEWORK_CAPABILITIES.get(top_pkg, ["cpu"]))
 
         # Extract overloads via Griffe
         overloads_refs = []
@@ -634,6 +881,10 @@ class GhostInspector:
         griffe_overloads = None
         try:
             griffe_overloads = getattr(griffe_node, "overloads", None)
+            if not griffe_overloads and getattr(griffe_node, "is_class", False):
+                init_node = getattr(griffe_node, "members", {}).get("__init__")
+                if init_node:
+                    griffe_overloads = getattr(init_node, "overloads", None)
             if griffe_overloads:
                 has_griffe_overloads = True
         except Exception:
@@ -701,6 +952,46 @@ class GhostInspector:
                         overloads=[],
                     )
                 )
+        elif c_ext_params is not None and getattr(c_ext_params, "overloads", None):
+            for ov in c_ext_params.overloads:
+                ov_params = []
+                ov_has_varargs = False
+                for pn, pk, pd, pa in ov:
+                    if pk == "VAR_POSITIONAL":
+                        ov_has_varargs = True
+                    sanitized_pa = sanitize_type_str(pa) if pa else None
+                    ov_params.append(
+                        GhostParam(
+                            name=pn,
+                            standardized_name=STANDARD_ARG_MAP.get(pn),
+                            kind=pk,
+                            default=pd,
+                            annotation=sanitized_pa,
+                            description=None,
+                        )
+                    )
+                ov_ret = (
+                    sanitize_type_str(ov.returns_type)
+                    if getattr(ov, "returns_type", None)
+                    else None
+                )
+                overloads_refs.append(
+                    GhostRef(
+                        name=name,
+                        api_path=api_path,
+                        kind=kind,
+                        params=ov_params,
+                        docstring=None,
+                        has_varargs=ov_has_varargs,
+                        aliases=[],
+                        is_public=determined_is_public,
+                        returns_type=ov_ret,
+                        returns_description=None,
+                        raises=[],
+                        environment_tags=env_tags,
+                        overloads=[],
+                    )
+                )
 
         return GhostRef(
             name=name,
@@ -719,14 +1010,118 @@ class GhostInspector:
         )
 
     @staticmethod
-    def hydrate(data: Dict[str, Any]) -> "GhostRef":
+    def hydrate(data: Dict[str, Any]) -> ExtendedGhostRef:
         """Create a GhostRef from a dictionary (JSON snapshot).
 
         Args:
             data: The dictionary data.
 
         Returns:
-            The hydrated GhostRef object.
-
+            The hydrated ExtendedGhostRef or specialized polymorphic GhostRef object.
         """
-        return GhostRef.model_validate(data)
+        # Synthesize domain_type and required fields for raw dumps if missing
+        if "mnemonic" in data and ("name" not in data or "operands" in data):
+            name = str(data.get("name") or data["mnemonic"])
+            desc = str(data.get("description") or f"ISA {name} instruction.")
+            arch = data.get("architecture")
+            valid_archs: List[str] = []
+            if isinstance(arch, list):
+                valid_archs = [str(a) for a in arch]
+            elif isinstance(arch, str):
+                valid_archs = [arch]
+            modifiers = [str(m) for m in data.get("modifiers", [])]
+            operands_list: List[List[str]] = data.get("operands", [])
+            max_sig: List[str] = []
+            for sig in operands_list:
+                if len(sig) > len(max_sig):
+                    max_sig = sig
+            params: List[ExtendedGhostParam] = []
+            for i, raw_op in enumerate(max_sig):
+                role = "dst" if i == 0 else f"src{i - 1}"
+                direction = OperandDirection.WRITE if i == 0 else OperandDirection.READ
+                params.append(
+                    ExtendedGhostParam(
+                        name=f"op{i}",
+                        kind="POSITIONAL_ONLY",
+                        annotation=str(raw_op),
+                        standardized_name=role,
+                        direction=direction,
+                        role=IRParameterRole.OPERAND,
+                    )
+                )
+            domain_metadata = dict(data.get("domain_metadata") or {})
+            domain_metadata.setdefault("architecture", arch)
+            domain_metadata.setdefault("valid_architectures", valid_archs)
+            domain_metadata.setdefault("modifiers", modifiers)
+            domain_metadata.setdefault("operand_signatures", operands_list)
+            return GhostIsaRef(
+                name=name,
+                api_path=str(data.get("api_path") or f"isa.inst.{name}"),
+                kind=str(data.get("kind") or "function"),
+                params=params,
+                docstring=desc,
+                environment_tags=valid_archs,
+                domain_metadata=domain_metadata,
+            )
+
+        if ("attributes" in data or "results" in data) and (
+            "name" not in data or "params" not in data
+        ):
+            api_path = str(data.get("api_path") or "mlir.op")
+            name = str(data.get("name") or api_path.split(".")[-1])
+            params = []
+            for op in data.get("operands", []):
+                op_name = op if isinstance(op, str) else str(op.get("name", "arg"))
+                params.append(
+                    ExtendedGhostParam(
+                        name=op_name,
+                        kind="POSITIONAL_ONLY",
+                        role=IRParameterRole.OPERAND,
+                    )
+                )
+            for attr in data.get("attributes", []):
+                attr_name = (
+                    attr if isinstance(attr, str) else str(attr.get("name", "attr"))
+                )
+                params.append(
+                    ExtendedGhostParam(
+                        name=attr_name,
+                        kind="KEYWORD_ONLY",
+                        role=IRParameterRole.ATTRIBUTE,
+                    )
+                )
+            results = []
+            for res in data.get("results", []):
+                results.append(
+                    GhostResult(
+                        name=(
+                            res if isinstance(res, str) else str(res.get("name", "res"))
+                        ),
+                        type=(
+                            str(res.get("type", "Value"))
+                            if isinstance(res, dict)
+                            else "Value"
+                        ),
+                    )
+                )
+            return GhostMlirRef(
+                name=name,
+                api_path=api_path,
+                kind=str(data.get("kind") or "operation"),
+                params=params,
+                returns=results,
+                docstring=data.get("docstring") or data.get("description"),
+            )
+
+        domain_type = data.get("domain_type")
+        ref_cls: Any = ExtendedGhostRef
+        if domain_type == "python":
+            ref_cls = GhostPythonRef
+        elif domain_type == "isa":
+            ref_cls = GhostIsaRef
+        elif domain_type == "mlir":
+            ref_cls = GhostMlirRef
+
+        res = ref_cls.model_validate(data)
+        assert isinstance(res, ExtendedGhostRef)
+        return res

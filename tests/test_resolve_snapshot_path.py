@@ -132,3 +132,85 @@ def test_resolve_no_matches_in_existing_dir(tmp_path: Any) -> None:
     ):
         res = resolve_snapshot_path("nonexistent_framework")
         assert res == "nonexistent_framework"
+
+
+def test_resolve_snapshot_path_from_pkg_snapshots(tmp_path: Any) -> None:
+    """Test resolving a snapshot bundled directly inside the package snapshots folder.
+
+    Args:
+        tmp_path: Temporary directory fixture.
+    """
+    pkg_dir = Path(
+        os.path.join(
+            Path(os.path.join(tmp_path, "site-packages")), "ml_framework_snapshots"
+        )
+    )
+    snapshots_dir = Path(os.path.join(pkg_dir, "snapshots"))
+    snapshots_dir.mkdir(parents=True)
+
+    target_file = Path(os.path.join(snapshots_dir, "flax_v0.8.0.json"))
+    target_file.touch()
+
+    with patch(
+        "ml_framework_snapshots.cli.__file__",
+        str(Path(os.path.join(pkg_dir, "cli.py"))),
+    ):
+        # Exact match with json extension
+        resolved = resolve_snapshot_path("flax_v0.8.0.json")
+        assert resolved == str(target_file)
+
+        # Match without json extension
+        resolved = resolve_snapshot_path("flax_v0.8.0")
+        assert resolved == str(target_file)
+
+        # Prefix match
+        resolved = resolve_snapshot_path("flax")
+        assert resolved == str(target_file)
+
+
+def test_resolve_snapshot_path_from_pkg_frameworks(tmp_path: Any) -> None:
+    """Test resolving a snapshot from the package frameworks folder.
+
+    Args:
+        tmp_path: Temporary directory fixture.
+    """
+    pkg_dir = Path(
+        os.path.join(
+            Path(os.path.join(tmp_path, "site-packages")), "ml_framework_snapshots"
+        )
+    )
+    frameworks_dir = Path(os.path.join(pkg_dir, "frameworks"))
+    frameworks_dir.mkdir(parents=True)
+
+    target_file = Path(os.path.join(frameworks_dir, "amd_rdna_exhaustive.json"))
+    target_file.touch()
+
+    with patch(
+        "ml_framework_snapshots.cli.__file__",
+        str(Path(os.path.join(pkg_dir, "cli.py"))),
+    ):
+        resolved = resolve_snapshot_path("amd_rdna_exhaustive.json")
+        assert resolved == str(target_file)
+
+
+def test_resolve_snapshot_path_from_cwd_snapshots(tmp_path: Any) -> None:
+    """Test resolving a snapshot from the current working directory snapshots folder.
+
+    Args:
+        tmp_path: Temporary directory fixture.
+    """
+    cwd_snapshots = Path(os.path.join(tmp_path, "snapshots"))
+    cwd_snapshots.mkdir(parents=True)
+
+    target_file = Path(os.path.join(cwd_snapshots, "custom_v1.0.0.json"))
+    target_file.touch()
+
+    with (
+        patch("os.getcwd", return_value=str(tmp_path)),
+        patch(
+            "ml_framework_snapshots.cli.__file__",
+            "/nonexistent/cli.py",
+        ),
+    ):
+        resolved = resolve_snapshot_path("custom_v1.0.0.json")
+        assert resolved == str(target_file)

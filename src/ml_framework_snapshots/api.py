@@ -32,6 +32,9 @@ from ml_framework_snapshots.frameworks.onnxruntime import (
     collect_api as onnxruntime_collect,
 )
 from ml_framework_snapshots.frameworks.deepspeed import collect_api as deepspeed_collect
+from ml_framework_snapshots.frameworks.stablehlo import (
+    collect_api as stablehlo_collect,
+)
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
@@ -87,6 +90,7 @@ def get_available_frameworks() -> Dict[str, Any]:
         "triton": triton_collect,
         "onnxruntime": onnxruntime_collect,
         "deepspeed": deepspeed_collect,
+        "stablehlo": stablehlo_collect,
         "huggingface": collect_transformers,
         "orbax": __import__(
             "ml_framework_snapshots.frameworks.orbax_checkpoint"
@@ -173,6 +177,7 @@ def get_pkg_version(package_name: str) -> str:
             "tikz",
             "nvidia_sass",
             "amd_rdna",
+            "stablehlo",
         ]:
             return "1.0.0"
 
@@ -360,7 +365,7 @@ def write_snapshot(
 
     file_path = Path(os.path.join(out_path, f"{framework_name}_v{safe_ver}.json"))
 
-    with open(file_path, "w", encoding="utf-8") as f:
+    with open(file_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(snapshot_data, f, indent=2, sort_keys=True)
         f.write("\n")
 

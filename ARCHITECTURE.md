@@ -83,3 +83,38 @@ To integrate ML APIs into varied ecosystems, snapshots can be directly trans-com
 - **OpenAPI & JSON Schema**: Enabling standard web clients to interface with serialized ML logic.
 - **Pydantic V2**: Allowing other Python services to strictly validate parameters being passed to an ML layer.
 - **Protobuf**: For generating gRPC endpoints that map directly to the framework's native operations.
+
+## 6. Hardware ISAs and Compiler Dialect Grounding Schemas
+
+To ground code synthesis engines, low-level transpilers, and LLMs against hallucinations in compiled backends, `ml-framework-snapshots` models domain-specific hardware ISAs and compiler IRs using structured metadata extensions.
+
+### A. NVIDIA SASS Schema
+- **Domain Type:** `GhostIsaRef` (`domain_type="isa"`)
+- **Control Code & Scheduling Schema:** Every SASS instruction models control code semantics within `domain_metadata["control_code_schema"]`:
+  - `latency_ticks`: Cycles before destination register is ready for dependent instructions.
+  - `yield_flag`: Yield warp execution to scheduler (Y flag).
+  - `stall_count`: Scheduler cycle stall count (0-15).
+  - `read_barrier_mask` & `write_barrier_mask`: Dependency barrier scoreboarding tokens (0-5).
+  - `register_reuse_flags`: Register reuse cache flags (`R*.reuse`).
+- **Discrete Microarchitectures:** Discrete tagging per microarchitecture (`["sm_70", "sm_75", "sm_80", "sm_86", "sm_89", "sm_90", "sm_100"]`). Uniform Registers (`UR`) are guarded to sm_75+, and `WGMMA` asynchronous warpgroup instructions are guarded to sm_90+.
+
+### B. AMD RDNA / CDNA Schema
+- **Domain Type:** `GhostIsaRef` (`domain_type="isa"`)
+- **Encodings & Modifiers:** Models VOP1, VOP2, VOP3, VOP3P, VOPD (dual-issue), SOP1, SOP2, SOPK, SOPP, SMEM, and FLAT encodings.
+- **Source & Output Modifiers:** Supports input negation (`-src`), absolute value (`|src|`), clamping (`clamp`), and output multipliers (`omod:2`, `omod:4`, `omod:div2`).
+- **Register Alignment & Classes:** Distinguishes 32-bit `VGPR`, 64-bit `V[n:n+1]` (strictly even register indices), 128-bit `V[n:n+3]`, and 256-bit matrix accumulators (`a[n:n+3]` on CDNA/GFX9).
+
+### C. StableHLO Schema
+- **Domain Type:** `GhostMlirRef` (`domain_type="mlir"`)
+- **Structured Attribute Schemas:**
+  - `DotDimensionNumbersAttr`: Models `lhs_batch_dimensions`, `rhs_batch_dimensions`, `lhs_contracting_dimensions`, and `rhs_contracting_dimensions`.
+  - `ConvDimensionNumbersAttr`: Models input, kernel, and output batch, feature, and spatial dimensions.
+  - `ScatterDimensionNumbersAttr` & `GatherDimensionNumbersAttr`: Models window dimensions, batching dims, and index mappings.
+  - `ComparisonDirectionAttr`: Supported directions (`EQ`, `NE`, `GE`, `GT`, `LE`, `LT`).
+  - `PrecisionAttr`: Precision modes (`DEFAULT`, `HIGH`, `HIGHEST`).
+- **Regions & Block Arguments:** Models region structures (e.g. `stablehlo.reduce` body with `(tensor<T>, tensor<T>) -> tensor<T>`, `stablehlo.while` condition and body, `stablehlo.sort` comparator).
+
+### D. Core MLIR Dialects Schema
+- **Domain Type:** `GhostMlirRef` (`domain_type="mlir"`)
+- **TableGen ODS Grounding:** Parsed directly from LLVM TableGen ODS definitions (`arith`, `math`, `tensor`, `linalg`, `scf`, `func`, `memref`, `gpu`, `vector`).
+- **Type Constraints & Traits:** Preserves type constraints (`AnyTensor`, `RankedTensorOf`, `AnyInteger`, `AnyFloat`, `Index`) and dialect traits (`SameOperandsAndResultType`, `SameTypeOperands`).

@@ -62,6 +62,8 @@ def collect_api(
     except ImportError:  # pragma: no cover
         return results
 
+    import inspect
+
     inspector = GhostInspector()
 
     # Introspect triton language (tl) and kernels
@@ -75,6 +77,19 @@ def collect_api(
                 ref = _extract_triton_kernel(obj, name, "triton.language", inspector)
                 if ref:
                     results.append(ref)
+
+        tl_math = getattr(tl, "math", None)
+        if inspect.ismodule(tl_math):
+            for name in dir(tl_math):
+                if not include_nonpublic and name.startswith("_"):
+                    continue
+                obj = getattr(tl_math, name, None)
+                if obj and callable(obj):
+                    ref = _extract_triton_kernel(
+                        obj, name, "triton.language.math", inspector
+                    )
+                    if ref:
+                        results.append(ref)
     except ImportError:  # pragma: no cover
         pass
 

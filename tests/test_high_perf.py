@@ -13,7 +13,12 @@ from ml_framework_snapshots.frameworks.deepspeed import collect_api as ds_collec
 def test_triton_collect() -> None:
     """Function docstring."""
     mock_tl = MagicMock()
-    mock_tl.__dir__ = lambda self: ["constexpr", "tensor"]  # type: ignore
+    mock_tl.__dir__ = lambda self: [  # type: ignore
+        "constexpr",
+        "tensor",
+        "_priv",
+        "not_callable",
+    ]
 
     def constexpr() -> Any:
         """Function docstring."""
@@ -31,6 +36,17 @@ def test_triton_collect() -> None:
 
     mock_tl.constexpr = constexpr
     mock_tl.tensor = tensor
+    mock_tl.not_callable = 123
+    mock_tl._priv = lambda: None
+
+    import types
+
+    mock_math = types.ModuleType("triton.language.math")
+    setattr(mock_math, "a_bad", 123)
+    setattr(mock_math, "sin", lambda: None)
+    setattr(mock_math, "_priv", lambda: None)
+    setattr(mock_math, "bad", 123)
+    mock_tl.math = mock_math
 
     with patch("ml_framework_snapshots.models.GhostInspector.inspect") as mock_inspect:
         mock_inspect.return_value = MagicMock()  # Return a dummy GhostRef
@@ -58,7 +74,15 @@ def test_triton_collect() -> None:
             mock_import.side_effect = side_effect
 
             res = triton_collect(SemanticTier.UTIL)
-            assert len(res) == 2
+            assert len(res) == 3
+
+            res_priv = triton_collect(SemanticTier.UTIL, include_nonpublic=True)
+            assert len(res_priv) == 5
+
+            # Now set mock_inspect to return None to cover if ref is False
+            mock_inspect.return_value = None
+            res_none = triton_collect(SemanticTier.UTIL)
+            assert res_none == []
 
 
 def test_onnx_collect() -> None:

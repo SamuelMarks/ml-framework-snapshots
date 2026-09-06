@@ -11,10 +11,14 @@ import sys
 
 
 from pathlib import Path
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, Dict, Any, List, Optional
 import griffe
 
 from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_framework_snapshots.utils import (
+    get_framework_docstring_parser,
+    resolve_griffe_parser,
+)
 
 
 def get_module_info_from_path(
@@ -94,7 +98,11 @@ def extract_target_ast(file_path: str, target_prefix: str = "") -> Any:
 
     """
     search_path, mod_name = get_module_info_from_path(file_path, target_prefix)
-    return griffe.load(mod_name, search_paths=[search_path])
+    parser_choice = get_framework_docstring_parser(mod_name.split(".")[0])
+    resolved_parser = resolve_griffe_parser(parser_choice)
+    return griffe.load(
+        mod_name, search_paths=[search_path], docstring_parser=resolved_parser
+    )
 
 
 def align_namespace(api_path: str, target_prefix: str, reference_prefix: str) -> str:
@@ -164,7 +172,11 @@ def extract_target_refs_single(
     if search_path not in sys.path:
         sys.path.insert(0, search_path)
 
-    mod_ast = griffe.load(mod_name, search_paths=[search_path])
+    parser_choice = get_framework_docstring_parser(mod_name.split(".")[0])
+    resolved_parser = resolve_griffe_parser(parser_choice)
+    mod_ast = griffe.load(
+        mod_name, search_paths=[search_path], docstring_parser=resolved_parser
+    )
 
     refs: List[GhostRef] = []
 
@@ -294,7 +306,6 @@ def score_compliance(
             matched.append(api_path)
         else:
             # Check for compatible supersets (e.g. kwargs fallback)
-            # A simplistic check for now: if target has *args and **kwargs
             has_varargs = any("VAR_POSITIONAL" in p.kind for p in target_obj.params)
             has_varkwargs = any("VAR_KEYWORD" in p.kind for p in target_obj.params)
 
@@ -345,3 +356,172 @@ def extract_target_refs(
     for fp in file_paths:
         refs.extend(extract_target_refs_single(fp, target_prefix, reference_prefix))
     return refs
+
+
+def check_mlir_text_compliance(mlir_text: str) -> Dict[str, Any]:
+    """Verify that an MLIR / StableHLO text snippet uses valid operations, attributes, and operands.
+
+    Args:
+        mlir_text: Text snippet of MLIR or StableHLO assembly code.
+
+    Returns:
+        Compliance dictionary with is_compliant, total_ops, verified_ops, and errors.
+    """
+    import re
+    from ml_framework_snapshots.mcp_server import check_mlir_op
+
+    errors: List[str] = []
+    total_ops = 0
+    verified_ops = 0
+
+    op_pattern = re.compile(
+        r"(?:%\w+\s*=\s*)?([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)\s*(?:\(([^)]*)\))?"
+    )
+
+    for line in mlir_text.splitlines():
+        cleaned = line.strip()
+        if not cleaned or cleaned.startswith("//"):
+            continue
+
+        match = op_pattern.search(cleaned)
+        if match:
+            op_name = match.group(1)
+            if op_name in ("builtin.module", "func.func"):
+                continue
+
+            total_ops += 1
+            args_str = match.group(2)
+            operands_count = (
+                len([a for a in args_str.split(",") if a.strip()])
+                if args_str is not None
+                else None
+            )
+
+            res = check_mlir_op(op_name, operands_count=operands_count)
+            if not res.get("op_exists"):
+                errors.append(
+                    f"Invalid MLIR operation '{op_name}' on line: '{cleaned}'"
+                )
+            elif not res.get("is_valid"):
+                errors.extend(res.get("errors", []))
+            else:
+                verified_ops += 1
+
+    return {
+        "is_compliant": len(errors) == 0,
+        "total_ops": total_ops,
+        "verified_ops": verified_ops,
+        "errors": errors,
+    }
+
+
+def check_sass_assembly_compliance(
+    assembly_text: str, sm_arch: Optional[str] = None
+) -> Dict[str, Any]:
+    """Verify that an NVIDIA SASS assembly snippet is valid for the target SM architecture.
+
+    Args:
+        assembly_text: NVIDIA SASS assembly text.
+        sm_arch: Optional target SM architecture (e.g. 'sm_80', 'sm_90').
+
+    Returns:
+        Compliance dictionary with is_compliant, total_instructions, and errors.
+    """
+    import re
+    from ml_framework_snapshots.mcp_server import check_sass_instruction
+
+    errors: List[str] = []
+    total_insts = 0
+    verified_insts = 0
+
+    sass_line_pattern = re.compile(
+        r"^(?:@!?P\d+\s+)?([A-Z0-9_]+)((?:\.[A-Z0-9_]+)*)(?:\s+(.*?))?;?$"
+    )
+
+    for line in assembly_text.splitlines():
+        cleaned = re.sub(r"/\*.*?\*/", "", line).strip()
+        if not cleaned or cleaned.startswith("//") or cleaned.startswith("#"):
+            continue
+
+        m = sass_line_pattern.match(cleaned)
+        if m:
+            base_mnemonic = m.group(1)
+            mods_raw = m.group(2)
+            operands_raw = m.group(3)
+
+            modifiers = [mod for mod in mods_raw.split(".") if mod] if mods_raw else []
+            operands = (
+                [op.strip() for op in operands_raw.split(",") if op.strip()]
+                if operands_raw
+                else None
+            )
+
+            total_insts += 1
+            res = check_sass_instruction(
+                base_mnemonic,
+                operands=operands,
+                modifiers=modifiers,
+                sm_arch=sm_arch,
+            )
+            if not res.get("is_valid"):
+                errors.extend(res.get("errors", []))
+            else:
+                verified_insts += 1
+
+    return {
+        "is_compliant": len(errors) == 0,
+        "total_instructions": total_insts,
+        "verified_instructions": verified_insts,
+        "errors": errors,
+    }
+
+
+def check_rdna_assembly_compliance(
+    assembly_text: str, gfx_arch: Optional[str] = None
+) -> Dict[str, Any]:
+    """Verify that an AMD RDNA assembly snippet is valid for the target GFX architecture.
+
+    Args:
+        assembly_text: AMD RDNA assembly text.
+        gfx_arch: Optional target GFX architecture (e.g. 'GFX11/RDNA3', 'GFX9/CDNA').
+
+    Returns:
+        Compliance dictionary with is_compliant, total_instructions, and errors.
+    """
+    import re
+    from ml_framework_snapshots.mcp_server import check_rdna_instruction
+
+    errors: List[str] = []
+    total_insts = 0
+    verified_insts = 0
+
+    rdna_line_pattern = re.compile(r"^([a-z0-9_]+)(?:\s+(.*?))?;?$")
+
+    for line in assembly_text.splitlines():
+        cleaned = re.sub(r"//.*", "", line).strip()
+        if not cleaned or cleaned.startswith(";") or cleaned.startswith("#"):
+            continue
+
+        m = rdna_line_pattern.match(cleaned)
+        if m:
+            mnemonic = m.group(1)
+            operands_raw = m.group(2)
+            operands = (
+                [op.strip() for op in operands_raw.split(",") if op.strip()]
+                if operands_raw
+                else None
+            )
+
+            total_insts += 1
+            res = check_rdna_instruction(mnemonic, operands=operands, gfx_arch=gfx_arch)
+            if not res.get("is_valid"):
+                errors.extend(res.get("errors", []))
+            else:
+                verified_insts += 1
+
+    return {
+        "is_compliant": len(errors) == 0,
+        "total_instructions": total_insts,
+        "verified_instructions": verified_insts,
+        "errors": errors,
+    }

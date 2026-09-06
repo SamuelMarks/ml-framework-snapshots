@@ -615,3 +615,103 @@ def test_models_branches() -> None:
 
     assert sanitize_type_str("typing.List") == "list"
     assert sanitize_type_str("builtins.str") == "builtins.str"
+
+
+def test_preload_griffe_cache() -> None:
+    """Test preloading griffe cache for specified and default frameworks."""
+    from ml_framework_snapshots.models import preload_griffe_cache, _GRIFFE_CACHE
+
+    preload_griffe_cache(["ml_framework_snapshots"])
+    assert "ml_framework_snapshots" in _GRIFFE_CACHE
+
+    # Call again to hit the already cached branch
+    preload_griffe_cache(["ml_framework_snapshots"])
+
+    preload_griffe_cache(["non_existent_framework_xyz"])
+
+
+def test_inspect_griffe_node_direct() -> None:
+    """Test inspecting a Griffe node directly without live object."""
+    import griffe
+    from ml_framework_snapshots.models import GhostInspector
+
+    mod = griffe.load("ml_framework_snapshots.models")
+    ref = GhostInspector.inspect(
+        mod["GhostInspector"], "ml_framework_snapshots.models.GhostInspector"
+    )
+    assert ref.name == "GhostInspector"
+    assert ref.kind == "class"
+
+
+def test_sanitize_type_str_empty_after_strip() -> None:
+    """Test sanitize_type_str when strip_sphinx_roles produces an empty string."""
+    from ml_framework_snapshots.models import sanitize_type_str
+
+    assert sanitize_type_str(":class:``") == ""
+
+
+def test_ghost_inspector_griffe_class_init(mocker: Any) -> None:
+    """Test griffe class inspection resolving parameters from __init__."""
+    mock_param = mocker.MagicMock()
+    mock_param.name = "val"
+    mock_param.kind.name = "POSITIONAL_OR_KEYWORD"
+    mock_param.default = None
+    mock_param.annotation = "int"
+    mock_param.description = "The value."
+
+    mock_init = mocker.MagicMock()
+    mock_init.parameters = [mock_param]
+
+    mock_node = mocker.MagicMock(
+        spec=[
+            "name",
+            "is_class",
+            "is_function",
+            "parameters",
+            "members",
+            "docstring",
+            "is_public",
+            "overloads",
+            "returns",
+        ]
+    )
+    mock_node.name = "DummyClass"
+    mock_node.docstring = None
+    mock_node.parameters = None
+    mock_node.is_class = True
+    mock_node.is_function = False
+    mock_node.members = {"__init__": mock_init}
+    mock_node.is_public = True
+    mock_node.overloads = None
+    mock_node.returns = "int"
+
+    ref = GhostInspector.inspect(mock_node, "DummyClass")
+    assert any(p.name == "val" for p in ref.params)
+    assert ref.returns_type == "int"
+
+    # Cover empty griffe_params (branch 531->533)
+    mock_node_empty = mocker.MagicMock(
+        spec=[
+            "name",
+            "is_class",
+            "is_function",
+            "parameters",
+            "members",
+            "docstring",
+            "is_public",
+            "overloads",
+            "returns",
+        ]
+    )
+    mock_node_empty.name = "EmptyClass"
+    mock_node_empty.docstring = None
+    mock_node_empty.parameters = []
+    mock_node_empty.is_class = True
+    mock_node_empty.is_function = False
+    mock_node_empty.members = {}
+    mock_node_empty.is_public = True
+    mock_node_empty.overloads = None
+    mock_node_empty.returns = None
+
+    ref_empty = GhostInspector.inspect(mock_node_empty, "EmptyClass")
+    assert ref_empty.name == "EmptyClass"

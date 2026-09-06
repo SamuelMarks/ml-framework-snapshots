@@ -86,3 +86,30 @@ Capturing nvidia_sass...
 Extracted signatures from nvidia_sass.
 Saved nvidia_sass snapshot to ./snapshots/nvidia_sass_<version>.json
 ```
+
+## Offline Usage & Pre-Bundled Snapshots
+
+Pre-built offline wheels (`.whl`) ship with pre-extracted framework snapshots and static ISA definitions (`ml_framework_snapshots/snapshots/` and `ml_framework_snapshots/frameworks/`).
+
+### Listing Bundled Snapshots
+
+To view all snapshots available offline in your environment:
+
+```bash
+ml_framework_snapshots list-snapshots
+```
+
+### Running Commands Completely Offline
+
+When referencing snapshots, you can pass either an explicit file path or just the framework name/snapshot prefix:
+
+```bash
+# Check compliance against bundled PyTorch or JAX snapshot
+ml_framework_snapshots check torch ./my_torch_shim --reference-prefix torch --target-prefix my_torch_shim
+
+# Export an offline snapshot directly to OpenAPI or JSON Schema
+ml_framework_snapshots export torch --format openapi --output torch_api.json
+
+# Diff two bundled framework snapshots
+ml_framework_snapshots diff torch_v2.0.0.json torch_v2.2.0.json
+```

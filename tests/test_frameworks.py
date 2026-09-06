@@ -173,13 +173,37 @@ def test_torch_collect(mocker: Any) -> None:
     mocker.patch.object(torch_fw, "optim", fake_optim)
     mocker.patch.object(torch_fw, "data", fake_data)
 
+    class Accuracy:
+        """Mock metric class."""
+
+        pass
+
+    class _HiddenMetric:
+        """Mock hidden metric class."""
+
+        pass
+
     mocker.patch.dict(
         "sys.modules",
         {
+            "torchmetrics": create_module(
+                "torchmetrics", {"Accuracy": Accuracy, "_HiddenMetric": _HiddenMetric}
+            ),
+            "torch.nn.modules.activation": create_module(
+                "torch.nn.modules.activation", {"ReLU": ReLU}
+            ),
             "torch": create_module(
                 "torch",
                 {
                     "abs": lambda: None,
+                    "linalg": create_module(
+                        "torch.linalg",
+                        {"norm": lambda: None, "_priv": lambda: None},
+                    ),
+                    "special": create_module(
+                        "torch.special",
+                        {"erf": lambda: None, "_priv": lambda: None},
+                    ),
                     "fft": create_module(
                         "torch.fft",
                         {
@@ -188,13 +212,48 @@ def test_torch_collect(mocker: Any) -> None:
                             "not_callable": 123,
                         },
                     ),
+                    "autograd": create_module(
+                        "torch.autograd",
+                        {
+                            "grad": lambda: None,
+                            "_priv": lambda: None,
+                            "bad": 123,
+                            "Cls": type("Cls", (), {}),
+                        },
+                    ),
+                    "distributed": create_module(
+                        "torch.distributed",
+                        {
+                            "all_reduce": lambda: None,
+                            "_priv": lambda: None,
+                            "bad": 123,
+                            "Cls": type("Cls", (), {}),
+                        },
+                    ),
+                    "Tensor": type(
+                        "Tensor",
+                        (),
+                        {
+                            "view": lambda self: None,
+                            "_priv_method": lambda self: None,
+                        },
+                    ),
                     "nn": create_module(
                         "torch.nn",
                         {
                             "functional": create_module(
                                 "torch.nn.functional",
                                 {"interpolate": lambda: None, "non_existent": None},
-                            )
+                            ),
+                            "modules": create_module(
+                                "torch.nn.modules",
+                                {
+                                    "activation": create_module(
+                                        "torch.nn.modules.activation",
+                                        {"ReLU": ReLU},
+                                    )
+                                },
+                            ),
                         },
                     ),
                 },
@@ -237,7 +296,8 @@ def test_torch_collect(mocker: Any) -> None:
     assert "_private_init" not in inames
 
     mets = torch_fw.collect_api(SemanticTier.METRIC)
-    assert mets == []
+    assert len(mets) == 1
+    assert mets[0].name == "Accuracy"
 
     loaders = torch_fw.collect_api(SemanticTier.DATALOADER)
     dnames = [x.name for x in loaders]
@@ -245,6 +305,9 @@ def test_torch_collect(mocker: Any) -> None:
     assert "_PrivateLoader" not in dnames
 
     # test include_nonpublic
+    priv_mets = torch_fw.collect_api(SemanticTier.METRIC, include_nonpublic=True)
+    assert len(priv_mets) == 2
+
     priv_inits = torch_fw.collect_api(SemanticTier.INITIALIZER, include_nonpublic=True)
     pinames = [x.name for x in priv_inits]
     assert "_private_init" in pinames
@@ -270,7 +333,7 @@ def test_torch_collect(mocker: Any) -> None:
     assert "_PrivateLoader" in pdnames
 
     mets = torch_fw.collect_api(SemanticTier.METRIC)
-    assert mets == []
+    assert len(mets) == 1
 
     loaders = torch_fw.collect_api(SemanticTier.DATALOADER)
     dnames = [x.name for x in loaders]
@@ -279,6 +342,12 @@ def test_torch_collect(mocker: Any) -> None:
 
     arrays = torch_fw.collect_api(SemanticTier.ARRAY_API)
     assert any("abs" in x.api_path for x in arrays)
+    assert any("grad" in x.api_path for x in arrays)
+    assert any("all_reduce" in x.api_path for x in arrays)
+    assert any(x.name == "view" and x.kind == "method" for x in arrays)
+
+    priv_arrays = torch_fw.collect_api(SemanticTier.ARRAY_API, include_nonpublic=True)
+    assert any(x.name == "_priv_method" for x in priv_arrays)
 
     assert torch_fw.collect_api("unknown") == []
 
@@ -313,10 +382,12 @@ def test_torch_import_error(mocker: Any) -> None:
     assert torch_fw.collect_api(SemanticTier.DATALOADER) == []
     import unittest.mock as mock
 
+    with mock.patch.dict("sys.modules", {"torchmetrics": None}):
+        assert torch_fw.collect_api(SemanticTier.METRIC) == []
+
     with mock.patch.dict("sys.modules", {"torch": None}):
         res = torch_fw.collect_api(SemanticTier.ARRAY_API)
-        assert len(res) == 1
-        assert res[0].name == "float"
+        assert len(res) == 0
 
 
 def test_torch_typeerror(mocker: Any) -> None:
@@ -410,6 +481,17 @@ def test_tensorflow_collect(mocker: Any) -> None:
 
         pass
 
+    def abs() -> Any:
+        """Function docstring."""
+        pass  # pragma: no cover
+
+    def matmul() -> Any:
+        """Function docstring."""
+        pass  # pragma: no cover
+
+    fake_math = create_module("tf.math", {"abs": abs})
+    fake_linalg = create_module("tf.linalg", {"matmul": matmul})
+
     fake_nn = create_module("tf.nn", {"relu": relu})
 
     fake_layers = create_module(
@@ -441,9 +523,93 @@ def test_tensorflow_collect(mocker: Any) -> None:
         "tf.data", {"Dataset": Dataset, "_PrivateDataset": _PrivateDataset}
     )
 
-    fake_tf = create_module(
-        "tf", {"nn": fake_nn, "keras": fake_keras, "data": fake_data}
+    def concat() -> Any:
+        """Function docstring."""
+        pass  # pragma: no cover
+
+    def Add() -> Any:
+        """Function docstring."""
+        pass  # pragma: no cover
+
+    def custom_tensor_op() -> Any:
+        """Function docstring."""
+        pass  # pragma: no cover
+
+    class FakeTensor:
+        """Fake Tensor class."""
+
+        def get_shape(self) -> None:
+            """Method docstring."""
+            pass
+
+        def _priv(self) -> None:
+            """Method docstring."""
+            pass
+
+    class FakeVariable:
+        """Fake Variable class."""
+
+        def assign(self) -> None:
+            """Method docstring."""
+            pass
+
+        def _priv(self) -> None:
+            """Method docstring."""
+            pass
+
+    fake_raw_ops = create_module(
+        "tf.raw_ops",
+        {"Add": Add, "_priv": lambda: None, "bad": 123},
     )
+
+    fake_tf = create_module(
+        "tf",
+        {
+            "nn": fake_nn,
+            "keras": fake_keras,
+            "data": fake_data,
+            "math": fake_math,
+            "linalg": fake_linalg,
+            "raw_ops": fake_raw_ops,
+            "concat": concat,
+            "custom_tensor_op": custom_tensor_op,
+            "_private_op": lambda: None,
+            "stack": 123,
+            "Tensor": FakeTensor,
+            "Variable": FakeVariable,
+        },
+    )
+
+    mocker.patch.object(tf_fw, "tf", fake_tf)
+
+    assert any(x.name == "abs" for x in tf_fw.collect_api(SemanticTier.ARRAY_API))
+    assert any(x.name == "matmul" for x in tf_fw.collect_api(SemanticTier.ARRAY_API))
+    assert any(x.name == "concat" for x in tf_fw.collect_api(SemanticTier.ARRAY_API))
+    assert any(x.name == "Add" for x in tf_fw.collect_api(SemanticTier.ARRAY_API))
+    assert any(
+        x.name == "custom_tensor_op" for x in tf_fw.collect_api(SemanticTier.ARRAY_API)
+    )
+    assert any(
+        x.name == "get_shape" and x.kind == "method"
+        for x in tf_fw.collect_api(SemanticTier.ARRAY_API)
+    )
+    assert any(
+        x.name == "assign" and x.kind == "method"
+        for x in tf_fw.collect_api(SemanticTier.ARRAY_API)
+    )
+    assert any(
+        x.name == "_priv"
+        for x in tf_fw.collect_api(SemanticTier.ARRAY_API, include_nonpublic=True)
+    )
+
+    # Test without math and without linalg for branch coverage
+    fake_tf_no_math = create_module("tf", {"linalg": fake_linalg})
+    mocker.patch.object(tf_fw, "tf", fake_tf_no_math)
+    assert len(tf_fw.collect_api(SemanticTier.ARRAY_API)) > 0
+
+    fake_tf_no_linalg = create_module("tf", {})
+    mocker.patch.object(tf_fw, "tf", fake_tf_no_linalg)
+    assert tf_fw.collect_api(SemanticTier.ARRAY_API) == []
 
     mocker.patch.object(tf_fw, "tf", fake_tf)
 
@@ -613,9 +779,20 @@ def test_keras_collect(mocker: Any) -> None:
     mets2 = keras_fw.collect_api(SemanticTier.METRIC)
     assert not any(x.name == "Metric" for x in mets2)
 
-    # Trigger dummy func for coverage
-    dummy = keras_fw._make_dummy_obj("test_func", "function")
-    dummy()
+    def mock_load_acts(path: str) -> MockModule:
+        """Mock load for activations.
+
+        Args:
+            path: Module path.
+
+        Returns:
+            MockModule: Mocked module.
+        """
+        return MockModule({"relu": MockMember(is_function=True)})
+
+    mocker.patch.object(keras_fw.griffe, "load", mock_load_acts)  # type: ignore[attr-defined]
+    acts2 = keras_fw.collect_api(SemanticTier.ACTIVATION)
+    assert any(x.name == "relu" for x in acts2)
 
     # Exception branch coverage
     mocker.patch.object(keras_fw.griffe, "load", side_effect=Exception)  # type: ignore[attr-defined]
@@ -660,7 +837,16 @@ def test_mlx_collect(mocker: Any) -> None:
     )
     fake_optims = create_module("mlx.optimizers", {"Adam": Adam})
 
-    fake_core = create_module("mlx.core", {"abs": lambda: None})
+    fake_fft = create_module(
+        "mlx.core.fft", {"fft": lambda: None, "_priv": lambda: None}
+    )
+    fake_linalg = create_module(
+        "mlx.core.linalg", {"norm": lambda: None, "_priv": lambda: None}
+    )
+    fake_core = create_module(
+        "mlx.core",
+        {"abs": lambda: None, "fft": fake_fft, "linalg": fake_linalg},
+    )
 
     fake_mlx = create_module(
         "mlx", {"nn": fake_nn, "optimizers": fake_optims, "core": fake_core}
@@ -673,7 +859,18 @@ def test_mlx_collect(mocker: Any) -> None:
     assert any(x.name == "relu" for x in mlx_fw.collect_api(SemanticTier.ACTIVATION))
     assert any(x.name == "Dense" for x in mlx_fw.collect_api(SemanticTier.LAYER))
     assert any("abs" in x.api_path for x in mlx_fw.collect_api(SemanticTier.ARRAY_API))
+    assert any("fft" in x.api_path for x in mlx_fw.collect_api(SemanticTier.ARRAY_API))
+    assert any("norm" in x.api_path for x in mlx_fw.collect_api(SemanticTier.ARRAY_API))
     assert mlx_fw.collect_api("unknown") == []
+
+    # Test mlx.core without fft and linalg submodules
+    core_without_submodules = create_module("mlx.core", {"abs": lambda: None})
+    mocker.patch.object(
+        mlx_fw,
+        "mlx",
+        create_module("mlx", {"core": core_without_submodules}),
+    )
+    assert len(mlx_fw.collect_api(SemanticTier.ARRAY_API)) > 0
 
     # Test mlx.nn.losses coverage gaps (not a function/class, not containing 'loss')
     fake_losses_gap = create_module(
@@ -694,6 +891,7 @@ def test_mlx_collect(mocker: Any) -> None:
     mocker.patch.object(mlx_fw, "mlx", create_module("mlx", {"nn": empty_nn}))
 
     assert mlx_fw.collect_api(SemanticTier.LOSS) == []
+    assert mlx_fw.collect_api(SemanticTier.ARRAY_API) == []
 
     mocker.patch.object(mlx_fw, "mlx", None)
     assert mlx_fw.collect_api(SemanticTier.LOSS) == []
@@ -712,6 +910,7 @@ def test_jax_collect(mocker: Any) -> None:
     Args:
         mocker: Parameter.
     """
+    import unittest.mock as mock
     from ml_framework_snapshots.frameworks import jax as jax_fw
     from ml_framework_snapshots.frameworks.optax_shim import OptaxScanner
 
@@ -735,14 +934,47 @@ def test_jax_collect(mocker: Any) -> None:
         "jax.nn.initializers", {"glorot": glorot, "_priv": _priv, "not_a_func": 123}
     )
 
+    fake_lax = create_module("jax.lax", {"add": lambda: None, "_priv": lambda: None})
+    fake_random = create_module(
+        "jax.random", {"PRNGKey": lambda: None, "_priv": lambda: None}
+    )
+    fake_jax = create_module(
+        "jax",
+        {
+            "lax": fake_lax,
+            "random": fake_random,
+            "jit": lambda fn: fn,
+            "grad": lambda fn: fn,
+            "vmap": lambda fn: fn,
+            "pmap": lambda fn: fn,
+            "checkpoint": lambda fn: fn,
+            "Array": type(
+                "Array",
+                (),
+                {
+                    "reshape": lambda self: None,
+                    "_priv_method": lambda self: None,
+                },
+            ),
+        },
+    )
+
     mocker.patch.dict(
         "sys.modules",
         {
-            "jax": create_module("jax", {}),
+            "jax": fake_jax,
             "jax.nn": fake_jax_nn,
             "jax.nn.initializers": fake_jax_init,
+            "jax.lax": fake_lax,
+            "jax.random": fake_random,
             "jax.numpy": create_module(
-                "jax.numpy", {"abs": lambda: None, "transpose": lambda: None}
+                "jax.numpy",
+                {
+                    "abs": lambda: None,
+                    "transpose": lambda: None,
+                    "_hidden": lambda: None,
+                    "not_callable": 123,
+                },
             ),
             "numpy": create_module("numpy", {"float32": 1}),
         },
@@ -776,6 +1008,10 @@ def test_jax_collect(mocker: Any) -> None:
 
     arrays = jax_fw.collect_api(SemanticTier.ARRAY_API)
     assert any("abs" in x.api_path for x in arrays)
+    assert any(x.name == "reshape" and x.kind == "method" for x in arrays)
+
+    priv_arrays = jax_fw.collect_api(SemanticTier.ARRAY_API, include_nonpublic=True)
+    assert any(x.name == "_priv_method" for x in priv_arrays)
 
     import sys
 
@@ -783,23 +1019,43 @@ def test_jax_collect(mocker: Any) -> None:
     arrays2 = jax_fw.collect_api(SemanticTier.ARRAY_API)
     assert not any("transpose" in x.api_path for x in arrays2)
 
+    # Test line 139 when transpose is on jnp but not yet in found
+    fake_jnp_extra = create_module("jax.numpy", {"transpose": lambda a: a})
+    mocker.patch(
+        "ml_framework_snapshots.frameworks.jax.get_all_members",
+        return_value=[],
+    )
+    mocker.patch.dict("sys.modules", {"jax.numpy": fake_jnp_extra})
+    arrays3 = jax_fw.collect_api(SemanticTier.ARRAY_API)
+    assert any(x.name == "transpose" for x in arrays3)
+
     assert jax_fw.collect_api("unknown") == []
 
     # Exception branch coverage
-    mocker.patch(
-        "ml_framework_snapshots.frameworks.jax.get_all_members", side_effect=Exception
-    )
-    assert jax_fw.collect_api(SemanticTier.ACTIVATION) == []
-    assert jax_fw.collect_api(SemanticTier.INITIALIZER) == []
+    with mock.patch(
+        "ml_framework_snapshots.frameworks.jax.get_all_members",
+        side_effect=Exception,
+    ):
+        assert jax_fw.collect_api(SemanticTier.ACTIVATION) == []
+        assert jax_fw.collect_api(SemanticTier.INITIALIZER) == []
 
     mocker.patch.object(jax_fw, "jax", None)
     assert jax_fw.collect_api(SemanticTier.ACTIVATION) == []
     assert jax_fw.collect_api(SemanticTier.INITIALIZER) == []
-    import unittest.mock as mock
 
     with mock.patch.dict("sys.modules", {"jax.numpy": None}):
         res = jax_fw.collect_api(SemanticTier.ARRAY_API)
-        assert len(res) == 3
+        assert len(res) == 0
+
+    mocker.patch.object(jax_fw, "jax", True)
+    with mock.patch.dict(
+        "sys.modules",
+        {
+            "jax": create_module("jax", {}),
+            "jax.numpy": create_module("jax.numpy", {"abs": lambda: None}),
+        },
+    ):
+        assert len(jax_fw.collect_api(SemanticTier.ARRAY_API)) > 0
 
 
 def test_flax_nnx_collect(mocker: Any) -> None:
@@ -1216,6 +1472,24 @@ def test_sklearn_scan_module_branches(mocker: Any) -> None:
     assert len(res) == 1
 
 
+def test_sklearn_scan_module_exception(mocker: Any) -> None:
+    """Function docstring.
+
+    Args:
+        mocker: Parameter.
+    """
+    from ml_framework_snapshots.frameworks.sklearn import _scan_module
+    import types
+
+    mock_mod = types.ModuleType("mock_mod")
+    mocker.patch(
+        "ml_framework_snapshots.frameworks.sklearn.get_all_members",
+        side_effect=Exception("Mocked failure in get_all_members"),
+    )
+    res = _scan_module(mock_mod, "prefix")
+    assert res == []
+
+
 def test_numpy_collect(mocker: Any) -> None:
     """Function docstring.
 
@@ -1239,9 +1513,18 @@ def test_numpy_collect(mocker: Any) -> None:
         {
             "tanh": tanh,
             "exp": exp,
+            "abs": lambda: None,
             "maximum": 123,
             "minimum": lambda: None,
             "not_callable": 123,
+            "linalg": create_module(
+                "numpy.linalg",
+                {"norm": lambda: None, "_hidden": lambda: None, "not_callable": 123},
+            ),
+            "fft": create_module(
+                "numpy.fft",
+                {"fft": lambda: None, "_hidden": lambda: None, "not_callable": 123},
+            ),
         },
     )
     mocker.patch.object(np_shim, "np", fake_np)
@@ -1276,6 +1559,15 @@ def test_numpy_collect(mocker: Any) -> None:
     assert "tanh" in names
     assert "exp" in names
     assert "not_callable" not in names
+
+    # Array API
+    res_array = np_shim.collect_api(SemanticTier.ARRAY_API)
+    assert len(res_array) > 0
+
+    # Test numpy without linalg and without fft
+    fake_np_plain = create_module("numpy", {"abs": lambda: None})
+    mocker.patch.object(np_shim, "np", fake_np_plain)
+    assert len(np_shim.collect_api(SemanticTier.ARRAY_API)) > 0
 
     # Empty
     res2 = np_shim.collect_api(SemanticTier.LAYER)
@@ -1512,11 +1804,20 @@ def test_deepspeed_collect(mocker: Any) -> None:
     from ml_switcheroo_ir.schema.ghost import SemanticTier
     import importlib
 
+    # Early return for unsupported category (line 26 -> 27)
+    assert ds_shim.collect_api(SemanticTier.LOSS) == []
+
     def initialize() -> Any:
         """Docstring."""
         pass  # pragma: no cover
 
-    fake_ds = create_module("deepspeed", {"initialize": initialize})
+    def helper_util() -> Any:
+        """Docstring."""
+        pass  # pragma: no cover
+
+    fake_ds = create_module(
+        "deepspeed", {"initialize": initialize, "helper_util": helper_util}
+    )
 
     original_import = importlib.import_module
 
@@ -1536,8 +1837,14 @@ def test_deepspeed_collect(mocker: Any) -> None:
         return original_import(name, *args, **kwargs)  # pragma: no cover
 
     mocker.patch("importlib.import_module", side_effect=mock_import)
+    # Filter out helper_util for MODEL (branch 50 -> 36)
     res = ds_shim.collect_api(SemanticTier.MODEL)
     assert "initialize" in [x.name for x in res]
+    assert "helper_util" not in [x.name for x in res]
+
+    # UTIL category includes helper_util
+    res_util = ds_shim.collect_api(SemanticTier.UTIL)
+    assert "helper_util" in [x.name for x in res_util]
 
     mocker.patch("importlib.import_module", side_effect=ImportError)
     assert not ds_shim.collect_api(SemanticTier.MODEL)
@@ -1550,15 +1857,24 @@ def test_onnxruntime_collect(mocker: Any) -> None:
         mocker: Parameter.
     """
     import ml_framework_snapshots.frameworks.onnxruntime as ort_shim
-    from ml_switcheroo_ir.schema.ghost import SemanticTier
+    from ml_switcheroo_ir.schema.ghost import SemanticTier, GhostRef
     import importlib
+
+    # Early return for unsupported category (line 26 -> 27)
+    assert ort_shim.collect_api(SemanticTier.LOSS) == []
 
     class InferenceSession:
         """Docstring."""
 
         pass
 
-    fake_ort = create_module("onnxruntime", {"InferenceSession": InferenceSession})
+    def get_device() -> Any:
+        """Docstring."""
+        pass  # pragma: no cover
+
+    fake_ort = create_module(
+        "onnxruntime", {"InferenceSession": InferenceSession, "get_device": get_device}
+    )
 
     original_import = importlib.import_module
 
@@ -1578,8 +1894,23 @@ def test_onnxruntime_collect(mocker: Any) -> None:
         return original_import(name, *args, **kwargs)  # pragma: no cover
 
     mocker.patch("importlib.import_module", side_effect=mock_import)
+
+    # Return a ref missing 'providers' to trigger lines 56-58
+    dummy_ref = GhostRef(
+        name="InferenceSession",
+        api_path="onnxruntime.InferenceSession",
+        kind="class",
+        params=[],
+    )
+    mocker.patch(
+        "ml_framework_snapshots.frameworks.onnxruntime.GhostInspector.inspect",
+        return_value=dummy_ref,
+    )
+
+    # Filters out get_device for MODEL (branch 46 -> 36)
     res = ort_shim.collect_api(SemanticTier.MODEL)
     assert "InferenceSession" in [x.name for x in res]
+    assert any(p.name == "providers" for p in res[0].params)
 
     mocker.patch("importlib.import_module", side_effect=ImportError)
     assert not ort_shim.collect_api(SemanticTier.MODEL)
@@ -1735,6 +2066,29 @@ def test_mlir_collect(mocker: Any) -> None:
     assert api[0].params[2].name == "fastmath"
     assert api[0].params[2].kind == "KEYWORD_ONLY"
 
+    # Test rich TableGen metadata with dict operands, attributes, results, regions, and traits
+    rich_json_data = [
+        {
+            "api_path": "arith.addf",
+            "dialect": "arith",
+            "class_name": "AddFOp",
+            "operands": [{"name": "lhs", "type": "FloatType"}],
+            "attributes": [{"name": "fastmath", "type": "FastMathFlagsAttr"}],
+            "regions": ["body"],
+            "results": [{"type": "FloatType"}],
+            "traits": ["Commutative"],
+            "description": "Floating point addition.",
+        }
+    ]
+    mocker.patch(
+        "builtins.open", mocker.mock_open(read_data=json.dumps(rich_json_data))
+    )
+    rich_api = mlir_fw.collect_api(SemanticTier.UTIL)
+    assert len(rich_api) == 1
+    assert rich_api[0].returns_type == "FloatType"
+    assert "Traits: Commutative" in (rich_api[0].docstring or "")
+    assert any(p.name == "body" for p in rich_api[0].params)
+
     # Test wrong category
     assert mlir_fw.collect_api(SemanticTier.LAYER) == []
 
@@ -1773,3 +2127,48 @@ def test_static_dsl_extractors() -> None:
     assert any(r.name == "FADD" for r in sass_refs)
     assert any(r.name == "MOV" for r in sass_refs)
     assert nvidia_sass.collect_api(SemanticTier.LAYER) == []
+
+
+def test_tensor_instance_methods_extraction() -> None:
+    """Test extraction of tensor core instance methods across Torch, JAX, and TensorFlow."""
+    import torch
+    import jax
+    import tensorflow as tf
+    from ml_framework_snapshots.models import GhostInspector
+
+    # 1. PyTorch Tensor methods
+    for m in ("view", "reshape", "permute", "transpose", "repeat", "to"):
+        obj = getattr(torch.Tensor, m)
+        ref = GhostInspector.inspect(obj, f"torch.Tensor.{m}", kind="method")
+        assert ref.kind == "method"
+        assert ref.api_path == f"torch.Tensor.{m}"
+        assert len(ref.params) > 0
+
+    detach_obj = getattr(torch.Tensor, "detach")
+    detach_ref = GhostInspector.inspect(
+        detach_obj, "torch.Tensor.detach", kind="method"
+    )
+    assert detach_ref.kind == "method"
+    assert detach_ref.api_path == "torch.Tensor.detach"
+    assert len(detach_ref.params) == 0
+
+    # 2. JAX Array methods
+    for m in ("reshape", "transpose", "flatten"):
+        obj = getattr(jax.Array, m)
+        ref = GhostInspector.inspect(obj, f"jax.Array.{m}", kind="method")
+        assert ref.kind == "method"
+        assert ref.api_path == f"jax.Array.{m}"
+        assert len(ref.params) > 0
+
+    # 3. TensorFlow Tensor and Variable methods
+    for m in ("get_shape", "set_shape"):
+        obj = getattr(tf.Tensor, m)
+        ref = GhostInspector.inspect(obj, f"tf.Tensor.{m}", kind="method")
+        assert ref.kind == "method"
+        assert ref.api_path == f"tf.Tensor.{m}"
+
+    for m in ("assign", "assign_add"):
+        obj = getattr(tf.Variable, m)
+        ref = GhostInspector.inspect(obj, f"tf.Variable.{m}", kind="method")
+        assert ref.kind == "method"
+        assert ref.api_path == f"tf.Variable.{m}"

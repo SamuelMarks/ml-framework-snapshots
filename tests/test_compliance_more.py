@@ -224,3 +224,94 @@ def test_extract_target_refs_list_path(tmp_path: Any) -> None:
     refs = extract_target_refs([str(sub_mod)], "list_pkg.api", "ref")
     assert len(refs) == 1
     assert refs[0].api_path == "ref.list_func"
+
+
+def test_check_mlir_text_compliance() -> None:
+    """Test check_mlir_text_compliance with valid and invalid MLIR snippets."""
+    from ml_framework_snapshots.compliance import check_mlir_text_compliance
+
+    # 1. Valid MLIR snippet
+    valid_snippet = """
+    // Module containing standard arith ops
+    module {
+        func.func @test(%a: f32, %b: f32) -> f32 {
+            %0 = arith.addf(%a, %b) : f32
+            return %0 : f32
+        }
+    }
+    """
+    res_valid = check_mlir_text_compliance(valid_snippet)
+    assert res_valid["is_compliant"] is True
+    assert res_valid["verified_ops"] >= 1
+
+    # 2. Invalid MLIR snippet with non-existent op
+    invalid_snippet = """
+    %0 = non_existent_dialect.non_existent_op(%a) : i32
+    """
+    res_invalid = check_mlir_text_compliance(invalid_snippet)
+    assert res_invalid["is_compliant"] is False
+    assert len(res_invalid["errors"]) > 0
+
+    # 3. Existing op with invalid operand count (branch 404)
+    res_bad_count = check_mlir_text_compliance("%0 = arith.addf(%a) : f32")
+    assert res_bad_count["is_compliant"] is False
+    assert any("Operand count mismatch" in err for err in res_bad_count["errors"])
+
+
+def test_check_sass_assembly_compliance() -> None:
+    """Test check_sass_assembly_compliance with valid, predicated, and invalid SASS instructions."""
+    from ml_framework_snapshots.compliance import check_sass_assembly_compliance
+
+    # 1. Valid SASS snippet on sm_80
+    valid_sass = """
+    /*0010*/ FADD.FTZ R0, R1, R2;
+    /*0020*/ @P0 FADD R3, R4, R5;
+    """
+    res_valid = check_sass_assembly_compliance(valid_sass, sm_arch="sm_80")
+    assert res_valid["is_compliant"] is True
+    assert res_valid["verified_instructions"] == 2
+
+    # 2. Incompatible instruction for architecture: WGMMA on sm_80
+    invalid_sass = """
+    WGMMA R0, R1, R2, R3;
+    """
+    res_invalid = check_sass_assembly_compliance(invalid_sass, sm_arch="sm_80")
+    assert res_invalid["is_compliant"] is False
+    assert any(
+        "WGMMA instructions are strictly supported on sm_90+" in err
+        for err in res_invalid["errors"]
+    )
+
+    # 3. Comment lines starting with '#' and lines that do not match instruction regex
+    sass_comments = "# A comment line\n// Another comment\n@@ invalid label !@#\n\n"
+    res_comments = check_sass_assembly_compliance(sass_comments)
+    assert res_comments["is_compliant"] is True
+    assert res_comments["total_instructions"] == 0
+
+
+def test_check_rdna_assembly_compliance() -> None:
+    """Test check_rdna_assembly_compliance with valid and misaligned RDNA instructions."""
+    from ml_framework_snapshots.compliance import check_rdna_assembly_compliance
+
+    # 1. Valid RDNA snippet
+    valid_rdna = """
+    // Vector addition
+    v_add_f32 v0, v1, v2
+    """
+    res_valid = check_rdna_assembly_compliance(valid_rdna)
+    assert res_valid["is_compliant"] is True
+    assert res_valid["verified_instructions"] == 1
+
+    # 2. Misaligned 64-bit register pair (odd start index)
+    invalid_rdna = """
+    v_add_f32 v[1:2], v0, v1
+    """
+    res_invalid = check_rdna_assembly_compliance(invalid_rdna)
+    assert res_invalid["is_compliant"] is False
+    assert any("Register alignment error" in err for err in res_invalid["errors"])
+
+    # 3. Comment lines starting with ';' or '#' and lines that do not match instruction regex
+    rdna_comments = "; Semicolon comment\n# Hash comment\n!! invalid rdna line !@#\n\n"
+    res_comments = check_rdna_assembly_compliance(rdna_comments)
+    assert res_comments["is_compliant"] is True
+    assert res_comments["total_instructions"] == 0

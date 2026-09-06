@@ -399,3 +399,82 @@ def test_diff_branches_more() -> None:
     }
     res = diff_snapshots(s1, s2)
     assert len(res.signature_changed) > 0
+
+
+def test_diff_domain_metadata_breaking_changes() -> None:
+    """Test breaking changes detected when assembly modifiers or architecture support is removed."""
+    s1 = {
+        "categories": {
+            "UTIL": [
+                {
+                    "name": "FADD",
+                    "api_path": "nvidia_sass.inst.FADD",
+                    "kind": "function",
+                    "params": [],
+                    "domain_metadata": {
+                        "modifiers": [".SAT", ".FTZ"],
+                        "valid_architectures": ["sm_70", "sm_80", "sm_90"],
+                    },
+                }
+            ]
+        }
+    }
+    # Removed .SAT modifier (breaking)
+    s2 = {
+        "categories": {
+            "UTIL": [
+                {
+                    "name": "FADD",
+                    "api_path": "nvidia_sass.inst.FADD",
+                    "kind": "function",
+                    "params": [],
+                    "domain_metadata": {
+                        "modifiers": [".FTZ"],
+                        "valid_architectures": ["sm_70", "sm_80", "sm_90"],
+                    },
+                }
+            ]
+        }
+    }
+    res = diff_snapshots(s1, s2)
+    assert "nvidia_sass.inst.FADD" in res.breaking_signature_changed
+
+    # Removed sm_70 architecture (breaking)
+    s3 = {
+        "categories": {
+            "UTIL": [
+                {
+                    "name": "FADD",
+                    "api_path": "nvidia_sass.inst.FADD",
+                    "kind": "function",
+                    "params": [],
+                    "domain_metadata": {
+                        "modifiers": [".SAT", ".FTZ"],
+                        "valid_architectures": ["sm_80", "sm_90"],
+                    },
+                }
+            ]
+        }
+    }
+    res_arch = diff_snapshots(s1, s3)
+    assert "nvidia_sass.inst.FADD" in res_arch.breaking_signature_changed
+
+    # Identical metadata with non-breaking parameter addition (covers line 61->64)
+    s4 = {
+        "categories": {
+            "UTIL": [
+                {
+                    "name": "FADD",
+                    "api_path": "nvidia_sass.inst.FADD",
+                    "kind": "function",
+                    "params": [{"name": "opt", "default": "0", "kind": "KEYWORD_ONLY"}],
+                    "domain_metadata": {
+                        "modifiers": [".SAT", ".FTZ"],
+                        "valid_architectures": ["sm_70", "sm_80", "sm_90"],
+                    },
+                }
+            ]
+        }
+    }
+    res_non_breaking = diff_snapshots(s1, s4)
+    assert "nvidia_sass.inst.FADD" in res_non_breaking.non_breaking_signature_changed

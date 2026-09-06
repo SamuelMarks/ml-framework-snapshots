@@ -1,0 +1,120 @@
+name: Framework Snapshots Matrix
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  generate-snapshots:
+    runs-on: ${{ matrix.framework == 'mlx' && 'macos-latest' || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        framework:
+          - torch
+          - jax
+          - tensorflow
+          - keras
+          - mlx
+          - numpy
+          - cupy
+          - dask
+          - flax_nnx
+          - deepspeed
+          - optax_shim
+          - orbax_checkpoint
+          - huggingface
+          - diffusers
+          - tokenizers
+          - triton
+          - sklearn
+          - onnxruntime
+          - pax
+          - maxtext
+          - mlir
+          - stablehlo
+          - html_dsl
+          - latex_dsl
+          - tikz
+          - nvidia_sass
+          - amd_rdna
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.framework == 'pax' && '3.10' || '3.12' }}
+
+    - name: Checkout ml-switcheroo-ir
+      uses: actions/checkout@v7
+      with:
+        repository: SamuelMarks/ml-switcheroo-ir
+        path: ml-switcheroo-ir
+
+    - name: Create required directories and set permissions
+      run: |
+        sudo mkdir -p /Users/samuel/repos 2>/dev/null || true
+        sudo chown -R $USER /Users 2>/dev/null || true
+        cp -r ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir 2>/dev/null || mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v10.0.1
+      with:
+        version: "latest"
+
+    - name: Install base dependencies
+      run: |
+        uv pip install --system -e /Users/samuel/repos/ml-switcheroo-ir
+        uv pip install --system -e ".[test,generate]"
+
+    - name: Install framework dependency
+      run: |
+        fw="${{ matrix.framework }}"
+        case $fw in
+          torch) PKGS="torch --extra-index-url https://download.pytorch.org/whl/cpu" ;;
+          jax) PKGS="jax[cpu]" ;;
+          tensorflow)
+            if [ "$RUNNER_OS" == "macOS" ]; then
+              PKGS="tensorflow-macos"
+            else
+              PKGS="tensorflow-cpu"
+            fi
+            ;;
+          keras) PKGS="keras" ;;
+          mlx) PKGS="mlx" ;;
+          numpy) PKGS="numpy<2.0.0" ;;
+          cupy) PKGS="cupy-cuda12x" ;;
+          dask) PKGS="dask" ;;
+          flax_nnx) PKGS="flax jax[cpu]" ;;
+          deepspeed) PKGS="deepspeed torch --extra-index-url https://download.pytorch.org/whl/cpu" ;;
+          optax_shim) PKGS="optax jax[cpu]" ;;
+          orbax_checkpoint) PKGS="orbax-checkpoint jax[cpu]" ;;
+          huggingface) PKGS="transformers" ;;
+          diffusers) PKGS="diffusers torch --extra-index-url https://download.pytorch.org/whl/cpu" ;;
+          tokenizers) PKGS="tokenizers" ;;
+          triton) PKGS="triton" ;;
+          sklearn) PKGS="scikit-learn" ;;
+          onnxruntime) PKGS="onnxruntime" ;;
+          pax) PKGS="paxml jaxlib==0.4.26" ;;
+          maxtext) PKGS="maxtext" ;;
+          mlir) PKGS="jaxlib" ;;
+          *) PKGS="" ;;
+        esac
+
+        if [ -n "$PKGS" ]; then
+          uv pip install --system $PKGS || true
+        fi
+
+    - name: Capture snapshot
+      run: |
+        mkdir -p dist_snapshots
+        python -m ml_framework_snapshots.cli capture ${{ matrix.framework }} --out-dir dist_snapshots || true
+
+    - name: Upload snapshot artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: snapshot-${{ matrix.framework }}
+        path: dist_snapshots/*.json
+        if-no-files-found: warn

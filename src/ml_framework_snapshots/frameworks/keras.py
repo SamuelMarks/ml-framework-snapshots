@@ -4,7 +4,7 @@ Provides functions to statically introspect the Keras library using Griffe and g
 GhostRefs for layers, losses, optimizers, and activations.
 """
 
-from typing import List, Any, Optional, Set
+from typing import List, Optional, Set
 
 from ml_framework_snapshots.models import GhostInspector
 from ml_switcheroo_ir.schema.ghost import GhostRef
@@ -14,28 +14,6 @@ try:
     import griffe
 except ImportError:  # pragma: no cover
     griffe = None  # type: ignore[assignment]
-
-
-def _make_dummy_obj(name: str, kind: str) -> Any:
-    """Create a dummy object of the given kind with the given name.
-
-    Args:
-        name: The name of the dummy object.
-        kind: The kind of the dummy object ("class" or "function").
-
-    Returns:
-        The constructed dummy object.
-    """
-    if kind == "class":
-        return type(name, (), {})
-    else:
-
-        def dummy_func() -> None:
-            """Dummy function."""
-            pass
-
-        dummy_func.__name__ = name
-        return dummy_func
 
 
 def _scan_griffe_module(
@@ -75,12 +53,8 @@ def _scan_griffe_module(
         is_class = member.is_class
         is_function = member.is_function
 
-        if kind == "class" and is_class:
-            obj = _make_dummy_obj(name, "class")
-            found.append(GhostInspector.inspect(obj, f"{prefix}.{name}"))
-        elif kind == "function" and is_function:
-            obj = _make_dummy_obj(name, "function")
-            found.append(GhostInspector.inspect(obj, f"{prefix}.{name}"))
+        if (kind == "class" and is_class) or (kind == "function" and is_function):
+            found.append(GhostInspector.inspect(member, f"{prefix}.{name}"))
 
     return found
 

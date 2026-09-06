@@ -137,6 +137,115 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                     ):
                         results.append(GhostInspector.inspect(obj, f"tf.data.{name}"))
 
+        elif category == SemanticTier.ARRAY_API:
+            if hasattr(tf, "math"):
+                for name, obj in get_all_members(tf.math):
+                    if callable(obj) and (
+                        include_nonpublic or not name.startswith("_")
+                    ):
+                        try:
+                            results.append(
+                                GhostInspector.inspect(obj, f"tf.math.{name}")
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
+            if hasattr(tf, "linalg"):
+                for name, obj in get_all_members(tf.linalg):
+                    if callable(obj) and (
+                        include_nonpublic or not name.startswith("_")
+                    ):
+                        try:
+                            results.append(
+                                GhostInspector.inspect(obj, f"tf.linalg.{name}")
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
+
+            top_level_tensor_ops = [
+                "concat",
+                "stack",
+                "unstack",
+                "split",
+                "gather",
+                "gather_nd",
+                "scatter_nd",
+                "reshape",
+                "squeeze",
+                "expand_dims",
+                "transpose",
+                "tile",
+                "slice",
+                "strided_slice",
+                "where",
+            ]
+            seen_ops = set(top_level_tensor_ops)
+            for name in top_level_tensor_ops:
+                if hasattr(tf, name):
+                    obj = getattr(tf, name)
+                    if callable(obj):
+                        try:
+                            results.append(GhostInspector.inspect(obj, f"tf.{name}"))
+                        except Exception:  # pragma: no cover
+                            pass
+
+            for name, obj in get_all_members(tf):
+                if (
+                    not name.startswith("_") or include_nonpublic
+                ) and name not in seen_ops:
+                    if (
+                        callable(obj)
+                        and not inspect.isclass(obj)
+                        and not inspect.ismodule(obj)
+                    ):
+                        try:
+                            results.append(GhostInspector.inspect(obj, f"tf.{name}"))
+                        except Exception:  # pragma: no cover
+                            pass
+
+            if hasattr(tf, "raw_ops"):
+                for name, obj in get_all_members(tf.raw_ops):
+                    if not name.startswith("_") or include_nonpublic:
+                        if callable(obj) and not inspect.isclass(obj):
+                            try:
+                                results.append(
+                                    GhostInspector.inspect(obj, f"tf.raw_ops.{name}")
+                                )
+                            except Exception:  # pragma: no cover
+                                pass
+
+            # tf.Tensor and tf.Variable member methods
+            if hasattr(tf, "Tensor"):
+                for name, obj in inspect.getmembers(tf.Tensor):
+                    if (
+                        (include_nonpublic or not name.startswith("_"))
+                        and callable(obj)
+                        and not inspect.isclass(obj)
+                    ):
+                        try:
+                            results.append(
+                                GhostInspector.inspect(
+                                    obj, f"tf.Tensor.{name}", kind="method"
+                                )
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
+
+            if hasattr(tf, "Variable"):
+                for name, obj in inspect.getmembers(tf.Variable):
+                    if (
+                        (include_nonpublic or not name.startswith("_"))
+                        and callable(obj)
+                        and not inspect.isclass(obj)
+                    ):
+                        try:
+                            results.append(
+                                GhostInspector.inspect(
+                                    obj, f"tf.Variable.{name}", kind="method"
+                                )
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
+
     except Exception:  # pragma: no cover
         pass
 
