@@ -1,9 +1,9 @@
 [project]
 name = "ml_framework_snapshots"
-version = "0.1.0"
+version = "0.0.2"
 description = "Extracts API snapshots from ML frameworks for Ghost Mode operation"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = ["dependencies", "optional-dependencies"]
 
 [project.scripts]
@@ -42,12 +42,26 @@ exclude = [
     "/venv*",
     "/snapshots",
     "/test_out",
+    "*.db",
+    "*.db-journal",
+    "*.db-wal",
+    "*.sqlite",
+    "*.sqlite3",
+    "*.sqlite-journal",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ml_framework_snapshots"]
 include = ["src/ml_framework_snapshots/**/*.json"]
 artifacts = ["src/ml_framework_snapshots/snapshots/*.json"]
+exclude = [
+    "*.db",
+    "*.db-journal",
+    "*.db-wal",
+    "*.sqlite",
+    "*.sqlite3",
+    "*.sqlite-journal",
+]
 
 [tool.ruff]
 lint.select = ["E", "F", "D"]

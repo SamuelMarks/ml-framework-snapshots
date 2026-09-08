@@ -61,6 +61,65 @@ class CExtensionSignature(List[Tuple[str, str, Optional[str], Optional[str]]]):
         self.overloads: List["CExtensionSignature"] = overloads or []
 
 
+def _normalize_c_sig_args(args_str: str) -> str:
+    """Normalize C++ / PyBind / ATen parameter syntax to Python syntax for AST parsing.
+
+    Converts signatures like 'Tensor self, bool inplace=False' into 'self: "Tensor" = False'.
+
+    Args:
+        args_str: Raw parameter string from C-extension docstring.
+
+    Returns:
+        Normalized Python parameter string.
+    """
+    tokens: List[str] = []
+    depth = 0
+    cur: List[str] = []
+    for char in args_str:
+        if char in "<[(":
+            depth += 1
+            cur.append(char)
+        elif char in ">])":
+            depth -= 1
+            cur.append(char)
+        elif char == "," and depth == 0:
+            tokens.append("".join(cur).strip())
+            cur = []
+        else:
+            cur.append(char)
+    if cur:
+        tokens.append("".join(cur).strip())
+
+    transformed: List[str] = []
+    for tok in tokens:
+        if not tok:
+            continue
+        if tok in ("*", "/"):
+            transformed.append(tok)
+            continue
+        if tok.startswith("*"):
+            transformed.append(tok)
+            continue
+        if ":" in tok:
+            transformed.append(tok)
+            continue
+        # C++ / PyBind style: Type [&*] name [= default]
+        m = re.match(
+            r"^(?:const\s+)?([a-zA-Z_][\w:]*(?:<[^>]+>)?(?:\s*[*&]+)?)\s+([a-zA-Z_]\w*)(?:\s*=\s*(.+))?$",
+            tok,
+        )
+        if m:
+            typ, name, default = m.group(1).strip(), m.group(2).strip(), m.group(3)
+            clean_typ = typ.replace("&", "").replace("*", "").strip()
+            if default is not None:
+                transformed.append(f'{name}: "{clean_typ}" = {default.strip()}')
+            else:
+                transformed.append(f'{name}: "{clean_typ}"')
+        else:
+            transformed.append(tok)
+    return ", ".join(transformed)
+
+
 def _parse_c_extension_sig_str(
     sig_line: str,
 ) -> Optional[
@@ -78,8 +137,10 @@ def _parse_c_extension_sig_str(
     Returns:
         A tuple of (func_name, extracted_params, returns_type), or None if parsing fails.
     """
+    clean_line = sig_line.strip()
+    clean_line = re.sub(r"^(?:\d+[\.\)]\s*)?(?:aten::|c10::|torch\.)", "", clean_line)
     pattern = r"^(?:\d+[\.\)]\s*)?([a-zA-Z0-9_]+)\((.*)\)(?:\s*->\s*(.*))?$"
-    match = re.match(pattern, sig_line.strip())
+    match = re.match(pattern, clean_line)
     if not match:
         return None
 
@@ -93,7 +154,13 @@ def _parse_c_extension_sig_str(
         func_def = tree.body[0]
         args = func_def.args  # type: ignore
     except SyntaxError:
-        return None
+        norm_args = _normalize_c_sig_args(args_str)
+        try:
+            tree = ast.parse(f"def dummy_func({norm_args}): pass")
+            func_def = tree.body[0]
+            args = func_def.args  # type: ignore
+        except SyntaxError:
+            return None
 
     extracted_params: List[Tuple[str, str, Optional[str], Optional[str]]] = []
 
@@ -223,6 +290,22 @@ def extract_c_extension_signature(
                 break
         elif "overloaded function" in stripped.lower():
             has_numbered = True
+
+    if not parsed_sigs:
+        # Fallback: scan lines for target_name(...) calls or docstring usage patterns
+        for line in lines:
+            stripped = line.strip()
+            if "(" in stripped and ")" in stripped:
+                clean_cand = re.sub(r"^(?:>>>|\.\.\.)\s*", "", stripped).strip()
+                if (
+                    clean_cand.startswith(f"{target_name}(")
+                    or f".{target_name}(" in clean_cand
+                    or target_name in clean_cand
+                ):
+                    parsed = _parse_c_extension_sig_str(clean_cand)
+                    if parsed is not None:
+                        parsed_sigs.append(parsed)
+                        break
 
     if not parsed_sigs:
         return None
@@ -476,10 +559,22 @@ def extract_griffe_docstring_metadata(
             and isinstance(section.value, list)
         ):
             for item in section.value:
-                annotation = getattr(item, "annotation", None)
+                annotation = (
+                    getattr(item, "annotation", None)
+                    or getattr(item, "name", None)
+                    or getattr(item, "value", None)
+                )
                 if annotation:
                     exc_name = strip_sphinx_roles(str(annotation)) or str(annotation)
                     if exc_name not in raises:
                         raises.append(exc_name)
+
+    # Sphinx field lists: :raises <type>: or :raise <type>: or :except <type>:
+    # Griffe's parser often treats :raises <type>: as a DocstringParameter in 'parameters'.
+    for exc in re.findall(r":(?:raises?|except)\s+([A-Za-z0-9_.]+):", docstring):
+        if exc in params:
+            del params[exc]
+        if exc not in raises:
+            raises.append(exc)
 
     return {"params": params, "returns": returns, "raises": raises}

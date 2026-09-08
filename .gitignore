@@ -53,6 +53,14 @@ cover/
 *.mo
 *.pot
 
+# Database files (ephemeral local cache only, never committed)
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+
 # Django stuff:
 *.log
 local_settings.py

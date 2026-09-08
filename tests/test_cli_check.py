@@ -239,3 +239,65 @@ def test_cmd_check_output_formatting(mocker: Any, capsys: Any, tmp_path: Any) ->
     assert "..." in out
     assert "No docstring available." in out
     assert "module" in out
+
+
+def test_cmd_check_sass_no_modifiers(mocker: Any, capsys: Any) -> None:
+    """Test cmd_check_sass when valid instruction has no valid modifiers.
+
+    Args:
+        mocker: Pytest mocker fixture.
+        capsys: Pytest capsys fixture.
+    """
+    from ml_framework_snapshots.cli import cmd_check_sass
+
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.check_sass_instruction",
+        return_value={
+            "is_valid": True,
+            "supported_architectures": ["sm_80"],
+            "valid_modifiers": [],
+        },
+    )
+    args = argparse.Namespace(
+        mnemonic="NOP",
+        operands=None,
+        modifiers=None,
+        sm_arch="sm_80",
+        file=None,
+    )
+    cmd_check_sass(args)
+    out, _ = capsys.readouterr()
+    assert "SASS Instruction 'NOP' is valid." in out
+    assert "Recognized Modifiers" not in out
+
+
+def test_cmd_check_rdna_no_encoding(mocker: Any, capsys: Any) -> None:
+    """Test cmd_check_rdna when valid instruction has no encoding returned.
+
+    Args:
+        mocker: Pytest mocker fixture.
+        capsys: Pytest capsys fixture.
+    """
+    from ml_framework_snapshots.cli import cmd_check_rdna
+
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.check_rdna_instruction",
+        return_value={
+            "is_valid": True,
+            "supported_architectures": ["gfx1100"],
+            "encoding": None,
+        },
+    )
+    args = argparse.Namespace(
+        mnemonic="s_nop",
+        operands=None,
+        encoding=None,
+        gfx_arch="gfx1100",
+        modifiers=None,
+        wave_size=32,
+        file=None,
+    )
+    cmd_check_rdna(args)
+    out, _ = capsys.readouterr()
+    assert "RDNA Instruction 's_nop' is valid." in out
+    assert "Encoding:" not in out

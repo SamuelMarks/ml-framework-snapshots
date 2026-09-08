@@ -1,0 +1,73 @@
+name: Upstream Drift Detection
+
+on:
+  schedule:
+    # Run every Monday at 04:00 UTC
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check-drift:
+    name: Check Upstream Releases and Dialect Drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip requests
+          pip install -e .
+
+      - name: Query Upstream PyPI Versions and Git Tags
+        id: check_versions
+        run: |
+          python3 -c "
+          import urllib.request, json
+
+          packages = ['torch', 'jax', 'tensorflow', 'keras', 'mlx', 'triton']
+          latest_versions = {}
+          for pkg in packages:
+              try:
+                  url = f'https://pypi.org/pypi/{pkg}/json'
+                  req = urllib.request.Request(url, headers={'User-Agent': 'ml-framework-snapshots-drift-check'})
+                  with urllib.request.urlopen(req, timeout=10) as resp:
+                      data = json.loads(resp.read().decode())
+                      latest_versions[pkg] = data['info']['version']
+              except Exception as e:
+                  latest_versions[pkg] = 'error'
+
+          print('=== Latest Upstream PyPI Releases ===')
+          for pkg, ver in latest_versions.items():
+              print(f'{pkg}: {ver}')
+
+          with open('drift_report.json', 'w') as f:
+              json.dump(latest_versions, f, indent=2)
+          "
+
+      - name: Run Snapshot Diff for Framework Drift
+        run: |
+          python3 -c "
+          import os, glob
+          from ml_framework_snapshots.diff import diff_snapshots
+
+          print('Checking bundled snapshot consistency against current schemas...')
+          # Diffs bundled snapshots if multiple versions exist
+          snapshot_files = sorted(glob.glob('src/ml_framework_snapshots/snapshots/*.json'))
+          for sf in snapshot_files:
+              print(f'Inspected bundled snapshot: {os.path.basename(sf)}')
+          "
+
+      - name: Generate Drift Report
+        run: |
+          echo "# Upstream Drift Report" > upstream_drift_summary.md
+          echo "Generated on: $(date -u)" >> upstream_drift_summary.md
+          echo "" >> upstream_drift_summary.md
+          echo "## Upstream PyPI Releases" >> upstream_drift_summary.md
+          cat drift_report.json >> upstream_drift_summary.md
+          cat upstream_drift_summary.md >> $GITHUB_STEP_SUMMARY

@@ -246,6 +246,20 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                         except Exception:  # pragma: no cover
                             pass
 
+        if category in (SemanticTier.ARRAY_API, SemanticTier.UTIL) and hasattr(
+            tf, "raw_ops"
+        ):
+            for name, obj in get_all_members(tf.raw_ops):
+                if not include_nonpublic and name.startswith("_"):
+                    continue
+                if callable(obj) and not inspect.isclass(obj):
+                    try:
+                        ref = GhostInspector.inspect(obj, f"tf.raw_ops.{name}")
+                        ref.environment_tags.append("tf.raw_op")
+                        results.append(ref)
+                    except Exception:  # pragma: no cover
+                        pass
+
     except Exception:  # pragma: no cover
         pass
 

@@ -315,3 +315,87 @@ def test_check_rdna_assembly_compliance() -> None:
     res_comments = check_rdna_assembly_compliance(rdna_comments)
     assert res_comments["is_compliant"] is True
     assert res_comments["total_instructions"] == 0
+
+
+def test_validate_broadcast_and_matmul_shapes() -> None:
+    """Test validate_broadcast_shapes and validate_matmul_shapes rules and error branches."""
+    from ml_framework_snapshots.compliance import (
+        validate_broadcast_shapes,
+        validate_matmul_shapes,
+    )
+
+    # 1. Broadcasting
+    compat1, res1, _ = validate_broadcast_shapes([2, 3], [1, 3])
+    assert compat1 is True
+    assert res1 == [2, 3]
+
+    compat2, _, err2 = validate_broadcast_shapes([2, 3], [3, 2])
+    assert compat2 is False
+    assert "Shape mismatch" in (err2 or "")
+
+    compat3, res3, _ = validate_broadcast_shapes([1, 4, 1], [2, 1, 5])
+    assert compat3 is True
+    assert res3 == [2, 4, 5]
+
+    # Dynamic / wildcard and non-int dimensions
+    compat_dyn, res_dyn, _ = validate_broadcast_shapes(["?"], [4])
+    assert compat_dyn is True
+    assert res_dyn == [-1]
+
+    compat_str, res_str, _ = validate_broadcast_shapes(["invalid_dim"], [4])
+    assert compat_str is True
+    assert res_str == [-1]
+
+    # 2. Matmul strict 2D
+    compat_s2d, _, err_s2d = validate_matmul_shapes(
+        [2, 3, 4], [2, 4, 5], strict_2d=True
+    )
+    assert compat_s2d is False
+    assert "Strict 2D matmul error" in (err_s2d or "")
+
+    # 1D vector dot products
+    compat_1d, _, _ = validate_matmul_shapes([4], [4])
+    assert compat_1d is True
+
+    compat_1d_sym, _, _ = validate_matmul_shapes(["?"], [4])
+    assert compat_1d_sym is True
+
+    compat_1d_sym2, _, _ = validate_matmul_shapes([4], ["?"])
+    assert compat_1d_sym2 is True
+
+    compat_1d_sym3, _, _ = validate_matmul_shapes(["?"], ["?"])
+    assert compat_1d_sym3 is True
+
+    compat_1d_err, _, err_1d = validate_matmul_shapes([4], [5])
+    assert compat_1d_err is False
+    assert "dot product mismatch" in (err_1d or "")
+
+    # Rank < 2 error (left < 2 vs right < 2)
+    compat_r1, _, err_r1 = validate_matmul_shapes([4], [4, 5])
+    assert compat_r1 is False
+    assert "requires at least 2D operands" in (err_r1 or "")
+
+    compat_r2, _, err_r2 = validate_matmul_shapes([4, 5], [4])
+    assert compat_r2 is False
+    assert "requires at least 2D operands" in (err_r2 or "")
+
+    # 2D matmul valid and contracting mismatch
+    compat_2d, res_2d, _ = validate_matmul_shapes([2, 3], [3, 4])
+    assert compat_2d is True
+    assert res_2d == [2, 4]
+
+    compat_2d_sym, res_2d_sym, _ = validate_matmul_shapes([2, "?"], [3, 4])
+    assert compat_2d_sym is True
+
+    compat_k_err, _, err_k = validate_matmul_shapes([2, 3], [4, 5])
+    assert compat_k_err is False
+    assert "contracting dimension mismatch" in (err_k or "")
+
+    # Batch matmul valid and batch mismatch
+    compat_bm, res_bm, _ = validate_matmul_shapes([2, 3, 4], [2, 4, 5])
+    assert compat_bm is True
+    assert res_bm == [2, 3, 5]
+
+    compat_bm_err, _, err_bm = validate_matmul_shapes([2, 3, 4], [3, 4, 5])
+    assert compat_bm_err is False
+    assert "Batch dimension broadcasting error" in (err_bm or "")

@@ -11,7 +11,7 @@ import sys
 
 
 from pathlib import Path
-from typing import Tuple, Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import griffe
 
 from ml_switcheroo_ir.schema.ghost import GhostRef
@@ -236,13 +236,16 @@ def extract_target_refs_single(
 
 
 def score_compliance(
-    reference_snapshot: Dict[str, Any], target_refs: List[GhostRef]
+    reference_snapshot: Dict[str, Any],
+    target_refs: List[GhostRef],
+    strict_c_extensions: bool = False,
 ) -> Dict[str, Any]:
     """Score the compliance of target refs against a reference snapshot.
 
     Args:
         reference_snapshot: The reference snapshot dictionary containing categories.
         target_refs: The extracted and aligned GhostRefs from the target.
+        strict_c_extensions: Whether to reject fallback matches with opaque C-extension signatures.
 
     Returns:
         A dictionary containing compliance metrics.
@@ -261,11 +264,20 @@ def score_compliance(
 
     total_reference_endpoints = len(set(ref.api_path for ref in reference_map.values()))
     if total_reference_endpoints == 0:
-        return {"score_percentage": 0.0, "matched": [], "missing": [], "mismatched": []}
+        return {
+            "score_percentage": 0.0,
+            "matched": [],
+            "missing": [],
+            "mismatched": [],
+            "opaque_signatures": [],
+            "warnings": [],
+        }
 
     matched = []
     missing = []
     mismatched = []
+    opaque_signatures = []
+    warnings = []
 
     for api_path, ref_obj in reference_map.items():
         if api_path not in target_map:
@@ -302,6 +314,35 @@ def score_compliance(
         ref_sig = [sig_tuple(p) for p in ref_obj.params]
         tgt_sig = [sig_tuple(p) for p in target_obj.params]
 
+        ref_is_opaque = (
+            getattr(ref_obj, "signature_completeness", None) == "opaque"
+            or "inexact_signature" in (ref_obj.environment_tags or [])
+            or "opaque_c_extension" in (ref_obj.environment_tags or [])
+        )
+        tgt_is_opaque = (
+            getattr(target_obj, "signature_completeness", None) == "opaque"
+            or "inexact_signature" in (target_obj.environment_tags or [])
+            or "opaque_c_extension" in (target_obj.environment_tags or [])
+        )
+
+        if ref_is_opaque or tgt_is_opaque:
+            opaque_signatures.append(api_path)
+            warnings.append(
+                f"API '{api_path}' matched via opaque (*args, **kwargs) C-extension fallback."
+            )
+            if strict_c_extensions:
+                mismatched.append(
+                    {
+                        "api_path": api_path,
+                        "expected": ref_sig,
+                        "actual": tgt_sig,
+                        "reason": "Opaque C-extension signature fallback rejected under strict_c_extensions",
+                    }
+                )
+            else:
+                matched.append(api_path)
+            continue
+
         if ref_sig == tgt_sig:
             matched.append(api_path)
         else:
@@ -334,6 +375,8 @@ def score_compliance(
         "matched": matched,
         "missing": missing,
         "mismatched": mismatched,
+        "opaque_signatures": opaque_signatures,
+        "warnings": warnings,
     }
 
 
@@ -525,3 +568,131 @@ def check_rdna_assembly_compliance(
         "verified_instructions": verified_insts,
         "errors": errors,
     }
+
+
+def validate_broadcast_shapes(
+    shape_a: Sequence[Union[int, str]], shape_b: Sequence[Union[int, str]]
+) -> Tuple[bool, Optional[List[int]], Optional[str]]:
+    """Validate NumPy/PyTorch broadcasting compatibility between two tensor shapes.
+
+    Rules:
+        - Trailing dimensions are aligned.
+        - Two dimensions are compatible if they are equal, or one of them is 1.
+        - Wildcard/symbolic dimensions ('?', -1) are treated as dynamically compatible.
+
+    Args:
+        shape_a: Shape sequence of the first tensor operand.
+        shape_b: Shape sequence of the second tensor operand.
+
+    Returns:
+        A tuple of (is_compatible, broadcast_resulting_shape, error_message).
+    """
+    reversed_a = list(reversed(shape_a))
+    reversed_b = list(reversed(shape_b))
+    max_len = max(len(reversed_a), len(reversed_b))
+
+    result_shape: List[int] = []
+    for i in range(max_len):
+        dim_a = reversed_a[i] if i < len(reversed_a) else 1
+        dim_b = reversed_b[i] if i < len(reversed_b) else 1
+
+        if str(dim_a) in ("?", "-1", "None") or str(dim_b) in ("?", "-1", "None"):
+            result_shape.append(-1)
+            continue
+
+        try:
+            int_a = int(dim_a)
+            int_b = int(dim_b)
+        except (ValueError, TypeError):
+            result_shape.append(-1)
+            continue
+
+        if int_a == int_b:
+            result_shape.append(int_a)
+        elif int_a == 1:
+            result_shape.append(int_b)
+        elif int_b == 1:
+            result_shape.append(int_a)
+        else:
+            return (
+                False,
+                None,
+                f"Shape mismatch: dimension at reverse index {i} cannot broadcast between {dim_a} and {dim_b} (shapes: {list(shape_a)} vs {list(shape_b)}).",
+            )
+
+    return True, list(reversed(result_shape)), None
+
+
+def validate_matmul_shapes(
+    shape_a: Sequence[Union[int, str]],
+    shape_b: Sequence[Union[int, str]],
+    strict_2d: bool = False,
+) -> Tuple[bool, Optional[List[int]], Optional[str]]:
+    """Validate matrix multiplication shape and contracting inner-dimension constraints.
+
+    Rules:
+        - If strict_2d is True (e.g. torch.mm), both shapes must be strictly 2D.
+        - For 2D matrices (M, K) x (K, N), inner dimension K must match.
+        - For batch matrices (...B, M, K) x (...B, K, N), batch dimensions must broadcast.
+        - For 1D vectors (K,) x (K,), dot product requires matching dimension.
+
+    Args:
+        shape_a: Shape sequence of LHS matrix tensor.
+        shape_b: Shape sequence of RHS matrix tensor.
+        strict_2d: Flag enforcing strictly rank-2 matrix operands (torch.mm).
+
+    Returns:
+        A tuple of (is_compatible, output_shape, error_message).
+    """
+    if strict_2d:
+        if len(shape_a) != 2 or len(shape_b) != 2:
+            return (
+                False,
+                None,
+                f"Strict 2D matmul error: both operands must have rank 2, got ranks {len(shape_a)} and {len(shape_b)}.",
+            )
+
+    if len(shape_a) == 1 and len(shape_b) == 1:
+        if str(shape_a[0]) not in ("?", "-1") and str(shape_b[0]) not in ("?", "-1"):
+            if int(shape_a[0]) != int(shape_b[0]):
+                return (
+                    False,
+                    None,
+                    f"1D vector dot product mismatch: {shape_a[0]} != {shape_b[0]}.",
+                )
+        return True, [], None
+
+    if len(shape_a) < 2 or len(shape_b) < 2:
+        return (
+            False,
+            None,
+            f"Matrix multiplication requires at least 2D operands (got ranks {len(shape_a)} and {len(shape_b)}).",
+        )
+
+    k_lhs = shape_a[-1]
+    k_rhs = shape_b[-2]
+    if str(k_lhs) not in ("?", "-1") and str(k_rhs) not in ("?", "-1"):
+        if int(k_lhs) != int(k_rhs):
+            return (
+                False,
+                None,
+                f"Matrix multiplication contracting dimension mismatch: inner dimension {k_lhs} != {k_rhs} (shapes: {list(shape_a)} vs {list(shape_b)}).",
+            )
+
+    batch_a = shape_a[:-2]
+    batch_b = shape_b[:-2]
+    if batch_a or batch_b:
+        compat, b_shape, err = validate_broadcast_shapes(batch_a, batch_b)
+        if not compat:
+            return False, None, f"Batch dimension broadcasting error in matmul: {err}"
+        out_shape = (b_shape or []) + [
+            int(shape_a[-2]) if str(shape_a[-2]).isdigit() else -1,
+            int(shape_b[-1]) if str(shape_b[-1]).isdigit() else -1,
+        ]
+    else:
+        out_shape = [
+            int(shape_a[-2]) if str(shape_a[-2]).isdigit() else -1,
+            int(shape_b[-1]) if str(shape_b[-1]).isdigit() else -1,
+        ]
+
+    return True, out_shape, None

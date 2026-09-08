@@ -138,7 +138,7 @@ jobs:
           done
 
       - name: Upload snapshot artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: snapshots-${{ matrix.os }}
           path: src/ml_framework_snapshots/snapshots/*.json
@@ -175,7 +175,7 @@ jobs:
           cp -r ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir 2>/dev/null || mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
       - name: Download all snapshot artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: downloaded_snapshots
           merge-multiple: true
@@ -204,8 +204,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Guarantee zero database files in snapshots directory
+          rm -f src/ml_framework_snapshots/snapshots/*.db* src/ml_framework_snapshots/snapshots/*.sqlite* || true
           gh release view "$TARGET_TAG" >/dev/null 2>&1 || gh release create "$TARGET_TAG" --title "Release $TARGET_TAG" --notes "Automated release $TARGET_TAG" || true
           if ls src/ml_framework_snapshots/snapshots/*.json 1> /dev/null 2>&1; then
+            cd src/ml_framework_snapshots/snapshots
+            sha256sum *.json > checksums.txt 2>/dev/null || shasum -a 256 *.json > checksums.txt
+            gh release upload "$TARGET_TAG" checksums.txt --clobber
+            cd -
             gh release upload "$TARGET_TAG" src/ml_framework_snapshots/snapshots/*.json --clobber
           fi
 
@@ -215,6 +221,15 @@ jobs:
           uv pip install -p venv-build -e /Users/samuel/repos/ml-switcheroo-ir
           uv pip install -p venv-build build
           venv-build/bin/python3 -m build
+          python3 -c "
+          import zipfile, glob, sys
+          for whl in glob.glob('dist/*.whl'):
+              with zipfile.ZipFile(whl, 'r') as zf:
+                  for name in zf.namelist():
+                      if name.endswith(('.db', '.sqlite', '.sqlite3', '.db-wal', '.db-journal')):
+                          sys.exit(f'Found prohibited database file in {whl}: {name}')
+          print('Verified dist artifacts contain 0 database files.')
+          "
 
       - name: Verify Wheel Contents and Offline Grounding
         run: |

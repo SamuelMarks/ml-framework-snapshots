@@ -529,3 +529,281 @@ def test_parse_stablehlo_tablegen_supers_loop_and_empty_results() -> None:
     assert len(refs) == 2
     assert refs[0]["name"] == "no_fields"
     assert refs[0]["returns_type"] is None
+
+
+def test_parse_stablehlo_tablegen_verification_rules() -> None:
+    """Test TableGen extraction of formal verification rules and region signatures."""
+    tablegen_source = """
+    class StableHLO_Op<string mnem> {
+      let mnemonic = mnem;
+    }
+
+    def StableHLO_DotGeneralOp : StableHLO_Op<"dot_general">;
+    def StableHLO_ConvolutionOp : StableHLO_Op<"convolution">;
+    def StableHLO_ScatterOp : StableHLO_Op<"scatter">;
+    def StableHLO_GatherOp : StableHLO_Op<"gather">;
+    def StableHLO_BroadcastInDimOp : StableHLO_Op<"broadcast_in_dim">;
+    def StableHLO_SortOp : StableHLO_Op<"sort">;
+    """
+
+    refs = build_stablehlo_snapshot.parse_stablehlo_tablegen(tablegen_source)
+    ref_map = {r["name"]: r for r in refs}
+
+    assert (
+        ref_map["dot_general"]["verification_rules"]["dimension_numbers"]
+        == "DotDimensionNumbersAttr"
+    )
+    assert (
+        ref_map["convolution"]["verification_rules"]["dimension_numbers"]
+        == "ConvDimensionNumbersAttr"
+    )
+    assert (
+        ref_map["scatter"]["verification_rules"]["dimension_numbers"]
+        == "ScatterDimensionNumbersAttr"
+    )
+    assert (
+        ref_map["gather"]["verification_rules"]["dimension_numbers"]
+        == "GatherDimensionNumbersAttr"
+    )
+    assert (
+        ref_map["broadcast_in_dim"]["verification_rules"]["broadcast"]
+        == "broadcast_dimensions"
+    )
+    assert "comparator" in ref_map["sort"]["region_signatures"]
+
+
+def test_parse_stablehlo_llvm_tblgen_json() -> None:
+    """Test parse_stablehlo_llvm_tblgen_json parsing DAG and list records."""
+    mock_json = {
+        "!instanceof": {
+            "Op": ["StableHLO_DotGeneralOp", "StableHLO_ReduceOp", "StableHLO_WhileOp"]
+        },
+        "StableHLO_DotGeneralOp": {
+            "!name": "StableHLO_DotGeneralOp",
+            "!superclasses": ["StableHLO_Op", "Op"],
+            "mnemonic": "dot_general",
+            "summary": "Dot general operation.",
+            "arguments": {
+                "kind": "dag",
+                "args": [
+                    [{"def": "HLO_Tensor"}, "lhs"],
+                    [{"def": "HLO_Tensor"}, "rhs"],
+                    [{"def": "DotDimensionNumbersAttr"}, "dot_dimension_numbers"],
+                ],
+            },
+            "results": {
+                "kind": "dag",
+                "args": [
+                    [{"def": "HLO_Tensor"}, "result"],
+                    [{"def": "HLO_Tensor"}, "extra_result"],
+                ],
+            },
+            "traits": [{"def": "Commutative"}],
+        },
+        "StableHLO_ReduceOp": {
+            "!name": "StableHLO_ReduceOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "reduce",
+            "arguments": [
+                {"name": "inputs", "type": "HLO_Tensor"},
+                {"name": "dims", "type": "I64ElementsAttr"},
+            ],
+            "results": [{"name": "out", "type": "HLO_Tensor"}],
+            "regions": {
+                "kind": "dag",
+                "args": [[{"def": "Region"}, "body"]],
+            },
+            "traits": ["Elementwise"],
+        },
+        "StableHLO_WhileOp": {
+            "!name": "StableHLO_WhileOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "while",
+            "arguments": [{"name": "operand", "type": "HLO_Tensor"}],
+            "results": [{"name": "res", "type": "HLO_Tensor"}],
+            "regions": ["cond", "body"],
+        },
+        "NonOpRecord": {
+            "!name": "NonOpRecord",
+            "!superclasses": ["Dialect"],
+        },
+    }
+
+    # Dict input
+    refs = build_stablehlo_snapshot.parse_stablehlo_llvm_tblgen_json(mock_json)
+    assert len(refs) == 3
+
+    dot = next(r for r in refs if r["name"] == "dot_general")
+    assert dot["api_path"] == "stablehlo.dot_general"
+    assert len(dot["operands"]) == 2
+    assert len(dot["attributes"]) == 1
+    assert dot["verification_rules"]["dimension_numbers"] == "DotDimensionNumbersAttr"
+    assert dot["returns_type"] == "tuple[HLO_Tensor, HLO_Tensor]"
+    assert "Commutative" in dot["traits"]
+
+    reduce_op = next(r for r in refs if r["name"] == "reduce")
+    assert reduce_op["api_path"] == "stablehlo.reduce"
+    assert len(reduce_op["operands"]) == 1
+    assert len(reduce_op["attributes"]) == 1
+    assert reduce_op["returns_type"] == "HLO_Tensor"
+    assert "body" in reduce_op["region_signatures"]
+    assert "Elementwise" in reduce_op["traits"]
+
+    while_op = next(r for r in refs if r["name"] == "while")
+    assert "cond" in while_op["region_signatures"]
+    assert "body" in while_op["region_signatures"]
+
+    # String input
+    import json
+
+    refs_str = build_stablehlo_snapshot.parse_stablehlo_llvm_tblgen_json(
+        json.dumps(mock_json)
+    )
+    assert len(refs_str) == 3
+
+    # Test extract_ops with dict and string JSON
+    assert len(build_stablehlo_snapshot.extract_ops(mock_json)) == 3
+    assert len(build_stablehlo_snapshot.extract_ops(json.dumps(mock_json))) == 3
+
+
+def test_parse_stablehlo_llvm_tblgen_json_all_rules() -> None:
+    """Test parse_stablehlo_llvm_tblgen_json with all verification rules, list args/results, and nameless records."""
+    assert (
+        build_stablehlo_snapshot.strip_tablegen_comments(
+            "/* block */ int x = 1; // comment\n"
+        ).strip()
+        == "int x = 1;"
+    )
+
+    mock_json = {
+        "!meta": "some_metadata",
+        "non_dict_key": 42,
+        "StableHLO_ConvolutionOp": {
+            "!name": "StableHLO_ConvolutionOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "convolution",
+            "arguments": [
+                {"name": "lhs", "type": "HLO_Tensor"},
+                "str_operand",
+            ],
+            "results": [
+                {"name": "res", "type": "HLO_Tensor"},
+                "str_result",
+            ],
+            "regions": ["reg0"],
+            "traits": [{"def": None}, {"def": "SomeTrait"}],
+        },
+        "StableHLO_ScatterOp": {
+            "!name": "StableHLO_ScatterOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "scatter",
+            "arguments": [],
+            "results": [],
+        },
+        "StableHLO_GatherOp": {
+            "!name": "StableHLO_GatherOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "gather",
+            "arguments": [],
+            "results": [],
+        },
+        "StableHLO_BroadcastInDimOp": {
+            "!name": "StableHLO_BroadcastInDimOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "broadcast_in_dim",
+            "arguments": [],
+            "results": [],
+        },
+        "StableHLO_SortOp": {
+            "!name": "StableHLO_SortOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "sort",
+            "arguments": [],
+            "results": [],
+            "regions": ["comparator"],
+        },
+        "StableHLO_CustomBare": {
+            "!name": "StableHLO_CustomBare",
+            "!superclasses": ["StableHLO_Op"],
+            "arguments": [],
+            "results": [],
+        },
+    }
+
+    refs = build_stablehlo_snapshot.parse_stablehlo_llvm_tblgen_json(mock_json)
+    assert len(refs) == 6
+
+    ref_map = {r["name"]: r for r in refs}
+    assert (
+        ref_map["convolution"]["verification_rules"]["dimension_numbers"]
+        == "ConvDimensionNumbersAttr"
+    )
+    assert (
+        ref_map["scatter"]["verification_rules"]["dimension_numbers"]
+        == "ScatterDimensionNumbersAttr"
+    )
+    assert (
+        ref_map["gather"]["verification_rules"]["dimension_numbers"]
+        == "GatherDimensionNumbersAttr"
+    )
+    assert (
+        ref_map["broadcast_in_dim"]["verification_rules"]["broadcast"]
+        == "broadcast_dimensions"
+    )
+    assert "comparator" in ref_map["sort"]["region_signatures"]
+    assert ref_map["custom_bare"]["class_name"] == "CustomBareOp"
+
+
+def test_parse_stablehlo_llvm_tblgen_json_edge_branches() -> None:
+    """Test parse_stablehlo_llvm_tblgen_json with malformed dag entries, empty traits, and None values."""
+    mock_json = {
+        "!instanceof": {
+            "Op": ["StableHLO_MalformedOp", "StableHLO_NoneOp"],
+        },
+        "StableHLO_MalformedOp": {
+            "!name": "StableHLO_MalformedOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "malformed",
+            "arguments": {
+                "kind": "dag",
+                "args": [
+                    ["only_one"],
+                    "not_a_list",
+                ],
+            },
+            "regions": {
+                "kind": "dag",
+                "args": [
+                    ["only_one"],
+                    123,
+                ],
+            },
+            "results": {
+                "kind": "dag",
+                "args": [
+                    ["only_one"],
+                    "not_a_list",
+                ],
+            },
+            "traits": ["", {"def": ""}],
+        },
+        "StableHLO_NoneOp": {
+            "!name": "StableHLO_NoneOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "none_op",
+            "arguments": None,
+            "regions": None,
+            "results": None,
+            "traits": None,
+        },
+    }
+
+    refs = build_stablehlo_snapshot.parse_stablehlo_llvm_tblgen_json(mock_json)
+    assert len(refs) == 2
+    malformed = next(r for r in refs if r["name"] == "malformed")
+    assert len(malformed["operands"]) == 0
+    assert len(malformed["results"]) == 0
+    assert len(malformed["traits"]) == 0
+    none_op = next(r for r in refs if r["name"] == "none_op")
+    assert len(none_op["operands"]) == 0
+    assert len(none_op["results"]) == 0

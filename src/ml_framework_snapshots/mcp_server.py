@@ -9,7 +9,7 @@ import json
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, TextIO
+from typing import Any, Dict, List, Optional, Sequence, TextIO, Tuple, Union, cast
 
 from ml_framework_snapshots.api import (
     FRAMEWORK_COLLECTORS,
@@ -19,35 +19,53 @@ from ml_framework_snapshots.api import (
 _SNAPSHOT_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
-def get_framework_snapshot(framework: str) -> Dict[str, Any]:
+def get_framework_snapshot(
+    framework: str, version: Optional[str] = None
+) -> Dict[str, Any]:
     """Retrieve or build a cached snapshot for a target framework.
 
     Args:
         framework: Name of the framework (e.g. 'torch', 'jax', 'nvidia_sass').
+        version: Optional framework version (e.g. '2.4.0').
 
     Returns:
         The snapshot dictionary containing categorized GhostRefs.
     """
     clean_fw = framework.lower().strip()
-    if clean_fw not in _SNAPSHOT_CACHE:
+    cache_key = f"{clean_fw}@{version}" if version else clean_fw
+    if cache_key not in _SNAPSHOT_CACHE:
         # Check bundled / on-disk snapshots first to enable offline grounding (unless mocked in tests)
         loaded_data = None
         is_mocked = hasattr(extract_snapshot, "return_value") or hasattr(
             extract_snapshot, "_mock_return_value"
         )
         if not is_mocked:
+            from .index import get_cache_dir
+
             base_dir = os.path.dirname(__file__)
             candidates = [
+                os.path.join(get_cache_dir(), "snapshots"),
                 os.path.join(base_dir, "snapshots"),
                 os.path.join(base_dir, "frameworks"),
             ]
             for candidate_dir in candidates:
                 if os.path.isdir(candidate_dir):
                     for fname in sorted(os.listdir(candidate_dir)):
-                        if fname.endswith(".json") and (
-                            fname.startswith(clean_fw)
-                            or fname.startswith(f"{clean_fw}_")
-                        ):
+                        if not fname.endswith(".json"):
+                            continue
+                        matches = False
+                        if version:
+                            if fname in (
+                                f"{clean_fw}_v{version}.json",
+                                f"{clean_fw}_{version}.json",
+                            ) or fname.startswith(f"{clean_fw}_v{version}"):
+                                matches = True
+                        else:
+                            if fname.startswith(clean_fw) or fname.startswith(
+                                f"{clean_fw}_"
+                            ):
+                                matches = True
+                        if matches:
                             try:
                                 with open(
                                     os.path.join(candidate_dir, fname),
@@ -66,101 +84,148 @@ def get_framework_snapshot(framework: str) -> Dict[str, Any]:
                         break
 
         if loaded_data:
-            _SNAPSHOT_CACHE[clean_fw] = loaded_data
+            _SNAPSHOT_CACHE[cache_key] = loaded_data
         elif clean_fw in FRAMEWORK_COLLECTORS:
             data = extract_snapshot(clean_fw)
-            _SNAPSHOT_CACHE[clean_fw] = data
+            _SNAPSHOT_CACHE[cache_key] = data
         else:
-            _SNAPSHOT_CACHE[clean_fw] = {"categories": {}}
-    return _SNAPSHOT_CACHE[clean_fw]
+            _SNAPSHOT_CACHE[cache_key] = {"categories": {}}
+    return _SNAPSHOT_CACHE[cache_key]
 
 
-def get_api_signature(framework: str, api_path: str) -> Optional[Dict[str, Any]]:
+def get_api_signature(
+    framework: str, api_path: str, version: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
     """Retrieve the exact ground-truth GhostRef signature for an API.
 
     Args:
         framework: The framework name.
         api_path: The canonical API path (e.g. 'torch.sum').
+        version: Optional framework version string.
 
     Returns:
         The serialized GhostRef dictionary or None if not found.
     """
-    snap = get_framework_snapshot(framework)
+    try:
+        from .index import lookup_symbol
+
+        cached_sym = lookup_symbol(framework, api_path, version=version)
+        if cached_sym:
+            return cached_sym
+    except Exception:
+        pass
+
+    snap = get_framework_snapshot(framework, version=version)
     for _cat, items in snap.get("categories", {}).items():
         for item in items:
-            if item.get("api_path") == api_path or item.get("name") == api_path:
+            if (
+                item.get("api_path") == api_path
+                or item.get("name") == api_path
+                or item.get("mnemonic") == api_path
+            ):
                 return dict(item)
             if api_path in item.get("aliases", []):
                 return dict(item)
     return None
 
 
-CONCEPT_ALIAS_MAP: Dict[str, Dict[str, List[str]]] = {
-    "convolution": {
-        "torch": [
-            "torch.nn.functional.conv2d",
-            "torch.nn.Conv2d",
-            "torch.nn.functional.conv1d",
-            "torch.nn.functional.conv3d",
-        ],
-        "jax": ["jax.lax.conv_general_dilated", "jax.numpy.convolve"],
-        "tensorflow": ["tf.nn.conv2d", "tf.keras.layers.Conv2D"],
-        "stablehlo": ["stablehlo.convolution"],
-        "mlir": ["linalg.conv_2d_nchw_fchw", "stablehlo.convolution"],
-        "nvidia_sass": ["HMMA16816", "IMMA16816", "FFMA"],
-        "amd_rdna": ["v_dot4c_i32_i8", "v_fma_f32"],
-    },
-    "matmul": {
-        "torch": ["torch.matmul", "torch.mm", "torch.bmm"],
-        "jax": ["jax.numpy.matmul", "jax.lax.dot_general"],
-        "tensorflow": ["tf.linalg.matmul", "tf.matmul"],
-        "stablehlo": ["stablehlo.dot_general", "stablehlo.dot"],
-        "mlir": ["linalg.matmul", "arith.mulf"],
-        "nvidia_sass": ["HMMA16816", "WGMMA_MMA_ASYNC", "IMMA16816"],
-        "amd_rdna": ["v_fma_f32", "v_dot4c_i32_i8"],
-    },
-    "reduction": {
-        "torch": ["torch.sum", "torch.mean", "torch.max", "torch.min"],
-        "jax": ["jax.numpy.sum", "jax.numpy.mean"],
-        "tensorflow": ["tf.reduce_sum", "tf.reduce_mean"],
-        "stablehlo": ["stablehlo.reduce"],
-        "mlir": ["linalg.reduce", "vector.reduction"],
-        "nvidia_sass": ["BAR_RED", "RED", "ATOMG_ADD"],
-        "amd_rdna": ["v_readfirstlane_b32", "ds_ordered_count"],
-    },
-}
+def load_concept_map(
+    custom_path: Optional[str] = None,
+) -> Dict[str, Dict[str, List[str]]]:
+    """Load concept ontology mapping from bundled JSON or custom external file.
+
+    Args:
+        custom_path: Optional custom file path to concept map JSON.
+
+    Returns:
+        Mapping from concept string to framework-specific API paths.
+    """
+    path = (
+        custom_path
+        or os.environ.get("ML_SNAPSHOTS_CONCEPT_MAP")
+        or os.path.join(os.path.dirname(__file__), "concept_map.json")
+    )
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return cast(Dict[str, Dict[str, List[str]]], data)
+        except Exception as e:
+            print(f"Warning: Failed to load concept map from {path}: {e}")
+    return {}
 
 
-def search_apis(framework: str, query: str, limit: int = 10) -> List[str]:
+CONCEPT_ALIAS_MAP: Dict[str, Dict[str, List[str]]] = load_concept_map()
+
+
+def search_apis(
+    framework: str,
+    query: str,
+    limit: int = 10,
+    version: Optional[str] = None,
+    custom_concept_map: Optional[Union[str, Dict[str, Dict[str, List[str]]]]] = None,
+) -> List[str]:
     """Search available APIs in a framework snapshot by keyword or concept with fuzzy fallback.
 
     Args:
         framework: The framework name.
         query: Search substring, concept name (e.g. 'convolution', 'matmul'), or mnemonic.
         limit: Maximum number of matches to return.
+        version: Optional framework version string.
+        custom_concept_map: Optional custom concept ontology path or dictionary.
 
     Returns:
         List of matching API paths.
     """
     import difflib
 
-    snap = get_framework_snapshot(framework)
     q = query.lower().strip()
     matches: List[str] = []
 
+    # Resolve concept map
+    active_concept_map: Dict[str, Dict[str, List[str]]]
+    if isinstance(custom_concept_map, str):
+        active_concept_map = load_concept_map(custom_concept_map)
+    elif isinstance(custom_concept_map, dict):
+        active_concept_map = custom_concept_map
+    else:
+        active_concept_map = CONCEPT_ALIAS_MAP
+
     # Check concept alias mapping
-    if q in CONCEPT_ALIAS_MAP:
-        for alias in CONCEPT_ALIAS_MAP[q].get(framework, []):
+    if q in active_concept_map:
+        for alias in active_concept_map[q].get(framework, []):
             if alias not in matches:
                 matches.append(alias)
-                if len(matches) >= limit:
-                    return matches
+        if matches:
+            return matches[:limit]
+
+    # Query SQLite FTS5 index for sub-millisecond lookups
+    try:
+        from .index import search_index
+
+        index_results = search_index(
+            query, framework=framework, version=version, limit=limit
+        )
+        if index_results:
+            for item in index_results:
+                path = item.get("api_path") or item.get("name") or item.get("mnemonic")
+                if path and path not in matches:
+                    matches.append(path)
+            if matches:
+                return matches[:limit]
+    except Exception:
+        pass
+
+    snap = get_framework_snapshot(framework, version=version)
 
     all_paths: List[str] = []
     for _cat, items in snap.get("categories", {}).items():
         for item in items:
-            path = item.get("api_path", "")
-            name = item.get("name", "")
+            path = (
+                item.get("api_path") or item.get("name") or item.get("mnemonic") or ""
+            )
+            name = item.get("name") or item.get("mnemonic") or ""
             if path:
                 all_paths.append(path)
             if q in path.lower() or q in name.lower():
@@ -182,6 +247,16 @@ def check_hallucination(
     args_count: Optional[int] = None,
     strict_kwargs: bool = True,
     kwarg_values: Optional[Dict[str, Any]] = None,
+    version: Optional[str] = None,
+    arg_dtypes: Optional[Union[List[str], Dict[str, str]]] = None,
+    kwarg_dtypes: Optional[Dict[str, str]] = None,
+    arg_ranks: Optional[
+        Union[List[Union[int, str]], Dict[str, Union[int, str]]]
+    ] = None,
+    kwarg_ranks: Optional[Dict[str, Union[int, str]]] = None,
+    arg_shapes: Optional[List[Sequence[Union[int, str]]]] = None,
+    kwarg_shapes: Optional[Dict[str, Sequence[Union[int, str]]]] = None,
+    strict_c_extensions: bool = False,
 ) -> Dict[str, Any]:
     """Verify whether an API or specified arguments represent hallucinations.
 
@@ -192,6 +267,10 @@ def check_hallucination(
         - Verifies positional parameter arity and counts.
         - Validates string enum parameters against allowed options (e.g. reduction='mean').
         - Suggests canonical argument names (e.g. 'dim' for 'axis' in torch).
+        - Validates tensor argument dtypes against allowed dtypes (e.g. float-only for inv/cholesky).
+        - Validates tensor argument ranks against expected dimensions (e.g. rank 2 for mm).
+        - Validates tensor broadcasting compatibility and matmul contracting dimensions.
+        - Flags opaque C-extension signatures to prevent false-negative hallucination passes.
 
     Args:
         framework: The target framework name.
@@ -200,6 +279,14 @@ def check_hallucination(
         args_count: Optional number of positional arguments passed.
         strict_kwargs: Whether to treat unconstrained kwargs as hallucinated.
         kwarg_values: Optional dictionary mapping passed keyword argument names to their values for type and enum validation.
+        version: Optional framework version string.
+        arg_dtypes: Optional list or dictionary mapping positional/keyword parameters to passed tensor dtypes.
+        kwarg_dtypes: Optional dictionary mapping keyword parameter names to passed tensor dtypes.
+        arg_ranks: Optional list or dictionary mapping positional/keyword parameters to passed tensor ranks.
+        kwarg_ranks: Optional dictionary mapping keyword parameter names to passed tensor ranks.
+        arg_shapes: Optional list of tensor shape sequences for positional arguments.
+        kwarg_shapes: Optional dictionary mapping keyword argument names to tensor shape sequences.
+        strict_c_extensions: Whether to treat unverified kwargs on opaque C-extension APIs as hallucinations.
 
     Returns:
         Dictionary containing:
@@ -213,7 +300,7 @@ def check_hallucination(
     if kwargs is None and kwarg_values is not None:
         kwargs = list(kwarg_values.keys())
 
-    sig = get_api_signature(framework, api_path)
+    sig = get_api_signature(framework, api_path, version=version)
     if not sig:
         return {
             "api_exists": False,
@@ -249,6 +336,11 @@ def check_hallucination(
         cand_has_var_kwargs = any(
             p.get("kind") == "VAR_KEYWORD" for p in cand.get("params", [])
         )
+        cand_is_opaque = (
+            cand.get("signature_completeness") == "opaque"
+            or "inexact_signature" in cand.get("environment_tags", [])
+            or "opaque_c_extension" in cand.get("environment_tags", [])
+        )
 
         invalid: List[str] = []
         unrecognized: List[str] = []
@@ -259,6 +351,13 @@ def check_hallucination(
                         unrecognized.append(kw)
                     else:
                         invalid.append(kw)
+
+        opaque_warning = None
+        if cand_is_opaque and kwargs:
+            opaque_warning = "WARNING: API has opaque C-extension signature; cannot definitively confirm argument validity"
+            if strict_c_extensions and unrecognized:
+                invalid.extend(unrecognized)
+                unrecognized = []
 
         if strict_kwargs and unrecognized:
             invalid.extend(unrecognized)
@@ -288,6 +387,196 @@ def check_hallucination(
                             f"Invalid literal value '{kwarg_values[p_name]}' for parameter '{p_name}'. Expected one of {allowed_literals}"
                         )
 
+        # Validate tensor dtypes and rank constraints
+        dtype_errors: List[str] = []
+        rank_errors: List[str] = []
+
+        passed_dtypes: Dict[str, str] = {}
+        if kwarg_dtypes:
+            passed_dtypes.update(kwarg_dtypes)
+        if isinstance(arg_dtypes, dict):
+            passed_dtypes.update(arg_dtypes)
+        elif isinstance(arg_dtypes, list):
+            cand_params = cand.get("params", [])
+            for idx, dt in enumerate(arg_dtypes):
+                if idx < len(cand_params):
+                    passed_dtypes[cand_params[idx]["name"]] = dt
+
+        passed_ranks: Dict[str, Union[int, str]] = {}
+        if kwarg_ranks:
+            passed_ranks.update(kwarg_ranks)
+        if isinstance(arg_ranks, dict):
+            passed_ranks.update(arg_ranks)
+        elif isinstance(arg_ranks, list):
+            cand_params = cand.get("params", [])
+            for idx, rk in enumerate(arg_ranks):
+                if idx < len(cand_params):
+                    passed_ranks[cand_params[idx]["name"]] = rk
+
+        if kwarg_values:
+            for k, val in kwarg_values.items():
+                val_str = str(val).lower().replace("torch.", "")
+                if (
+                    any(
+                        k_type in val_str
+                        for k_type in ("int", "float", "complex", "bool")
+                    )
+                    and k != "reduction"
+                ):
+                    if k not in passed_dtypes:
+                        passed_dtypes[k] = val_str
+
+        clean_api = api_path.split(".")[-1].lower()
+        is_float_complex_api = framework == "torch" and (
+            clean_api
+            in (
+                "inv",
+                "linalg_inv",
+                "cholesky",
+                "linalg_cholesky",
+                "det",
+                "eig",
+                "svd",
+                "solve",
+            )
+            or "linalg.inv" in api_path
+            or "linalg.cholesky" in api_path
+            or "torch.cholesky" in api_path
+        )
+
+        for p in cand.get("params", []):
+            p_name = p.get("name")
+            p_dtypes = p.get("dtypes")
+            p_rank = p.get("rank")
+
+            if p_name in passed_dtypes:
+                dt = passed_dtypes[p_name].lower().replace("torch.", "")
+                allowed = p_dtypes
+                if not allowed and is_float_complex_api:
+                    allowed = ["float32", "float64", "complex64", "complex128"]
+                if allowed:
+                    if dt not in [a.lower() for a in allowed]:
+                        dtype_errors.append(
+                            f"Dtype '{passed_dtypes[p_name]}' is not supported for parameter '{p_name}' of '{api_path}'. Supported dtypes: {allowed}"
+                        )
+
+            if p_name in passed_ranks and p_rank is not None:
+                passed_rk = passed_ranks[p_name]
+                if isinstance(p_rank, int) and isinstance(passed_rk, int):
+                    if passed_rk != p_rank:
+                        rank_errors.append(
+                            f"Rank {passed_rk} is not supported for parameter '{p_name}' of '{api_path}'. Expected rank: {p_rank}"
+                        )
+                elif str(p_rank).startswith(">="):
+                    min_rk = int(str(p_rank)[2:])
+                    if isinstance(passed_rk, int) and passed_rk < min_rk:
+                        rank_errors.append(
+                            f"Rank {passed_rk} is not supported for parameter '{p_name}' of '{api_path}'. Expected rank: {p_rank}"
+                        )
+
+        if is_float_complex_api and passed_dtypes:
+            for p_k, dt in passed_dtypes.items():
+                if any(bad in dt.lower() for bad in ("int", "bool", "uint")):
+                    if not any(f"Dtype '{dt}'" in err for err in dtype_errors):
+                        dtype_errors.append(
+                            f"Dtype '{dt}' is not supported for '{api_path}'. Floating-point or complex dtype required."
+                        )
+
+        # Check logical and bitwise operations (rejecting float/complex)
+        is_logical_bitwise = any(
+            op in clean_api
+            for op in (
+                "bitwise_and",
+                "bitwise_or",
+                "bitwise_xor",
+                "bitwise_not",
+                "logical_and",
+                "logical_or",
+                "logical_xor",
+                "logical_not",
+            )
+        )
+        if is_logical_bitwise and passed_dtypes:
+            for p_k, dt in passed_dtypes.items():
+                if any(bad in dt.lower() for bad in ("float", "complex")):
+                    if not any(f"Dtype '{dt}'" in err for err in dtype_errors):
+                        dtype_errors.append(
+                            f"Dtype '{dt}' is not supported for '{api_path}'. Logical/bitwise operations require integer or boolean types."
+                        )
+
+        # Check quantization operations (requiring low-precision types)
+        is_quant_api = any(
+            op in clean_api
+            for op in ("quantize", "dequantize", "q_per_tensor", "q_per_channel")
+        )
+        if is_quant_api and "dtype" in passed_dtypes:
+            q_dt = passed_dtypes["dtype"].lower()
+            valid_q = [
+                "int8",
+                "uint8",
+                "qint8",
+                "quint8",
+                "float8_e4m3fn",
+                "float8_e5m2",
+            ]
+            if not any(vq in q_dt for vq in valid_q):
+                dtype_errors.append(
+                    f"Dtype '{q_dt}' is not a valid quantization dtype for '{api_path}'. Expected one of {valid_q}."
+                )
+
+        # Validate tensor shapes and broadcasting / matmul invariants
+        shape_errors: List[str] = []
+        passed_shapes: Dict[str, Sequence[Union[int, str]]] = {}
+        if kwarg_shapes:
+            passed_shapes.update(kwarg_shapes)
+        if isinstance(arg_shapes, list):
+            cand_params = cand.get("params", [])
+            for idx, sh in enumerate(arg_shapes):
+                if idx < len(cand_params):
+                    passed_shapes[cand_params[idx]["name"]] = sh
+                else:
+                    passed_shapes[f"arg_{idx}"] = sh
+
+        is_elementwise = (
+            any(
+                op in clean_api
+                for op in (
+                    "add",
+                    "sub",
+                    "subtract",
+                    "mul",
+                    "multiply",
+                    "div",
+                    "divide",
+                    "maximum",
+                    "minimum",
+                    "pow",
+                )
+            )
+            and "matmul" not in clean_api
+        )
+        if is_elementwise and len(passed_shapes) >= 2:
+            from .compliance import validate_broadcast_shapes
+
+            sh_list = list(passed_shapes.values())
+            compat, _, err = validate_broadcast_shapes(sh_list[0], sh_list[1])
+            if not compat and err:
+                shape_errors.append(f"Broadcasting error in '{api_path}': {err}")
+
+        is_matmul = (
+            any(op in clean_api for op in ("matmul", "mm", "bmm")) or clean_api == "dot"
+        )
+        if is_matmul and len(passed_shapes) >= 2:
+            from .compliance import validate_matmul_shapes
+
+            strict_2d = clean_api == "mm"
+            sh_list = list(passed_shapes.values())
+            compat, _, err = validate_matmul_shapes(
+                sh_list[0], sh_list[1], strict_2d=strict_2d
+            )
+            if not compat and err:
+                shape_errors.append(f"Matmul error in '{api_path}': {err}")
+
         positional_error = None
         if args_count is not None:
             min_pos = sum(
@@ -310,7 +599,12 @@ def check_hallucination(
                 positional_error = f"Too many positional arguments: expected at most {max_pos}, got {args_count}"
 
         cand_hallucinated = (
-            len(invalid) > 0 or positional_error is not None or len(enum_errors) > 0
+            len(invalid) > 0
+            or positional_error is not None
+            or len(enum_errors) > 0
+            or len(dtype_errors) > 0
+            or len(rank_errors) > 0
+            or len(shape_errors) > 0
         )
         reason = "Valid API call"
         if cand_hallucinated:
@@ -321,6 +615,12 @@ def check_hallucination(
                 )
             if enum_errors:
                 reasons.extend(enum_errors)
+            if dtype_errors:
+                reasons.extend(dtype_errors)
+            if rank_errors:
+                reasons.extend(rank_errors)
+            if shape_errors:
+                reasons.extend(shape_errors)
             if positional_error:
                 reasons.append(positional_error)
             reason = "; ".join(reasons)
@@ -334,12 +634,27 @@ def check_hallucination(
             "canonical_params": sorted(list(cand_names)),
             "has_unconstrained_kwargs": cand_has_var_kwargs,
             "reason": reason,
+            "signature_completeness": cand.get(
+                "signature_completeness", "opaque" if cand_is_opaque else "exact"
+            ),
+            "is_c_extension": cand.get("is_c_extension", False) or cand_is_opaque,
         }
+        if opaque_warning:
+            res["warning"] = opaque_warning
+            if not cand_hallucinated and reason == "Valid API call":
+                res["reason"] = f"Valid API call with warning: {opaque_warning}"
 
         if not cand_hallucinated:
             return res
 
-        err_count = len(invalid) + len(enum_errors) + (1 if positional_error else 0)
+        err_count = (
+            len(invalid)
+            + len(enum_errors)
+            + len(dtype_errors)
+            + len(rank_errors)
+            + len(shape_errors)
+            + (1 if positional_error else 0)
+        )
         if err_count < fewest_errors:
             fewest_errors = err_count
             best_result = res
@@ -354,11 +669,115 @@ def check_hallucination(
     }
 
 
+def explain_anti_pattern(
+    framework: str,
+    api_path: str,
+    hallucinated_argument: str,
+    passed_value: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Provide canonical migration advice and rationale for a flagged anti-pattern or hallucinated argument.
+
+    Args:
+        framework: Target ML framework name (e.g. 'torch', 'jax', 'tensorflow').
+        api_path: Target API path (e.g. 'torch.sum', 'jax.numpy.mean').
+        hallucinated_argument: Name of the flagged/hallucinated keyword argument.
+        passed_value: Optional value passed to the argument for contextual advice.
+
+    Returns:
+        Structured guidance dictionary with canonical replacement, explanation, and code example.
+    """
+    clean_fw = framework.lower().strip()
+    arg_clean = hallucinated_argument.strip().lower()
+
+    known_migrations: Dict[str, Dict[str, Dict[str, str]]] = {
+        "torch": {
+            "axis": {
+                "canonical": "dim",
+                "explanation": "PyTorch standardizes dimension specifications on 'dim' rather than 'axis' (which is used by NumPy and JAX).",
+                "example": f"{api_path}(..., dim=0)",
+            },
+            "keepdims": {
+                "canonical": "keepdim",
+                "explanation": "PyTorch uses the singular 'keepdim' parameter instead of the plural 'keepdims' (used by NumPy, JAX, and TensorFlow).",
+                "example": f"{api_path}(..., keepdim=True)",
+            },
+            "split_size": {
+                "canonical": "split_size_or_sections",
+                "explanation": "PyTorch torch.split uses 'split_size_or_sections' for chunk sizes or split sections.",
+                "example": f"{api_path}(tensor, split_size_or_sections=2)",
+            },
+            "device": {
+                "canonical": "device='cuda'",
+                "explanation": "PyTorch device identifiers use 'cuda' (or 'cuda:0') rather than 'gpu'.",
+                "example": f"{api_path}(..., device='cuda')",
+            },
+        },
+        "jax": {
+            "dim": {
+                "canonical": "axis",
+                "explanation": "JAX follows the NumPy Array API standard, using 'axis' instead of PyTorch's 'dim'.",
+                "example": f"{api_path}(..., axis=0)",
+            },
+            "keepdim": {
+                "canonical": "keepdims",
+                "explanation": "JAX follows NumPy naming conventions, using 'keepdims' (plural) instead of PyTorch's 'keepdim'.",
+                "example": f"{api_path}(..., keepdims=True)",
+            },
+        },
+        "tensorflow": {
+            "dim": {
+                "canonical": "axis",
+                "explanation": "TensorFlow operations use 'axis' instead of PyTorch's 'dim'.",
+                "example": f"{api_path}(..., axis=0)",
+            },
+            "keepdim": {
+                "canonical": "keepdims",
+                "explanation": "TensorFlow operations use 'keepdims' instead of PyTorch's 'keepdim'.",
+                "example": f"{api_path}(..., keepdims=True)",
+            },
+        },
+    }
+
+    fw_rules = known_migrations.get(clean_fw, {})
+    if arg_clean in fw_rules:
+        rule = fw_rules[arg_clean]
+        return {
+            "framework": framework,
+            "api_path": api_path,
+            "hallucinated_argument": hallucinated_argument,
+            "is_known_anti_pattern": True,
+            "canonical_argument": rule["canonical"],
+            "explanation": rule["explanation"],
+            "canonical_example": rule["example"],
+        }
+
+    sig = get_api_signature(framework, api_path)
+    canonical_params: List[str] = []
+    if sig:
+        canonical_params = [
+            p["name"]
+            for p in sig.get("params", [])
+            if isinstance(p, dict) and "name" in p
+        ]
+
+    return {
+        "framework": framework,
+        "api_path": api_path,
+        "hallucinated_argument": hallucinated_argument,
+        "is_known_anti_pattern": False,
+        "canonical_argument": None,
+        "explanation": f"Argument '{hallucinated_argument}' is not recognized in {framework} for '{api_path}'.",
+        "canonical_params": canonical_params,
+        "canonical_example": f"{api_path}(...)",
+    }
+
+
 def check_sass_instruction(
     mnemonic: str,
     operands: Optional[List[str]] = None,
     modifiers: Optional[List[str]] = None,
     sm_arch: Optional[str] = None,
+    control_codes: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Validate whether an NVIDIA SASS assembly instruction is valid and supported.
 
@@ -367,6 +786,7 @@ def check_sass_instruction(
         operands: Optional list of operand strings (e.g. ['R', 'R', 'R']).
         modifiers: Optional list of instruction modifiers (e.g. ['.SAT', '.FTZ']).
         sm_arch: Optional target SM architecture (e.g. 'sm_80', 'sm_90').
+        control_codes: Optional control code dictionary (e.g. {'stall_count': 1, 'latency_ticks': 4}).
 
     Returns:
         Validation report dictionary with is_valid, supported_architectures, and errors.
@@ -394,7 +814,14 @@ def check_sass_instruction(
 
     errors: List[str] = []
     meta = inst.get("domain_metadata") or {}
-    from .frameworks.nvidia_sass import parse_sass_modifiers, resolve_sm_architectures
+    from .frameworks.nvidia_sass import (
+        parse_sass_modifiers,
+        resolve_sm_architectures,
+        validate_sass_control_code,
+        validate_sass_modifiers,
+        validate_sass_operand_directionality,
+        validate_sass_register,
+    )
 
     arch = inst.get("architecture") or meta.get("architecture")
     supported_archs = meta.get("valid_architectures") or resolve_sm_architectures(arch)
@@ -433,6 +860,8 @@ def check_sass_instruction(
                     f"Modifier '{norm_mod}' is not recognized for '{target_name}'. "
                     f"Valid modifiers: {', '.join(valid_modifiers)}"
                 )
+        mod_conflicts = validate_sass_modifiers(target_name, modifiers)
+        errors.extend(mod_conflicts)
 
     if operands is not None:
         op_sigs = meta.get("operand_signatures") or inst.get("operands") or []
@@ -443,6 +872,22 @@ def check_sass_instruction(
                     f"Operand count mismatch for '{target_name}': got {len(operands)}, "
                     f"expected {[len(s) for s in op_sigs]}"
                 )
+
+        # Validate register specifications and alignment
+        for i, op in enumerate(operands):
+            role = "dst" if i == 0 else f"src{i - 1}"
+            reg_errs = validate_sass_register(op, role=role, sm_arch=sm_arch)
+            errors.extend(reg_errs)
+
+        # Validate operand directionality
+        dir_errs = validate_sass_operand_directionality(operands, target_name)
+        errors.extend(dir_errs)
+
+    if control_codes is not None:
+        cc_errs = validate_sass_control_code(
+            target_name, control_codes, sm_arch=sm_arch
+        )
+        errors.extend(cc_errs)
 
     return {
         "is_valid": len(errors) == 0,
@@ -458,6 +903,8 @@ def check_rdna_instruction(
     operands: Optional[List[str]] = None,
     encoding: Optional[str] = None,
     gfx_arch: Optional[str] = None,
+    modifiers: Optional[List[str]] = None,
+    wave_size: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Validate whether an AMD RDNA assembly instruction is valid and supported.
 
@@ -466,6 +913,8 @@ def check_rdna_instruction(
         operands: Optional list of operand type strings.
         encoding: Optional instruction encoding format (e.g. 'VOP2', 'SMEM').
         gfx_arch: Optional target GFX architecture (e.g. 'GFX11/RDNA3').
+        modifiers: Optional list of modifiers (e.g. ['-src', 'clamp', 'omod:2']).
+        wave_size: Optional wavefront execution size (32 or 64).
 
     Returns:
         Validation report dictionary with is_valid, supported_architectures, and errors.
@@ -493,20 +942,23 @@ def check_rdna_instruction(
 
     errors: List[str] = []
     meta = inst.get("domain_metadata") or {}
-    from .frameworks.amd_rdna import resolve_gfx_architectures
+    from .frameworks.amd_rdna import (
+        resolve_gfx_architectures,
+        validate_rdna_constant_bus,
+        validate_rdna_microarchitecture,
+        validate_rdna_modifiers,
+        validate_rdna_register,
+    )
 
     arch = inst.get("architecture") or meta.get("architecture")
     supported_archs = meta.get("valid_architectures") or resolve_gfx_architectures(arch)
     actual_encoding = inst.get("encoding") or meta.get("encoding")
 
-    if (
-        target_name.startswith("v_dual_")
-        and gfx_arch
-        and ("GFX9" in gfx_arch or "GFX10" in gfx_arch)
-    ):
-        errors.append(
-            f"Dual-issue instruction '{target_name}' is only supported on GFX11+ (RDNA3/RDNA4), not '{gfx_arch}'."
-        )
+    # Microarchitecture and wave-size checks
+    uarch_errors = validate_rdna_microarchitecture(
+        target_name, gfx_arch=gfx_arch, wave_size=wave_size
+    )
+    errors.extend(uarch_errors)
 
     if gfx_arch and gfx_arch not in supported_archs:
         errors.append(
@@ -519,6 +971,10 @@ def check_rdna_instruction(
             f"Encoding mismatch for '{target_name}': specified '{encoding}', actual '{actual_encoding}'"
         )
 
+    if modifiers:
+        mod_errors = validate_rdna_modifiers(modifiers, encoding=actual_encoding)
+        errors.extend(mod_errors)
+
     if operands is not None:
         op_sigs = meta.get("operand_signatures") or inst.get("operands") or []
         if op_sigs:
@@ -529,24 +985,16 @@ def check_rdna_instruction(
                     f"expected {[len(s) for s in op_sigs]}"
                 )
 
-        # Validate register alignment and register types
+        # Validate registers
         for op in operands:
-            # 64-bit register pair alignment check: e.g. v[1:2] or V[3:4] or s[1:2]
-            pair_match = re.search(r"^[vVsSaA]\[(\d+):(\d+)\]$", op.strip())
-            if pair_match:
-                start_idx = int(pair_match.group(1))
-                end_idx = int(pair_match.group(2))
-                if end_idx - start_idx == 1 and start_idx % 2 != 0:
-                    errors.append(
-                        f"Register alignment error: 64-bit register pair '{op}' must start on an even register index (got {start_idx})."
-                    )
+            reg_errs = validate_rdna_register(op, gfx_arch=gfx_arch)
+            errors.extend(reg_errs)
 
-            # CDNA matrix accumulator (a[...]) check on non-CDNA architectures
-            if op.strip().startswith("a[") or op.strip().startswith("A["):
-                if gfx_arch and "CDNA" not in gfx_arch and "GFX9" not in gfx_arch:
-                    errors.append(
-                        f"Matrix accumulator operand '{op}' is only supported on GFX9/CDNA, not '{gfx_arch}'."
-                    )
+        # Validate constant bus limitation
+        cbus_errs = validate_rdna_constant_bus(
+            operands, encoding=actual_encoding, gfx_arch=gfx_arch
+        )
+        errors.extend(cbus_errs)
 
     return {
         "is_valid": len(errors) == 0,
@@ -557,12 +1005,69 @@ def check_rdna_instruction(
     }
 
 
+def check_ptx_instruction(
+    mnemonic: str,
+    types: Optional[List[str]] = None,
+    operands: Optional[List[str]] = None,
+    state_space: Optional[str] = None,
+    scope: Optional[str] = None,
+    vector_width: Optional[str] = None,
+    sm_arch: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Validate whether an NVIDIA PTX assembly instruction is valid on target SM architecture.
+
+    Args:
+        mnemonic: PTX instruction mnemonic (e.g. 'add', 'ld', 'st', 'wgmma.mma_async').
+        types: Optional list of PTX type qualifiers (e.g. ['.f32'], ['.u64']).
+        operands: Optional list of register/immediate operand strings.
+        state_space: Optional memory state space qualifier (e.g. '.global').
+        scope: Optional memory scope qualifier (e.g. '.gpu', '.cta', '.sys').
+        vector_width: Optional vector width qualifier (e.g. '.v2', '.v4').
+        sm_arch: Optional target SM architecture (e.g. 'sm_80', 'sm_90').
+
+    Returns:
+        Validation report dictionary with is_valid, mnemonic_exists, and errors.
+    """
+    from .frameworks.nvidia_ptx import _load_exhaustive_ptx, validate_ptx_instruction
+
+    clean_mnem = mnemonic.strip().lower()
+    ptx_db = {inst["mnemonic"]: inst for inst in _load_exhaustive_ptx()}
+    if clean_mnem not in ptx_db:
+        return {
+            "is_valid": False,
+            "mnemonic_exists": False,
+            "errors": [f"Instruction mnemonic '{mnemonic}' does not exist in PTX ISA."],
+        }
+
+    errors = validate_ptx_instruction(
+        clean_mnem,
+        types=types,
+        operands=operands,
+        state_space=state_space,
+        scope=scope,
+        vector_width=vector_width,
+        sm_arch=sm_arch,
+    )
+
+    inst_meta = ptx_db[clean_mnem]
+    return {
+        "is_valid": len(errors) == 0,
+        "mnemonic_exists": True,
+        "category": inst_meta.get("category", "instruction"),
+        "min_sm": inst_meta.get("min_sm", "sm_50"),
+        "supported_types": inst_meta.get("supported_types", []),
+        "errors": errors,
+    }
+
+
 def check_mlir_op(
     op_name: str,
     operands_count: Optional[int] = None,
     attributes: Optional[List[str]] = None,
     operand_types: Optional[List[str]] = None,
+    result_types: Optional[List[str]] = None,
     structured_attributes: Optional[Dict[str, Any]] = None,
+    regions: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Validate whether an MLIR or StableHLO operation exists with expected signature.
 
@@ -571,7 +1076,9 @@ def check_mlir_op(
         operands_count: Optional expected number of SSA operands.
         attributes: Optional list of attribute names to verify.
         operand_types: Optional list of SSA operand type strings to verify against ODS type constraints.
+        result_types: Optional list of SSA result type strings.
         structured_attributes: Optional dictionary of structured attribute values to validate.
+        regions: Optional dictionary of regions mapping region name to block_arguments and yield_types.
 
     Returns:
         Validation report dictionary with is_valid, expected_operands, and errors.
@@ -597,6 +1104,16 @@ def check_mlir_op(
         }
 
     errors: List[str] = []
+    from .frameworks.mlir import validate_mlir_traits, validate_mlir_type
+    from .frameworks.stablehlo import (
+        validate_broadcast_in_dim,
+        validate_conv_dimension_numbers,
+        validate_dot_dimension_numbers,
+        validate_gather_dimension_numbers,
+        validate_scatter_dimension_numbers,
+        validate_stablehlo_region,
+    )
+
     operands = inst.get("operands")
     if operands is None:
         operands = [
@@ -635,6 +1152,49 @@ def check_mlir_op(
                     f"Attribute '{attr}' not recognized for '{target_op}'. Expected attributes: {exp_attrs}"
                 )
 
+    meta = inst.get("domain_metadata") or {}
+    traits = list(meta.get("traits") or inst.get("traits") or [])
+
+    # Infer standard dialect traits for core elementwise arithmetic operations
+    if target_op.startswith("arith.") and any(
+        target_op.endswith(s)
+        for s in (
+            "addf",
+            "subf",
+            "mulf",
+            "divf",
+            "addi",
+            "subi",
+            "muli",
+            "remf",
+            "remsi",
+            "remui",
+        )
+    ):
+        if "SameOperandsAndResultType" not in traits:
+            traits.append("SameOperandsAndResultType")
+        if "Elementwise" not in traits:
+            traits.append("Elementwise")
+    elif target_op.startswith("stablehlo.") and any(
+        target_op.endswith(s)
+        for s in ("add", "subtract", "multiply", "divide", "maximum", "minimum")
+    ):
+        if "SameOperandsAndResultType" not in traits:
+            traits.append("SameOperandsAndResultType")
+        if "Elementwise" not in traits:
+            traits.append("Elementwise")
+
+    # Validate dialect traits
+    trait_errs = validate_mlir_traits(
+        op_name=target_op,
+        traits=traits,
+        operand_types=operand_types,
+        result_types=result_types,
+        attributes=attributes,
+        structured_attributes=structured_attributes,
+    )
+    errors.extend(trait_errs)
+
     if operand_types is not None:
         if len(operands) != len(operand_types):
             has_variadic = any(
@@ -646,57 +1206,14 @@ def check_mlir_op(
                     f"Operand types count mismatch for '{target_op}': expected {len(operands)}, got {len(operand_types)}"
                 )
 
-        meta = inst.get("domain_metadata") or {}
-        traits = meta.get("traits") or inst.get("traits") or []
-
-        # Validate SameTypeOperands trait
-        if any(
-            "SameTypeOperands" in str(t) or "SameOperandsAndResultType" in str(t)
-            for t in traits
-        ):
-            if len(set(operand_types)) > 1:
-                errors.append(
-                    f"Trait violation for '{target_op}': SameTypeOperands requires all operand types to match (got {operand_types})"
-                )
-
         # Validate ODS type constraints per operand
         for i, (op_info, actual_type) in enumerate(zip(operands, operand_types)):
             constraint = (
                 op_info.get("type", "") if isinstance(op_info, dict) else str(op_info)
             )
-            c_low = constraint.lower()
-            act_low = actual_type.lower().strip()
-
-            if "anyinteger" in c_low or "anysignlessinteger" in c_low:
-                if (
-                    not any(
-                        k in act_low
-                        for k in ("i1", "i8", "i16", "i32", "i64", "int", "integer")
-                    )
-                    or "float" in act_low
-                    or "f32" in act_low
-                    or "f64" in act_low
-                ):
-                    errors.append(
-                        f"Operand {i} type mismatch for '{target_op}': expected integer type matching '{constraint}', got '{actual_type}'"
-                    )
-            elif "anyfloat" in c_low:
-                if not any(
-                    k in act_low for k in ("f16", "bf16", "f32", "f64", "fp8", "float")
-                ):
-                    errors.append(
-                        f"Operand {i} type mismatch for '{target_op}': expected float type matching '{constraint}', got '{actual_type}'"
-                    )
-            elif "anytensor" in c_low or "rankedtensor" in c_low:
-                if "tensor" not in act_low:
-                    errors.append(
-                        f"Operand {i} type mismatch for '{target_op}': expected tensor type matching '{constraint}', got '{actual_type}'"
-                    )
-            elif "index" == c_low:
-                if act_low != "index":
-                    errors.append(
-                        f"Operand {i} type mismatch for '{target_op}': expected 'index', got '{actual_type}'"
-                    )
+            type_errs = validate_mlir_type(actual_type, constraint=constraint)
+            for te in type_errs:
+                errors.append(f"Operand {i} for '{target_op}': {te}")
 
         # Check dialect operation naming conventions (e.g. .addf vs .addi, math.sin on float)
         if target_op.endswith("f") or target_op in (
@@ -750,6 +1267,21 @@ def check_mlir_op(
                         errors.append(
                             f"DotDimensionNumbersAttr missing required fields: {missing}"
                         )
+                    else:
+                        lhs_rk = None
+                        rhs_rk = None
+                        if operand_types and len(operand_types) >= 2:
+                            m_l = re.search(r"tensor<([^>]+)>", operand_types[0])
+                            m_r = re.search(r"tensor<([^>]+)>", operand_types[1])
+                            if m_l:
+                                lhs_rk = len(m_l.group(1).split("x")[:-1])
+                            if m_r:
+                                rhs_rk = len(m_r.group(1).split("x")[:-1])
+                        errors.extend(
+                            validate_dot_dimension_numbers(
+                                attr_val, lhs_rank=lhs_rk, rhs_rank=rhs_rk
+                            )
+                        )
                 else:
                     errors.append(
                         "DotDimensionNumbersAttr must be structured dictionary"
@@ -772,6 +1304,29 @@ def check_mlir_op(
                         errors.append(
                             f"ConvDimensionNumbersAttr missing required fields: {missing}"
                         )
+                    else:
+                        in_rk = None
+                        k_rk = None
+                        out_rk = None
+                        if operand_types and len(operand_types) >= 2:
+                            m_in = re.search(r"tensor<([^>]+)>", operand_types[0])
+                            m_k = re.search(r"tensor<([^>]+)>", operand_types[1])
+                            if m_in:
+                                in_rk = len(m_in.group(1).split("x")[:-1])
+                            if m_k:
+                                k_rk = len(m_k.group(1).split("x")[:-1])
+                        if result_types and len(result_types) >= 1:
+                            m_out = re.search(r"tensor<([^>]+)>", result_types[0])
+                            if m_out:
+                                out_rk = len(m_out.group(1).split("x")[:-1])
+                        errors.extend(
+                            validate_conv_dimension_numbers(
+                                attr_val,
+                                input_rank=in_rk,
+                                kernel_rank=k_rk,
+                                output_rank=out_rk,
+                            )
+                        )
                 else:
                     errors.append(
                         "ConvDimensionNumbersAttr must be structured dictionary"
@@ -789,6 +1344,8 @@ def check_mlir_op(
                         errors.append(
                             f"ScatterDimensionNumbersAttr missing required fields: {missing}"
                         )
+                    else:
+                        errors.extend(validate_scatter_dimension_numbers(attr_val))
                 else:
                     errors.append(
                         "ScatterDimensionNumbersAttr must be structured dictionary"
@@ -806,10 +1363,32 @@ def check_mlir_op(
                         errors.append(
                             f"GatherDimensionNumbersAttr missing required fields: {missing}"
                         )
+                    else:
+                        errors.extend(validate_gather_dimension_numbers(attr_val))
                 else:
                     errors.append(
                         "GatherDimensionNumbersAttr must be structured dictionary"
                     )
+            elif "broadcastdimensions" in k_low or "broadcast_dimensions" in attr_key:
+                if isinstance(attr_val, list):
+                    op_shape = structured_attributes.get("operand_shape")
+                    res_shape = structured_attributes.get("result_shape")
+                    if op_shape is not None and res_shape is not None:
+                        errors.extend(
+                            validate_broadcast_in_dim(op_shape, res_shape, attr_val)
+                        )
+
+    # Validate regions if provided
+    if regions:
+        for reg_name, reg_spec in regions.items():
+            if isinstance(reg_spec, dict):
+                b_args = (
+                    reg_spec.get("block_arguments") or reg_spec.get("block_args") or []
+                )
+                y_types = reg_spec.get("yield_types") or []
+                errors.extend(
+                    validate_stablehlo_region(target_op, reg_name, b_args, y_types)
+                )
 
     return {
         "is_valid": len(errors) == 0,
@@ -817,6 +1396,244 @@ def check_mlir_op(
         "expected_operands": operands,
         "expected_attributes": exp_attrs,
         "errors": errors,
+    }
+
+
+def check_stablehlo_op(
+    op_name: str,
+    operands_count: Optional[int] = None,
+    attributes: Optional[List[str]] = None,
+    operand_types: Optional[List[str]] = None,
+    result_types: Optional[List[str]] = None,
+    structured_attributes: Optional[Dict[str, Any]] = None,
+    regions: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Validate a StableHLO operation against formal verification rules and schemas.
+
+    Args:
+        op_name: Qualified operation name (e.g. 'stablehlo.dot_general', 'stablehlo.reduce').
+        operands_count: Optional expected number of SSA operands.
+        attributes: Optional list of attribute names to verify.
+        operand_types: Optional list of SSA operand type strings.
+        result_types: Optional list of SSA result type strings.
+        structured_attributes: Optional dictionary of structured attribute values.
+        regions: Optional dictionary of regions mapping region name to block_arguments and yield_types.
+
+    Returns:
+        Validation report dictionary with is_valid, expected_operands, and errors.
+    """
+    clean_name = op_name if op_name.startswith("stablehlo.") else f"stablehlo.{op_name}"
+    return check_mlir_op(
+        op_name=clean_name,
+        operands_count=operands_count,
+        attributes=attributes,
+        operand_types=operand_types,
+        result_types=result_types,
+        structured_attributes=structured_attributes,
+        regions=regions,
+    )
+
+
+def check_code_block(
+    code: str,
+    framework: Optional[str] = None,
+    version: Optional[str] = None,
+    sm_arch: Optional[str] = None,
+    gfx_arch: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Batch verify a code block for nonexistent APIs, invalid kwargs, and hardware constraints.
+
+    Analyzes Python AST for framework calls or assembly/IR lines for SASS, RDNA, and MLIR
+    instructions, returning a comprehensive hallucination and constraint validation report.
+
+    Args:
+        code: Python snippet, SASS assembly, RDNA assembly, or MLIR text.
+        framework: Optional framework hint ('torch', 'jax', 'nvidia_sass', 'amd_rdna', 'mlir').
+        version: Optional framework version string.
+        sm_arch: Optional NVIDIA architecture target (e.g. 'sm_80', 'sm_90').
+        gfx_arch: Optional AMD RDNA architecture target (e.g. 'GFX11/RDNA3').
+
+    Returns:
+        Dictionary report containing 'total_analyzed', 'hallucinations_detected', 'is_valid', and 'findings'.
+    """
+    import ast
+
+    findings: List[Dict[str, Any]] = []
+    total_analyzed = 0
+
+    is_python = False
+    try:
+        tree = ast.parse(code)
+        calls: List[Tuple[int, str, List[str], int, Dict[str, Any]]] = []
+
+        class CallVisitor(ast.NodeVisitor):
+            """Visitor for collecting function calls."""
+
+            def visit_Call(self, node: ast.Call) -> None:
+                """Inspect Call AST nodes.
+
+                Args:
+                    node: Call AST node to inspect.
+                """
+                curr: Any = node.func
+                parts = []
+                while isinstance(curr, ast.Attribute):
+                    parts.append(curr.attr)
+                    curr = curr.value
+                if isinstance(curr, ast.Name):
+                    parts.append(curr.id)
+                if parts:
+                    full_path = ".".join(reversed(parts))
+                    kw_names = [kw.arg for kw in node.keywords if kw.arg]
+                    kw_vals = {}
+                    for kw in node.keywords:
+                        if kw.arg and isinstance(kw.value, ast.Constant):
+                            kw_vals[kw.arg] = kw.value.value
+                    calls.append(
+                        (node.lineno, full_path, kw_names, len(node.args), kw_vals)
+                    )
+                self.generic_visit(node)
+
+        visitor = CallVisitor()
+        visitor.visit(tree)
+
+        if calls:
+            is_python = True
+            for lineno, api_name, kw_list, arg_cnt, kw_vals in calls:
+                fw = framework
+                if not fw:
+                    if api_name.startswith("torch"):
+                        fw = "torch"
+                    elif api_name.startswith("jax"):
+                        fw = "jax"
+                    elif api_name.startswith("tf") or api_name.startswith("tensorflow"):
+                        fw = "tensorflow"
+                    elif api_name.startswith("np") or api_name.startswith("numpy"):
+                        fw = "numpy"
+                    elif api_name.startswith("nn.") or api_name.startswith("F."):
+                        fw = "torch"
+                        api_name = f"torch.{api_name}"
+                    elif api_name.startswith("stablehlo."):
+                        fw = "stablehlo"
+
+                if not fw:
+                    continue
+
+                total_analyzed += 1
+                res = check_hallucination(
+                    framework=fw,
+                    api_path=api_name,
+                    kwargs=kw_list,
+                    args_count=arg_cnt,
+                    kwarg_values=kw_vals if kw_vals else None,
+                    version=version,
+                )
+                if res.get("is_hallucinated"):
+                    findings.append(
+                        {
+                            "line": lineno,
+                            "type": "api_hallucination",
+                            "framework": fw,
+                            "target": api_name,
+                            "reason": res.get("reason", "Invalid API call"),
+                            "invalid_kwargs": res.get("invalid_kwargs", []),
+                        }
+                    )
+    except Exception:
+        is_python = False
+
+    if not is_python:
+        lines = code.strip().split("\n")
+        for lineno, raw_line in enumerate(lines, 1):
+            line = raw_line.strip()
+            if not line or line.startswith(("//", "#", ";")):
+                continue
+
+            # Check MLIR
+            mlir_match = re.search(
+                r"(?:%[a-zA-Z0-9_]+\s*=\s*)?([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)", line
+            )
+            sass_match = re.match(
+                r"^(?:@!?U?P\d+\s+)?([A-Z0-9_\.]+)(?:\s+(.*))?;?$", line
+            )
+            rdna_match = re.match(r"^([vsa]_[a-zA-Z0-9_\.]+)(?:\s+(.*))?$", line)
+
+            if mlir_match and (
+                framework in ("mlir", "stablehlo")
+                or any(
+                    d in line
+                    for d in (
+                        "arith.",
+                        "math.",
+                        "linalg.",
+                        "stablehlo.",
+                        "memref.",
+                        "func.",
+                        "scf.",
+                        "gpu.",
+                        "vector.",
+                        "llvm.",
+                        "nvvm.",
+                        "rocdl.",
+                    )
+                )
+            ):
+                op_name = mlir_match.group(1)
+                total_analyzed += 1
+                res = check_mlir_op(op_name)
+                if not res.get("is_valid"):
+                    findings.append(
+                        {
+                            "line": lineno,
+                            "type": "mlir_error",
+                            "target": op_name,
+                            "reason": "; ".join(res.get("errors", [])),
+                        }
+                    )
+
+            # Check SASS
+            elif sass_match and (
+                framework == "nvidia_sass"
+                or any(s in line for s in ("R0", "UR0", "P0", "sm_"))
+                or line.endswith(";")
+            ):
+                mnem = sass_match.group(1).rstrip(";")
+                ops_str = sass_match.group(2) or ""
+                ops = [o.strip().rstrip(";") for o in ops_str.split(",") if o.strip()]
+                total_analyzed += 1
+                res = check_sass_instruction(mnem, operands=ops, sm_arch=sm_arch)
+                if not res.get("is_valid"):
+                    findings.append(
+                        {
+                            "line": lineno,
+                            "type": "sass_error",
+                            "target": mnem,
+                            "reason": "; ".join(res.get("errors", [])),
+                        }
+                    )
+
+            # Check RDNA
+            elif rdna_match:
+                mnem = rdna_match.group(1)
+                ops_str = rdna_match.group(2) or ""
+                ops = [o.strip() for o in ops_str.split(",") if o.strip()]
+                total_analyzed += 1
+                res = check_rdna_instruction(mnem, operands=ops, gfx_arch=gfx_arch)
+                if not res.get("is_valid"):
+                    findings.append(
+                        {
+                            "line": lineno,
+                            "type": "rdna_error",
+                            "target": mnem,
+                            "reason": "; ".join(res.get("errors", [])),
+                        }
+                    )
+
+    return {
+        "total_analyzed": total_analyzed,
+        "hallucinations_detected": len(findings),
+        "is_valid": len(findings) == 0,
+        "findings": findings,
     }
 
 
@@ -841,6 +1658,10 @@ def get_mcp_tools_list() -> List[Dict[str, Any]]:
                         "type": "string",
                         "description": "Canonical API path or mnemonic.",
                     },
+                    "version": {
+                        "type": "string",
+                        "description": "Optional framework version string (e.g. '2.4.0').",
+                    },
                 },
                 "required": ["framework", "api_path"],
             },
@@ -862,6 +1683,10 @@ def get_mcp_tools_list() -> List[Dict[str, Any]]:
                     "limit": {
                         "type": "integer",
                         "description": "Maximum matches to return.",
+                    },
+                    "version": {
+                        "type": "string",
+                        "description": "Optional framework version string (e.g. '2.4.0').",
                     },
                 },
                 "required": ["framework", "query"],
@@ -894,8 +1719,37 @@ def get_mcp_tools_list() -> List[Dict[str, Any]]:
                         "type": "boolean",
                         "description": "Whether to treat unconstrained kwargs as hallucinated (default: true).",
                     },
+                    "version": {
+                        "type": "string",
+                        "description": "Optional framework version string (e.g. '2.4.0').",
+                    },
                 },
                 "required": ["framework", "api_path"],
+            },
+        },
+        {
+            "name": "explain_anti_pattern",
+            "description": "Provide canonical migration advice and rationale for a flagged anti-pattern or hallucinated argument.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "framework": {
+                        "type": "string",
+                        "description": "Target framework name (e.g. 'torch', 'jax', 'tensorflow').",
+                    },
+                    "api_path": {
+                        "type": "string",
+                        "description": "API path to explain (e.g. 'torch.sum').",
+                    },
+                    "hallucinated_argument": {
+                        "type": "string",
+                        "description": "The flagged or hallucinated argument name (e.g. 'axis').",
+                    },
+                    "passed_value": {
+                        "description": "Optional value passed to the argument.",
+                    },
+                },
+                "required": ["framework", "api_path", "hallucinated_argument"],
             },
         },
         {
@@ -921,6 +1775,10 @@ def get_mcp_tools_list() -> List[Dict[str, Any]]:
                     "sm_arch": {
                         "type": "string",
                         "description": "Target SM architecture (e.g. 'sm_80', 'sm_90').",
+                    },
+                    "control_codes": {
+                        "type": "object",
+                        "description": "Optional control code dictionary (e.g. {'stall_count': 1, 'latency_ticks': 4}).",
                     },
                 },
                 "required": ["mnemonic"],
@@ -948,6 +1806,55 @@ def get_mcp_tools_list() -> List[Dict[str, Any]]:
                     "gfx_arch": {
                         "type": "string",
                         "description": "Target GFX architecture (e.g. 'GFX11/RDNA3').",
+                    },
+                    "modifiers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of modifiers (e.g. ['-src', 'clamp', 'omod:2']).",
+                    },
+                    "wave_size": {
+                        "type": "integer",
+                        "description": "Optional wavefront execution size (32 or 64).",
+                    },
+                },
+                "required": ["mnemonic"],
+            },
+        },
+        {
+            "name": "check_ptx_instruction",
+            "description": "Validate whether an NVIDIA PTX assembly instruction is valid on target SM architecture.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "mnemonic": {
+                        "type": "string",
+                        "description": "PTX instruction mnemonic (e.g. add, ld, st, wgmma.mma_async).",
+                    },
+                    "types": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of PTX type qualifiers (e.g. ['.f32'], ['.u64']).",
+                    },
+                    "operands": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of operand registers or immediates.",
+                    },
+                    "state_space": {
+                        "type": "string",
+                        "description": "Optional memory state space qualifier (e.g. '.global', '.shared').",
+                    },
+                    "scope": {
+                        "type": "string",
+                        "description": "Optional memory scope qualifier (e.g. '.gpu', '.cta', '.sys').",
+                    },
+                    "vector_width": {
+                        "type": "string",
+                        "description": "Optional vector width qualifier (e.g. '.v2', '.v4').",
+                    },
+                    "sm_arch": {
+                        "type": "string",
+                        "description": "Target SM architecture (e.g. 'sm_80', 'sm_90').",
                     },
                 },
                 "required": ["mnemonic"],
@@ -977,12 +1884,92 @@ def get_mcp_tools_list() -> List[Dict[str, Any]]:
                         "items": {"type": "string"},
                         "description": "Optional list of SSA operand types to verify against ODS type constraints.",
                     },
+                    "result_types": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of SSA result types to verify.",
+                    },
                     "structured_attributes": {
                         "type": "object",
                         "description": "Optional structured attributes (e.g. DotDimensionNumbersAttr, ComparisonDirectionAttr) to validate.",
                     },
+                    "regions": {
+                        "type": "object",
+                        "description": "Optional dictionary of regions mapping name to block_arguments and yield_types.",
+                    },
                 },
                 "required": ["op_name"],
+            },
+        },
+        {
+            "name": "check_stablehlo_op",
+            "description": "Validate whether a StableHLO operation complies with formal verification rules, dimension numbers, and region constraints.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "op_name": {
+                        "type": "string",
+                        "description": "StableHLO op name (e.g. stablehlo.dot_general, stablehlo.reduce).",
+                    },
+                    "operands_count": {
+                        "type": "integer",
+                        "description": "Optional expected number of SSA operands.",
+                    },
+                    "attributes": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of attribute names to verify.",
+                    },
+                    "operand_types": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of SSA operand types.",
+                    },
+                    "result_types": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of SSA result types.",
+                    },
+                    "structured_attributes": {
+                        "type": "object",
+                        "description": "Optional structured attributes (DotDimensionNumbersAttr, ConvDimensionNumbersAttr).",
+                    },
+                    "regions": {
+                        "type": "object",
+                        "description": "Optional dictionary of regions mapping name to block_arguments and yield_types.",
+                    },
+                },
+                "required": ["op_name"],
+            },
+        },
+        {
+            "name": "check_code_block",
+            "description": "Batch verify a code block for nonexistent APIs, invalid kwargs, and hardware constraints in a single round-trip.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "Python snippet, SASS assembly, RDNA assembly, or MLIR text.",
+                    },
+                    "framework": {
+                        "type": "string",
+                        "description": "Optional framework hint ('torch', 'jax', 'nvidia_sass', 'amd_rdna', 'mlir').",
+                    },
+                    "version": {
+                        "type": "string",
+                        "description": "Optional framework version string.",
+                    },
+                    "sm_arch": {
+                        "type": "string",
+                        "description": "Optional NVIDIA architecture target (e.g. 'sm_80', 'sm_90').",
+                    },
+                    "gfx_arch": {
+                        "type": "string",
+                        "description": "Optional AMD RDNA architecture target (e.g. 'GFX11/RDNA3').",
+                    },
+                },
+                "required": ["code"],
             },
         },
     ]
@@ -1013,7 +2000,11 @@ def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
         args = params.get("arguments", {})
 
         if tool_name == "get_api_signature":
-            res = get_api_signature(args.get("framework", ""), args.get("api_path", ""))
+            res = get_api_signature(
+                args.get("framework", ""),
+                args.get("api_path", ""),
+                version=args.get("version"),
+            )
             return {
                 "jsonrpc": "2.0",
                 "id": msg_id,
@@ -1026,6 +2017,7 @@ def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
                 args.get("framework", ""),
                 args.get("query", ""),
                 args.get("limit", 10),
+                version=args.get("version"),
             )
             return {
                 "jsonrpc": "2.0",
@@ -1043,6 +2035,15 @@ def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
                 args.get("kwargs", []),
                 args_count=args.get("args_count"),
                 strict_kwargs=args.get("strict_kwargs", True),
+                kwarg_values=args.get("kwarg_values"),
+                version=args.get("version"),
+                arg_dtypes=args.get("arg_dtypes"),
+                kwarg_dtypes=args.get("kwarg_dtypes"),
+                arg_ranks=args.get("arg_ranks"),
+                kwarg_ranks=args.get("kwarg_ranks"),
+                arg_shapes=args.get("arg_shapes"),
+                kwarg_shapes=args.get("kwarg_shapes"),
+                strict_c_extensions=args.get("strict_c_extensions", False),
             )
             return {
                 "jsonrpc": "2.0",
@@ -1053,12 +2054,29 @@ def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
                     ]
                 },
             }
+        elif tool_name == "explain_anti_pattern":
+            anti_res = explain_anti_pattern(
+                framework=args.get("framework", ""),
+                api_path=args.get("api_path", ""),
+                hallucinated_argument=args.get("hallucinated_argument", ""),
+                passed_value=args.get("passed_value"),
+            )
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": json.dumps(anti_res, indent=2)}
+                    ]
+                },
+            }
         elif tool_name == "check_sass_instruction":
             sass_res = check_sass_instruction(
                 mnemonic=args.get("mnemonic", ""),
                 operands=args.get("operands"),
                 modifiers=args.get("modifiers"),
                 sm_arch=args.get("sm_arch"),
+                control_codes=args.get("control_codes"),
             )
             return {
                 "jsonrpc": "2.0",
@@ -1075,6 +2093,8 @@ def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
                 operands=args.get("operands"),
                 encoding=args.get("encoding"),
                 gfx_arch=args.get("gfx_arch"),
+                modifiers=args.get("modifiers"),
+                wave_size=args.get("wave_size"),
             )
             return {
                 "jsonrpc": "2.0",
@@ -1085,13 +2105,32 @@ def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
                     ]
                 },
             }
+        elif tool_name == "check_ptx_instruction":
+            ptx_res = check_ptx_instruction(
+                mnemonic=args.get("mnemonic", ""),
+                types=args.get("types"),
+                operands=args.get("operands"),
+                state_space=args.get("state_space"),
+                scope=args.get("scope"),
+                vector_width=args.get("vector_width"),
+                sm_arch=args.get("sm_arch"),
+            )
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps(ptx_res, indent=2)}]
+                },
+            }
         elif tool_name == "check_mlir_op":
             mlir_res = check_mlir_op(
                 op_name=args.get("op_name", ""),
                 operands_count=args.get("operands_count"),
                 attributes=args.get("attributes"),
                 operand_types=args.get("operand_types"),
+                result_types=args.get("result_types"),
                 structured_attributes=args.get("structured_attributes"),
+                regions=args.get("regions"),
             )
             return {
                 "jsonrpc": "2.0",
@@ -1099,6 +2138,42 @@ def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
                 "result": {
                     "content": [
                         {"type": "text", "text": json.dumps(mlir_res, indent=2)}
+                    ]
+                },
+            }
+        elif tool_name == "check_stablehlo_op":
+            shlo_res = check_stablehlo_op(
+                op_name=args.get("op_name", ""),
+                operands_count=args.get("operands_count"),
+                attributes=args.get("attributes"),
+                operand_types=args.get("operand_types"),
+                result_types=args.get("result_types"),
+                structured_attributes=args.get("structured_attributes"),
+                regions=args.get("regions"),
+            )
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": json.dumps(shlo_res, indent=2)}
+                    ]
+                },
+            }
+        elif tool_name == "check_code_block":
+            code_res = check_code_block(
+                code=args.get("code", ""),
+                framework=args.get("framework"),
+                version=args.get("version"),
+                sm_arch=args.get("sm_arch"),
+                gfx_arch=args.get("gfx_arch"),
+            )
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": json.dumps(code_res, indent=2)}
                     ]
                 },
             }

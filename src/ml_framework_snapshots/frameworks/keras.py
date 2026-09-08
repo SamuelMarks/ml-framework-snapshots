@@ -142,6 +142,18 @@ def _collect_static(category: SemanticTier, include_nonpublic: bool) -> List[Gho
                 include_nonpublic=include_nonpublic,
             )
         )
+    elif category == SemanticTier.ARRAY_API:
+        ops_refs = _scan_griffe_module(
+            "keras.ops",
+            "keras.ops",
+            kind="function",
+            include_nonpublic=include_nonpublic,
+        )
+        for ref in ops_refs:
+            ref.environment_tags.extend(
+                ["backend:jax", "backend:torch", "backend:tensorflow"]
+            )
+        results.extend(ops_refs)
 
     return results
 

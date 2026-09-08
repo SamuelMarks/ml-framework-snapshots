@@ -185,6 +185,9 @@ def test_to_protobuf_types() -> None:
             GhostParam(name="d", kind="POSITIONAL_ONLY", annotation="dict[str, int]"),
             GhostParam(name="f", kind="POSITIONAL_ONLY", annotation="float"),
             GhostParam(name="u", kind="POSITIONAL_ONLY", annotation=None),
+            GhostParam(
+                name="mode", kind="POSITIONAL_ONLY", annotation="InterpolationMode"
+            ),
             GhostParam(name="unknown", kind="POSITIONAL_ONLY", annotation="weird_type"),
         ],
     )
@@ -194,7 +197,8 @@ def test_to_protobuf_types() -> None:
     assert "map<string, string> d = 3;" in code
     assert "double f = 4;" in code
     assert "string u = 5;" in code
-    assert "string unknown = 6;" in code
+    assert "InterpolationMode mode = 6;" in code
+    assert "string unknown = 7;" in code
 
 
 def test_export_branches() -> None:
@@ -206,7 +210,7 @@ def test_export_branches() -> None:
         _ghost_to_cdd_ir,
     )
 
-    assert _py_type_to_proto(None) == "string"  # type: ignore
+    assert _py_type_to_proto(None) == "string"
     assert _py_type_to_proto("") == "string"
 
     from ml_switcheroo_ir.schema.ghost import GhostParam
@@ -291,7 +295,11 @@ def test_export_branches_more() -> None:
 
 
 def test_export_llm_prompt_context_full(sample_ghost_ref: GhostRef) -> None:
-    """Test export_llm_prompt_context with complete GhostRef containing raises, env tags, returns, docstring."""
+    """Test export_llm_prompt_context with complete GhostRef containing raises, env tags, returns, docstring.
+
+    Args:
+        sample_ghost_ref: Fixture providing a sample GhostRef.
+    """
     sample_ghost_ref.raises = ["ValueError"]
     sample_ghost_ref.environment_tags = ["cpu", "cuda"]
     context = export_llm_prompt_context([sample_ghost_ref])
@@ -456,8 +464,48 @@ def test_export_mlir_prompt_context() -> None:
     assert "%res = gpu.barrier() : none" in context_min
 
 
-def test_export_scoped_prompt_context() -> None:
-    """Test export_scoped_prompt_context with hierarchical indexing and scoping across domains."""
+def test_export_scoped_prompt_context(mocker: Any) -> None:
+    """Test export_scoped_prompt_context with hierarchical indexing and scoping across domains.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mock_torch_snap = {
+        "categories": {
+            "nn": [
+                {
+                    "name": f"Module{i}",
+                    "api_path": f"torch.nn.Module{i}",
+                    "kind": "class",
+                    "params": [{"name": "x", "kind": "POSITIONAL_OR_KEYWORD"}],
+                }
+                for i in range(10)
+            ]
+        }
+    }
+    from ml_framework_snapshots import mcp_server
+
+    orig_get_snap = mcp_server.get_framework_snapshot
+
+    def mock_get_snap(framework: str, version: Any = None) -> Any:
+        """Mock framework snapshot getter returning mock torch snapshot.
+
+        Args:
+            framework: Framework identifier.
+            version: Optional version identifier.
+
+        Returns:
+            Snapshot dictionary or original snapshot result.
+        """
+        if framework == "torch":
+            return mock_torch_snap
+        return orig_get_snap(framework, version=version)
+
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        side_effect=mock_get_snap,
+    )
+
     # 1. Scoped torch context with module prefix
     torch_ctx = export_scoped_prompt_context(
         "torch", module_prefix="torch.nn", max_symbols=3

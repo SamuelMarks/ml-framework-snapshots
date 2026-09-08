@@ -1,0 +1,3689 @@
+{
+  "schema_version": "1.0.0",
+  "target": "nvidia_ptx",
+  "version": "8.5.0",
+  "source_type": "tablegen",
+  "upstream_commit": "cuda-12.6-ptx-isa-8.5",
+  "generated_at": "2026-09-08T00:00:00Z",
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64"
+  },
+  "categories": {
+    "UTIL": [
+      {
+        "category": "instruction",
+        "description": "PTX generic instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "generic",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX local instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "local",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX shared instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "shared",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX global instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "global",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX const instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "const",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX param instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "param",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX pred instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "pred",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX b16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "b16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX b32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "b32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX b64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "b64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX f16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "f16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX bf16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "bf16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX f16x2 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "f16x2",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX bf16x2 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "bf16x2",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX f32x2 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "f32x2",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cvt.s16.s8 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cvt.s16.s8",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cvt.s32.s8 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cvt.s32.s8",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cvt.s32.s16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cvt.s32.s16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cvt.s64.s8 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cvt.s64.s8",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cvt.s64.s16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cvt.s64.s16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cvt.s64.s32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cvt.s64.s32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX e4m3 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "e4m3",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX e5m2 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "e5m2",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX e2m3 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "e2m3",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX e3m2 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "e3m2",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX .satfinite instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": ".satfinite",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX add.s instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "add.s",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX max.s instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "max.s",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX max.u instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "max.u",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX min.s instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "min.s",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX min.u instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "min.u",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX .ftz instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": ".ftz",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX b128 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "b128",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mov.b instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mov.b",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX ret instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "ret",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX trap instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "trap",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX brkpt instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "brkpt",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX bar.warp.sync instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "bar.warp.sync",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX arrive instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "arrive",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX arrive.relaxed instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "arrive.relaxed",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX wait instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "wait",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX arrive.aligned instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "arrive.aligned",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX arrive.relaxed.aligned instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "arrive.relaxed.aligned",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX wait.aligned instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "wait.aligned",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX membar.cta instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "membar.cta",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX membar.gl instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "membar.gl",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX membar.sys instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "membar.sys",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX fence.sc.cluster instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "fence.sc.cluster",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX fence.mbarrier_init.release.cluster instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "fence.mbarrier_init.release.cluster",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cta instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cta",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cluster instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cluster",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX gpu instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "gpu",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sys instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sys",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "memory",
+        "description": "Commits all prior cp.async instructions into a pending asynchronous group.",
+        "min_sm": "sm_80",
+        "mnemonic": "cp.async.commit_group",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [],
+        "vector_widths": []
+      },
+      {
+        "category": "memory",
+        "description": "Waits until at most N asynchronous copy groups remain pending.",
+        "min_sm": "sm_80",
+        "mnemonic": "cp.async.wait_group",
+        "operands": [
+          {
+            "description": "Number of remaining pending groups",
+            "name": "n",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cp.async.wait_all instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cp.async.wait_all",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cp.async.bulk.commit_group instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cp.async.bulk.commit_group",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cp.async.bulk.wait_group instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cp.async.bulk.wait_group",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cp.async.bulk.wait_group.read instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cp.async.bulk.wait_group.read",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX .shared instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": ".shared",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX nanosleep.u32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "nanosleep.u32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX min.xorsign.abs.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "min.xorsign.abs.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX min.ftz.xorsign.abs.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "min.ftz.xorsign.abs.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX max.xorsign.abs.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "max.xorsign.abs.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX max.ftz.xorsign.abs.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "max.ftz.xorsign.abs.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rn.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rn.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rn.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rn.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rz.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rz.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rm.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rm.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rm.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rm.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rp.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rp.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rp.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rp.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rn.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rn.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rz.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rz.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rm.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rm.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rp.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rp.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul24.lo.s32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul24.lo.s32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul24.lo.u32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul24.lo.u32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rn.sat.f16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rn.sat.f16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rn.ftz.sat.f16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rn.ftz.sat.f16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rn.sat.f16x2 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rn.sat.f16x2",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mul.rn.ftz.sat.f16x2 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul.rn.ftz.sat.f16x2",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rn.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rn.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rn.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rn.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rz.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rz.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rm.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rm.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rm.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rm.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rp.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rp.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rp.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rp.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rn.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rn.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rz.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rz.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rm.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rm.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX div.rp.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "div.rp.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sad.s16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sad.s16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sad.u16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sad.u16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sad.s32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sad.s32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sad.u32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sad.u32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sad.s64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sad.s64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sad.u64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sad.u64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX abs.ftz. instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "abs.ftz.",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX neg.bf16 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "neg.bf16",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX neg.bf16x2 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "neg.bf16x2",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rn.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rn.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rn.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rn.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rz.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rz.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rm.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rm.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rm.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rm.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rp.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rp.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rp.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rp.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rn.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rn.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rz.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rz.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rm.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rm.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.rp.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.rp.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.approx.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.approx.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX rcp.approx.ftz.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "rcp.approx.ftz.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rn.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rn.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rn.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rn.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rz.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rz.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rm.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rm.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rm.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rm.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rp.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rp.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rp.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rp.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.approx.ftz.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.approx.ftz.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.approx.f32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.approx.f32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rn.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rn.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rz.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rz.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rm.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rm.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX sqrt.rp.f64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "sqrt.rp.f64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX mov.u64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "mov.u64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cluster_ctarank instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cluster_ctarank",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX cluster_nctarank instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "cluster_nctarank",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX total_smem_size instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "total_smem_size",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX dynamic_smem_size instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "dynamic_smem_size",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX aggr_smem_size instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "aggr_smem_size",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX laneid instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "laneid",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX warpid instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "warpid",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX nwarpid instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "nwarpid",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX smid instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "smid",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX nsmid instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "nsmid",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX gridid instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "gridid",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX lanemask_eq instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "lanemask_eq",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX lanemask_le instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "lanemask_le",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX lanemask_lt instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "lanemask_lt",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX lanemask_ge instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "lanemask_ge",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX lanemask_gt instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "lanemask_gt",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX clock instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "clock",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX clock64 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "clock64",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX globaltimer instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "globaltimer",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX globaltimer_lo instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "globaltimer_lo",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX pm0 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "pm0",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX pm1 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "pm1",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX pm2 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "pm2",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX pm3 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "pm3",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX wgmma.fence.sync.aligned instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "wgmma.fence.sync.aligned",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX wgmma.commit_group.sync.aligned instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "wgmma.commit_group.sync.aligned",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX wgmma.wait_group.sync.aligned instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "wgmma.wait_group.sync.aligned",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX griddepcontrol.launch_dependents instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "griddepcontrol.launch_dependents",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX griddepcontrol.wait instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "griddepcontrol.wait",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX exit instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": "exit",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "instruction",
+        "description": "PTX .b32 instruction parsed from TableGen.",
+        "min_sm": "sm_50",
+        "mnemonic": ".b32",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "arithmetic",
+        "description": "Integer or floating-point addition.",
+        "min_sm": "sm_50",
+        "mnemonic": "add",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      },
+      {
+        "category": "arithmetic",
+        "description": "Integer or floating-point subtraction.",
+        "min_sm": "sm_50",
+        "mnemonic": "sub",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      },
+      {
+        "category": "arithmetic",
+        "description": "Integer or floating-point multiplication.",
+        "min_sm": "sm_50",
+        "mnemonic": "mul",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      },
+      {
+        "category": "arithmetic",
+        "description": "Fused multiply-add: d = (a * b) + c with single rounding step.",
+        "min_sm": "sm_50",
+        "mnemonic": "fma",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First multiplicand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second multiplicand",
+            "name": "b",
+            "role": "src1"
+          },
+          {
+            "description": "Addend operand",
+            "name": "c",
+            "role": "src2"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".f16",
+          ".f16x2",
+          ".bf16",
+          ".bf16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2"
+        ]
+      },
+      {
+        "category": "arithmetic",
+        "description": "Multiply and add: d = (a * b) + c.",
+        "min_sm": "sm_50",
+        "mnemonic": "mad",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First multiplicand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second multiplicand",
+            "name": "b",
+            "role": "src1"
+          },
+          {
+            "description": "Addend operand",
+            "name": "c",
+            "role": "src2"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "arithmetic",
+        "description": "Divide: d = a / b.",
+        "min_sm": "sm_50",
+        "mnemonic": "div",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Numerator",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Denominator",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "arithmetic",
+        "description": "Minimum of two values.",
+        "min_sm": "sm_50",
+        "mnemonic": "min",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2"
+        ]
+      },
+      {
+        "category": "arithmetic",
+        "description": "Maximum of two values.",
+        "min_sm": "sm_50",
+        "mnemonic": "max",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2"
+        ]
+      },
+      {
+        "category": "arithmetic",
+        "description": "Hyperbolic tangent: d = tanh(a).",
+        "min_sm": "sm_75",
+        "mnemonic": "tanh",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Source operand",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".f16",
+          ".f16x2",
+          ".f32"
+        ],
+        "vector_widths": [
+          ".v2"
+        ]
+      },
+      {
+        "category": "arithmetic",
+        "description": "Base-2 exponential approximation: d = 2^a.",
+        "min_sm": "sm_50",
+        "mnemonic": "ex2",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Source exponent",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".f16",
+          ".f16x2",
+          ".f32"
+        ],
+        "vector_widths": [
+          ".v2"
+        ]
+      },
+      {
+        "category": "logical",
+        "description": "Bitwise AND operation.",
+        "min_sm": "sm_50",
+        "mnemonic": "and",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".b16",
+          ".b32",
+          ".b64",
+          ".pred"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "logical",
+        "description": "Bitwise OR operation.",
+        "min_sm": "sm_50",
+        "mnemonic": "or",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".b16",
+          ".b32",
+          ".b64",
+          ".pred"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "logical",
+        "description": "Bitwise XOR operation.",
+        "min_sm": "sm_50",
+        "mnemonic": "xor",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "First operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".b16",
+          ".b32",
+          ".b64",
+          ".pred"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "logical",
+        "description": "Bitwise NOT operation.",
+        "min_sm": "sm_50",
+        "mnemonic": "not",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Source operand",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".b16",
+          ".b32",
+          ".b64",
+          ".pred"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "logical",
+        "description": "Shift bits left.",
+        "min_sm": "sm_50",
+        "mnemonic": "shl",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Value to shift",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Shift amount",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".b16",
+          ".b32",
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "logical",
+        "description": "Shift bits right (logical or arithmetic).",
+        "min_sm": "sm_50",
+        "mnemonic": "shr",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Value to shift",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Shift amount",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".b16",
+          ".b32",
+          ".b64",
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "comparison",
+        "description": "Set predicate based on operand comparison.",
+        "min_sm": "sm_50",
+        "mnemonic": "setp",
+        "operands": [
+          {
+            "description": "Destination predicate",
+            "name": "p",
+            "role": "dst"
+          },
+          {
+            "description": "First operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Second operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "comparison",
+        "description": "Select between two values based on a predicate condition.",
+        "min_sm": "sm_50",
+        "mnemonic": "selp",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Selected if true",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Selected if false",
+            "name": "b",
+            "role": "src1"
+          },
+          {
+            "description": "Condition predicate operand",
+            "name": "p",
+            "role": "src2"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".b16",
+          ".b32",
+          ".b64",
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "movement",
+        "description": "Move data between registers or load immediate constant.",
+        "min_sm": "sm_50",
+        "mnemonic": "mov",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Source operand",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".b16",
+          ".b32",
+          ".b64",
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f32",
+          ".f64",
+          ".pred"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      },
+      {
+        "category": "movement",
+        "description": "Convert data from one type to another with optional rounding mode.",
+        "min_sm": "sm_50",
+        "mnemonic": "cvt",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Source operand",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".bf16",
+          ".bf16x2",
+          ".tf32",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2"
+        ]
+      },
+      {
+        "category": "movement",
+        "description": "Convert floating-point value to integer rounding to nearest away from zero.",
+        "min_sm": "sm_70",
+        "mnemonic": "cvt.rna",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Source operand",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".s16",
+          ".s32",
+          ".s64",
+          ".u16",
+          ".u32",
+          ".u64",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "movement",
+        "description": "Convert floating-point value to integer rounding to nearest even integer.",
+        "min_sm": "sm_70",
+        "mnemonic": "cvt.rni",
+        "operands": [
+          {
+            "description": "Destination operand",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Source operand",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".s16",
+          ".s32",
+          ".s64",
+          ".u16",
+          ".u32",
+          ".u64",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "movement",
+        "description": "Convert generic address to specific state-space address or vice-versa.",
+        "min_sm": "sm_50",
+        "mnemonic": "cvta",
+        "operands": [
+          {
+            "description": "Converted address destination",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Source address",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".global",
+          ".local",
+          ".shared",
+          ".const",
+          ".param"
+        ],
+        "supported_types": [
+          ".u32",
+          ".u64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "memory",
+        "description": "Load data from generic or state space memory into registers.",
+        "min_sm": "sm_50",
+        "mnemonic": "ld",
+        "operands": [
+          {
+            "description": "Destination register",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Memory address operand",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".global",
+          ".local",
+          ".shared",
+          ".const",
+          ".param"
+        ],
+        "supported_types": [
+          ".b8",
+          ".b16",
+          ".b32",
+          ".b64",
+          ".b128",
+          ".u8",
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s8",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".bf16",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      },
+      {
+        "category": "memory",
+        "description": "Non-coherent load from global memory caching in L2/Texture cache.",
+        "min_sm": "sm_50",
+        "mnemonic": "ld.global.nc",
+        "operands": [
+          {
+            "description": "Destination register",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Global memory address",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".global"
+        ],
+        "supported_types": [
+          ".b8",
+          ".b16",
+          ".b32",
+          ".b64",
+          ".u8",
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s8",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      },
+      {
+        "category": "memory",
+        "description": "Store data from registers into generic or state space memory.",
+        "min_sm": "sm_50",
+        "mnemonic": "st",
+        "operands": [
+          {
+            "description": "Memory address operand",
+            "name": "a",
+            "role": "dst"
+          },
+          {
+            "description": "Source register value",
+            "name": "b",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".global",
+          ".local",
+          ".shared",
+          ".param"
+        ],
+        "supported_types": [
+          ".b8",
+          ".b16",
+          ".b32",
+          ".b64",
+          ".b128",
+          ".u8",
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s8",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".bf16",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      },
+      {
+        "category": "memory",
+        "description": "Store data directly into global memory with memory scope qualifiers.",
+        "min_sm": "sm_50",
+        "mnemonic": "st.global",
+        "operands": [
+          {
+            "description": "Global memory address",
+            "name": "a",
+            "role": "dst"
+          },
+          {
+            "description": "Source register value",
+            "name": "b",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".global"
+        ],
+        "supported_types": [
+          ".b8",
+          ".b16",
+          ".b32",
+          ".b64",
+          ".b128",
+          ".u8",
+          ".u16",
+          ".u32",
+          ".u64",
+          ".s8",
+          ".s16",
+          ".s32",
+          ".s64",
+          ".f16",
+          ".f16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      },
+      {
+        "category": "memory",
+        "description": "Atomic read-modify-write operation with memory scope qualifiers.",
+        "min_sm": "sm_50",
+        "mnemonic": "atom",
+        "operands": [
+          {
+            "description": "Destination receiving old value",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Memory address operand",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Source operand",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [
+          ".global",
+          ".shared"
+        ],
+        "supported_types": [
+          ".u32",
+          ".u64",
+          ".s32",
+          ".s64",
+          ".b32",
+          ".b64",
+          ".f16",
+          ".f16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "memory",
+        "description": "Atomic reduction in memory without returning previous value.",
+        "min_sm": "sm_50",
+        "mnemonic": "red",
+        "operands": [
+          {
+            "description": "Memory address operand",
+            "name": "a",
+            "role": "dst"
+          },
+          {
+            "description": "Source operand",
+            "name": "b",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".global",
+          ".shared"
+        ],
+        "supported_types": [
+          ".u32",
+          ".u64",
+          ".s32",
+          ".s64",
+          ".b32",
+          ".b64",
+          ".f16",
+          ".f16x2",
+          ".f32",
+          ".f64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "memory",
+        "description": "Asynchronous copy from global memory to shared memory bypassing register file.",
+        "min_sm": "sm_80",
+        "mnemonic": "cp.async",
+        "operands": [
+          {
+            "description": "Shared memory destination address",
+            "name": "dst",
+            "role": "dst"
+          },
+          {
+            "description": "Global memory source address",
+            "name": "src",
+            "role": "src0"
+          },
+          {
+            "description": "Byte count (4, 8, 16)",
+            "name": "cp_size",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [
+          ".shared",
+          ".global"
+        ],
+        "supported_types": [
+          ".cg",
+          ".ca"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "memory",
+        "description": "TMA / Bulk asynchronous data copy between global and shared memory.",
+        "min_sm": "sm_90",
+        "mnemonic": "cp.async.bulk",
+        "operands": [
+          {
+            "description": "Shared memory destination address",
+            "name": "dst",
+            "role": "dst"
+          },
+          {
+            "description": "Global memory source address",
+            "name": "src",
+            "role": "src0"
+          },
+          {
+            "description": "Bulk transfer byte size",
+            "name": "size",
+            "role": "src1"
+          },
+          {
+            "description": "Mbarrier object address for synchronization",
+            "name": "mbar",
+            "role": "src2"
+          }
+        ],
+        "state_spaces": [
+          ".shared",
+          ".global"
+        ],
+        "supported_types": [
+          ".b8",
+          ".b32"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "memory",
+        "description": "Asynchronous reduction from shared memory to global memory.",
+        "min_sm": "sm_90",
+        "mnemonic": "cp.reduce.async",
+        "operands": [
+          {
+            "description": "Global memory destination address",
+            "name": "dst",
+            "role": "dst"
+          },
+          {
+            "description": "Shared memory source address",
+            "name": "src",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".global",
+          ".shared"
+        ],
+        "supported_types": [
+          ".u32",
+          ".u64",
+          ".f16",
+          ".f32"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "barrier",
+        "description": "Synchronize threads in a CTA at a named barrier.",
+        "min_sm": "sm_50",
+        "mnemonic": "bar.sync",
+        "operands": [
+          {
+            "description": "Barrier index or count",
+            "name": "name",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u32"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "barrier",
+        "description": "Signal arrival at a barrier without blocking thread execution.",
+        "min_sm": "sm_50",
+        "mnemonic": "bar.arrive",
+        "operands": [
+          {
+            "description": "Barrier index",
+            "name": "name",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".u32"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "barrier",
+        "description": "Perform reduction across threads arriving at a barrier.",
+        "min_sm": "sm_50",
+        "mnemonic": "bar.red",
+        "operands": [
+          {
+            "description": "Result predicate",
+            "name": "p",
+            "role": "dst"
+          },
+          {
+            "description": "Barrier index",
+            "name": "name",
+            "role": "src0"
+          },
+          {
+            "description": "Input predicate value",
+            "name": "pred_val",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".pred"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "barrier",
+        "description": "Synchronize all CTAs within a Thread Block Cluster.",
+        "min_sm": "sm_90",
+        "mnemonic": "barrier.cluster",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [],
+        "vector_widths": []
+      },
+      {
+        "category": "barrier",
+        "description": "Initialize an asynchronous memory barrier object in shared memory.",
+        "min_sm": "sm_80",
+        "mnemonic": "mbarrier.init",
+        "operands": [
+          {
+            "description": "Shared memory address of barrier",
+            "name": "addr",
+            "role": "dst"
+          },
+          {
+            "description": "Expected arrival count",
+            "name": "count",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".shared"
+        ],
+        "supported_types": [
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "barrier",
+        "description": "Signal arrival at an asynchronous memory barrier object.",
+        "min_sm": "sm_80",
+        "mnemonic": "mbarrier.arrive",
+        "operands": [
+          {
+            "description": "Output arrival token/state",
+            "name": "state",
+            "role": "dst"
+          },
+          {
+            "description": "Shared memory address of barrier",
+            "name": "addr",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".shared"
+        ],
+        "supported_types": [
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "barrier",
+        "description": "Test whether all expected threads have arrived at an mbarrier object.",
+        "min_sm": "sm_80",
+        "mnemonic": "mbarrier.test_wait",
+        "operands": [
+          {
+            "description": "Result boolean predicate",
+            "name": "p",
+            "role": "dst"
+          },
+          {
+            "description": "Shared memory address of barrier",
+            "name": "addr",
+            "role": "src0"
+          },
+          {
+            "description": "Arrival token/state",
+            "name": "state",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [
+          ".shared"
+        ],
+        "supported_types": [
+          ".b64"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "tensor",
+        "description": "Warp-level matrix multiply and accumulate on Tensor Cores (Volta / Turing / Ampere).",
+        "min_sm": "sm_70",
+        "mnemonic": "wmma.mma",
+        "operands": [
+          {
+            "description": "Accumulator destination",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Matrix A fragment",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Matrix B fragment",
+            "name": "b",
+            "role": "src1"
+          },
+          {
+            "description": "Matrix C accumulator",
+            "name": "c",
+            "role": "src2"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".f16",
+          ".f32",
+          ".s8",
+          ".u8",
+          ".s32",
+          ".bf16",
+          ".tf32"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "tensor",
+        "description": "Synchronous warp-level matrix multiply-accumulate across threads.",
+        "min_sm": "sm_80",
+        "mnemonic": "mma.sync",
+        "operands": [
+          {
+            "description": "Accumulator destination",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Matrix A fragment",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Matrix B fragment",
+            "name": "b",
+            "role": "src1"
+          },
+          {
+            "description": "Matrix C accumulator",
+            "name": "c",
+            "role": "src2"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".f16",
+          ".f32",
+          ".s8",
+          ".u8",
+          ".s32",
+          ".bf16",
+          ".tf32",
+          ".e4m3",
+          ".e5m2"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "tensor",
+        "description": "Warpgroup-level asynchronous matrix multiply and accumulate (Hopper).",
+        "min_sm": "sm_90",
+        "mnemonic": "wgmma.mma_async",
+        "operands": [
+          {
+            "description": "Accumulator destination",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Matrix A shared memory descriptor or register fragment",
+            "name": "a",
+            "role": "src0"
+          },
+          {
+            "description": "Matrix B shared memory descriptor",
+            "name": "b",
+            "role": "src1"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [
+          ".f16",
+          ".f32",
+          ".bf16",
+          ".tf32",
+          ".e4m3",
+          ".e5m2",
+          ".s32"
+        ],
+        "vector_widths": []
+      },
+      {
+        "category": "tensor",
+        "description": "Enforces ordering between register accesses and wgmma.mma_async instructions.",
+        "min_sm": "sm_90",
+        "mnemonic": "wgmma.fence",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [],
+        "vector_widths": []
+      },
+      {
+        "category": "tensor",
+        "description": "Commits all prior wgmma.mma_async instructions into a warpgroup batch.",
+        "min_sm": "sm_90",
+        "mnemonic": "wgmma.commit_group",
+        "operands": [],
+        "state_spaces": [],
+        "supported_types": [],
+        "vector_widths": []
+      },
+      {
+        "category": "tensor",
+        "description": "Waits until at most N warpgroup batches remain outstanding.",
+        "min_sm": "sm_90",
+        "mnemonic": "wgmma.wait_group",
+        "operands": [
+          {
+            "description": "Number of remaining pending batches",
+            "name": "n",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [],
+        "supported_types": [],
+        "vector_widths": []
+      },
+      {
+        "category": "tensor",
+        "description": "Load matrix fragment collectively across warp from shared memory into registers.",
+        "min_sm": "sm_75",
+        "mnemonic": "ldmatrix",
+        "operands": [
+          {
+            "description": "Destination register tuple",
+            "name": "d",
+            "role": "dst"
+          },
+          {
+            "description": "Shared memory base address",
+            "name": "a",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".shared"
+        ],
+        "supported_types": [
+          ".b16"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      },
+      {
+        "category": "tensor",
+        "description": "Store matrix fragment collectively across warp from registers into shared memory.",
+        "min_sm": "sm_90",
+        "mnemonic": "stmatrix",
+        "operands": [
+          {
+            "description": "Shared memory base address",
+            "name": "a",
+            "role": "dst"
+          },
+          {
+            "description": "Source register tuple",
+            "name": "b",
+            "role": "src0"
+          }
+        ],
+        "state_spaces": [
+          ".shared"
+        ],
+        "supported_types": [
+          ".b16"
+        ],
+        "vector_widths": [
+          ".v2",
+          ".v4"
+        ]
+      }
+    ]
+  }
+}

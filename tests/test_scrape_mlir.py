@@ -1,6 +1,8 @@
 """Tests for the MLIR documentation scraper."""
 
+import json
 from typing import Any
+from unittest import mock
 from ml_framework_snapshots.tools import scrape_mlir
 
 
@@ -21,7 +23,11 @@ def test_parse_table() -> None:
 
 
 def test_parse_dialect_page(mocker: Any) -> None:
-    """Test parsing a mock MLIR dialect page."""
+    """Test parsing a mock MLIR dialect page.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     html = """
     <h3 id="arithaddf-arithaddfop"><code>arith.addf</code> (arith::AddFOp)</h3>
     <p><em>Floating point addition operation</em></p>
@@ -59,7 +65,11 @@ def test_parse_dialect_page(mocker: Any) -> None:
 
 
 def test_scrape_stablehlo(mocker: Any) -> None:
-    """Test scraping a mock StableHLO markdown doc."""
+    """Test scraping a mock StableHLO markdown doc.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     md = """
 # Spec
 ### functions
@@ -93,7 +103,11 @@ Does an abs operation.
 
 
 def test_main_docs(mocker: Any) -> None:
-    """Test the main entrypoint via HTML scraping fallback."""
+    """Test the main entrypoint via HTML scraping fallback.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mocker.patch(
         "ml_framework_snapshots.tools.scrape_mlir.inspect_mlir_python_module",
         return_value=[],
@@ -123,7 +137,11 @@ def test_main_docs(mocker: Any) -> None:
 
 
 def test_main_live_inspection(mocker: Any) -> None:
-    """Test the main entrypoint when live inspection discovers operations."""
+    """Test the main entrypoint when live inspection discovers operations.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mocker.patch(
         "ml_framework_snapshots.tools.scrape_mlir.inspect_mlir_python_module",
         return_value=[{"api_path": "arith.addf"}],
@@ -199,7 +217,11 @@ def TrailingOp : Op<"trailing"> {
 
 
 def test_inspect_mlir_python_module(mocker: Any) -> None:
-    """Test inspect_mlir_python_module with mocked modules."""
+    """Test inspect_mlir_python_module with mocked modules.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
 
     class MockAddFOp:
         """AddF op docstring."""
@@ -229,6 +251,9 @@ def test_inspect_mlir_python_module(mocker: Any) -> None:
 
         Returns:
             Mocked dialect module or raises ImportError.
+
+        Raises:
+            ImportError: If the module is not mocked.
         """
         if name == "mlir.dialects.arith":
             return mock_mod
@@ -344,7 +369,11 @@ def test_parse_mlir_tablegen_mnemonic_traits_and_unary() -> None:
 
 
 def test_main_tablegen_empty_and_duplicate_ops(mocker: Any) -> None:
-    """Test main() with empty TableGen responses, duplicate ops, live ops, and stablehlo duplicates."""
+    """Test main() with empty TableGen responses, duplicate ops, live ops, and stablehlo duplicates.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     # Simulate fetch_html returning empty string for some URLs (branch 634 -> 631)
     # and duplicate ops in parsed TableGen (branch 637 -> 636)
     td_with_dups = """
@@ -387,3 +416,311 @@ def test_main_tablegen_empty_and_duplicate_ops(mocker: Any) -> None:
     mock_open = mocker.patch("builtins.open", mocker.mock_open())
     scrape_mlir.main()
     mock_open.assert_called()
+
+
+def test_parse_mlir_tablegen_sized_segments() -> None:
+    """Test TableGen extraction of AttrSizedOperandSegments and AttrSizedResultSegments traits and attributes."""
+    content = """
+    class Op<string mnem, list<string> traits = []>;
+
+    def SizedSegmentsOp : Op<"sized_op", ["AttrSizedOperandSegments", "AttrSizedResultSegments"]> {
+      let arguments = (ins AnyType:$arg0);
+      let results = (outs AnyType:$res0);
+    }
+    """
+    ops = scrape_mlir.parse_mlir_tablegen(content, "test")
+    assert len(ops) == 1
+    attr_names = [a["name"] for a in ops[0]["attributes"]]
+    assert "operand_segment_sizes" in attr_names
+    assert "result_segment_sizes" in attr_names
+    assert "AttrSizedOperandSegments" in ops[0]["traits"]
+    assert "AttrSizedResultSegments" in ops[0]["traits"]
+
+
+def test_parse_mlir_tablegen_existing_sized_segments_attributes() -> None:
+    """Test TableGen extraction when operand_segment_sizes and result_segment_sizes already exist."""
+    content = """
+    class Op<string mnem, list<string> traits = []>;
+
+    def ExistingSegmentsOp : Op<"existing_op", [AttrSizedOperandSegments, AttrSizedResultSegments]> {
+      let arguments = (ins DenseI32ArrayAttr:$operand_segment_sizes, DenseI32ArrayAttr:$result_segment_sizes);
+      let results = (outs AnyType:$res0);
+    }
+    """
+    ops = scrape_mlir.parse_mlir_tablegen(content, "test")
+    assert len(ops) == 1
+    attr_names = [a["name"] for a in ops[0]["attributes"]]
+    assert attr_names.count("operand_segment_sizes") == 1
+    assert attr_names.count("result_segment_sizes") == 1
+    assert "AttrSizedOperandSegments" in ops[0]["traits"]
+    assert "AttrSizedResultSegments" in ops[0]["traits"]
+
+
+def test_tablegen_ast_parser() -> None:
+    """Test TableGenASTParser handling multiclass, defm, foreach, and string concatenations."""
+    tblgen_code = """
+    // Multiclass template
+    multiclass BinaryOps<string suffix> {
+      def NAME # "_" # suffix : Op<NAME # "_" # suffix>;
+    }
+
+    // Foreach unrolling
+    foreach dt = ["f32", "f64"] in {
+      defm Add # "_" # dt : BinaryOps<dt>;
+    }
+
+    // Unknown multiclass fallback
+    defm Custom : UnknownMulticlass;
+    """
+    parser = scrape_mlir.TableGenASTParser(tblgen_code)
+    expanded = parser.expand()
+    assert "Add_f32_f32 : Op<Add_f32_f32>" in expanded
+    assert "Add_f64_f64 : Op<Add_f64_f64>" in expanded
+    assert "defm Custom : UnknownMulticlass" in expanded
+
+    # Test standalone concatenation
+    assert parser._resolve_concatenations('"foo" # "bar"') == '"foobar"'
+    assert parser._resolve_concatenations('Ident # "bar"') == "Identbar"
+    assert parser._resolve_concatenations('"foo" # Ident') == "fooIdent"
+    assert parser._resolve_concatenations("Id1 # Id2") == "Id1Id2"
+
+    # Test nested braces inside multiclass body
+    nested_mc = """
+    multiclass NestedMC {
+      def NestedOp {
+        let nested = { 1, 2 };
+      }
+    }
+    """
+    nested_parser = scrape_mlir.TableGenASTParser(nested_mc)
+    nested_parser.expand()
+    assert "NestedMC" in nested_parser.multiclasses
+
+
+def test_parse_llvm_tblgen_json() -> None:
+    """Test parse_llvm_tblgen_json parsing DAG and list records from llvm-tblgen."""
+    mock_json = {
+        "!instanceof": {"Op": ["Arith_AddFOp", "Arith_SubFOp"]},
+        "Arith_AddFOp": {
+            "!name": "Arith_AddFOp",
+            "!superclasses": ["Arith_Op", "Op"],
+            "mnemonic": "addf",
+            "summary": "Floating point addition",
+            "description": "Performs element-wise float addition.",
+            "arguments": {
+                "kind": "dag",
+                "args": [
+                    [{"def": "FloatType"}, "lhs"],
+                    [{"def": "FloatType"}, "rhs"],
+                    [{"def": "FastMathFlagsAttr"}, "fastmath"],
+                    ["custom_tensor", "extra_arg"],
+                ],
+            },
+            "results": {
+                "kind": "dag",
+                "args": [
+                    [{"def": "FloatType"}, "result"],
+                    ["raw_type", "extra_res"],
+                ],
+            },
+            "regions": {
+                "kind": "dag",
+                "args": [[{"def": "Region"}, "body"]],
+            },
+            "traits": [{"def": "Commutative"}],
+        },
+        "Arith_ListOp": {
+            "!name": "Arith_ListOp",
+            "!superclasses": ["Op"],
+            "arguments": [
+                {"name": "in", "type": "AnyType"},
+                {"name": "attr_flag", "type": "BoolAttr"},
+                "bare_string_arg",
+            ],
+            "results": [
+                {"name": "out", "type": "AnyType"},
+                "bare_string_res",
+            ],
+            "regions": ["region0"],
+            "traits": ["Elementwise"],
+        },
+        "Arith_RawCustom": {
+            "!name": "Arith_RawCustom",
+            "!superclasses": ["_Op"],
+            "arguments": [],
+            "results": [],
+            "summary": "Summary without description",
+        },
+        "NonOpRecord": {
+            "!name": "NonOpRecord",
+            "!superclasses": ["Dialect"],
+        },
+    }
+
+    # Test dict input
+    ops = scrape_mlir.parse_llvm_tblgen_json(mock_json, "arith")
+    assert len(ops) == 3
+
+    addf = next(o for o in ops if o["class_name"] == "AddFOp")
+    assert addf["api_path"] == "arith.addf"
+    assert len(addf["operands"]) == 3
+    assert len(addf["attributes"]) == 1
+    assert addf["attributes"][0]["name"] == "fastmath"
+    assert len(addf["results"]) == 2
+    assert addf["results"][0]["name"] == "result"
+    assert addf["regions"] == ["body"]
+    assert "Commutative" in addf["traits"]
+
+    list_op = next(o for o in ops if o["class_name"] == "ListOp")
+    assert list_op["api_path"] == "arith.list"
+    assert len(list_op["operands"]) == 2
+    assert len(list_op["attributes"]) == 1
+    assert list_op["regions"] == ["region0"]
+    assert "Elementwise" in list_op["traits"]
+
+    raw_custom = next(o for o in ops if o["class_name"] == "RawCustomOp")
+    assert raw_custom["api_path"] == "arith.rawcustom"
+    assert raw_custom["description"] == "Summary without description"
+
+    # Test string input
+    import json
+
+    ops_str = scrape_mlir.parse_llvm_tblgen_json(json.dumps(mock_json), "arith")
+    assert len(ops_str) == 3
+
+
+def test_parse_llvm_tblgen_json_edge_branches() -> None:
+    """Test parse_llvm_tblgen_json with malformed dag entries, empty traits, non-dict records, and None values."""
+    mock_json = {
+        "non_dict_entry": "just_a_string",
+        "NonOpRecord": {
+            "!name": "NonOpRecord",
+            "!superclasses": ["Dialect"],
+        },
+        "Arith_MalformedOp": {
+            "!name": "Arith_MalformedOp",
+            "!superclasses": ["Arith_Op", "Op"],
+            "mnemonic": "malformed",
+            "arguments": {
+                "kind": "dag",
+                "args": [
+                    ["only_one"],
+                    "not_a_list",
+                ],
+            },
+            "results": {
+                "kind": "dag",
+                "args": [
+                    ["only_one"],
+                    "not_a_list",
+                ],
+            },
+            "regions": {
+                "kind": "dag",
+                "args": [
+                    ["only_one"],
+                    123,
+                ],
+            },
+            "traits": ["", {"def": ""}],
+        },
+        "Arith_NoneOp": {
+            "!name": "Arith_NoneOp",
+            "!superclasses": ["Arith_Op", "Op"],
+            "mnemonic": "none_op",
+            "arguments": None,
+            "results": None,
+            "regions": None,
+            "traits": None,
+        },
+    }
+
+    ops = scrape_mlir.parse_llvm_tblgen_json(mock_json, "arith")
+    assert len(ops) == 2
+    malformed = next(o for o in ops if o["class_name"] == "MalformedOp")
+    assert len(malformed["operands"]) == 0
+    assert len(malformed["results"]) == 0
+    assert len(malformed["traits"]) == 0
+    none_op = next(o for o in ops if o["class_name"] == "NoneOp")
+    assert len(none_op["operands"]) == 0
+    assert len(none_op["results"]) == 0
+
+
+def test_validate_dialect_ops_ods() -> None:
+    """Test validate_dialect_ops_ods validating compliant and invalid operations."""
+    valid_ops = [
+        {
+            "api_path": "arith.addf",
+            "class_name": "AddFOp",
+            "operands": [{"name": "lhs", "type": "FloatType"}],
+            "attributes": [],
+            "results": [{"name": "res", "type": "FloatType"}],
+        }
+    ]
+    assert scrape_mlir.validate_dialect_ops_ods(valid_ops, "arith") == []
+
+    invalid_ops = [
+        {
+            "api_path": "math.sin",
+            "operands": "not_a_list",
+            "attributes": "not_a_list",
+            "results": "not_a_list",
+        }
+    ]
+    errs = scrape_mlir.validate_dialect_ops_ods(invalid_ops, "arith")
+    assert any("does not match dialect prefix" in e for e in errs)
+    assert any("missing class_name" in e for e in errs)
+    assert any("missing valid operands list" in e for e in errs)
+    assert any("missing valid attributes list" in e for e in errs)
+    assert any("missing valid results list" in e for e in errs)
+
+
+def test_dump_ast_via_llvm_tooling() -> None:
+    """Test dump_ast_via_llvm_tooling with mocked llvm-tblgen executions."""
+    # 1. Binary not found
+    with mock.patch("shutil.which", return_value=None):
+        res_none = scrape_mlir.dump_ast_via_llvm_tooling("test.td", "arith")
+        assert res_none is None
+
+    mock_json_stdout = json.dumps(
+        {
+            "!instanceof": {"Op": ["Arith_AddFOp"]},
+            "Arith_AddFOp": {
+                "!name": "Arith_AddFOp",
+                "!superclasses": ["Arith_Op", "Op"],
+                "mnemonic": "addf",
+                "summary": "Floating point addition",
+                "arguments": {"kind": "dag", "args": []},
+                "results": {"kind": "dag", "args": []},
+            },
+        }
+    )
+
+    # 2. Binary found and succeeds
+    mock_proc_success = mock.MagicMock()
+    mock_proc_success.returncode = 0
+    mock_proc_success.stdout = mock_json_stdout
+    with mock.patch("subprocess.run", return_value=mock_proc_success):
+        res_succ = scrape_mlir.dump_ast_via_llvm_tooling(
+            "test.td", "arith", tool_binary="/usr/bin/llvm-tblgen"
+        )
+        assert res_succ is not None
+        assert len(res_succ) == 1
+        assert res_succ[0]["api_path"] == "arith.addf"
+
+    # 3. Binary fails with returncode != 0
+    mock_proc_fail = mock.MagicMock()
+    mock_proc_fail.returncode = 1
+    mock_proc_fail.stdout = ""
+    with mock.patch("subprocess.run", return_value=mock_proc_fail):
+        res_fail = scrape_mlir.dump_ast_via_llvm_tooling(
+            "test.td", "arith", tool_binary="/usr/bin/llvm-tblgen"
+        )
+        assert res_fail is None
+
+    # 4. Binary raises exception
+    with mock.patch("subprocess.run", side_effect=OSError("Exec format error")):
+        res_err = scrape_mlir.dump_ast_via_llvm_tooling(
+            "test.td", "arith", tool_binary="/usr/bin/llvm-tblgen"
+        )
+        assert res_err is None

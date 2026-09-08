@@ -37,6 +37,28 @@ def _get_all_json_snapshots() -> List[str]:
     return sorted(json_paths)
 
 
+def _load_snapshot_items(path: str) -> List[Dict[str, Any]]:
+    """Load flat list of items from JSON snapshot file or envelope.
+
+    Args:
+        path: Path to snapshot JSON file.
+
+    Returns:
+        List of item dictionaries.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, dict) and "categories" in data:
+        items: List[Dict[str, Any]] = []
+        for cat in data["categories"].values():
+            if isinstance(cat, list):
+                items.extend(cat)
+        return items
+    if isinstance(data, list):
+        return data
+    return []
+
+
 def test_no_raw_unparsed_tokens() -> None:
     """Verify that no snapshot JSON contains unparsed regex or scraper leak tokens."""
     banned_tokens = [
@@ -71,8 +93,7 @@ def test_no_uniform_duplicate_operands_rdna() -> None:
     if not os.path.exists(rdna_path):
         return
 
-    with open(rdna_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = _load_snapshot_items(rdna_path)
 
     assert len(data) > 1000
     encodings = {item.get("encoding") for item in data}
@@ -106,8 +127,7 @@ def test_stablehlo_operand_attribute_separation() -> None:
     if not os.path.exists(stablehlo_path):
         return
 
-    with open(stablehlo_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = _load_snapshot_items(stablehlo_path)
 
     assert len(data) >= 80
 
@@ -144,8 +164,7 @@ def test_mlir_operand_attribute_integrity() -> None:
     if not os.path.exists(mlir_path):
         return
 
-    with open(mlir_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = _load_snapshot_items(mlir_path)
 
     assert len(data) >= 100, f"MLIR dump has insufficient operations: {len(data)}"
     ops_with_operands = sum(1 for item in data if item.get("operands"))

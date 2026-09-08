@@ -143,3 +143,55 @@ def test_utils_branches() -> None:
 
     Dummy.__doc__ = "\n"
     assert extract_c_extension_signature(Dummy, "X") is None
+
+
+def test_normalize_c_sig_args_and_unparse_branches() -> None:
+    """Test branches in _normalize_c_sig_args, _parse_c_extension_sig_str, and docstring usage scanning."""
+    from ml_framework_snapshots.utils import (
+        _normalize_c_sig_args,
+        _parse_c_extension_sig_str,
+    )
+
+    # Test with trailing comma, keyword-only marker '*', slash '/', varargs, varkwargs, colon, C++ type with default, and plain arg
+    raw = "Tensor a, *, /, *args, **kwargs, c: int, const Tensor& d = None, plain_arg, "
+    normalized = _normalize_c_sig_args(raw)
+    assert 'a: "Tensor"' in normalized
+    assert "*" in normalized
+    assert "/" in normalized
+    assert "*args" in normalized
+    assert "**kwargs" in normalized
+    assert "c: int" in normalized
+    assert 'd: "Tensor" = None' in normalized
+    assert "plain_arg" in normalized
+
+    # Test unparse_anno when node is None (unannotated parameter)
+    parsed = _parse_c_extension_sig_str("func(unannotated_arg)")
+    assert parsed is not None
+    assert parsed[1][0][3] is None  # annotation is None
+
+    # Test C++ style signature where first ast.parse raises SyntaxError and normalized parse succeeds (lines 162-163)
+    parsed_cpp = _parse_c_extension_sig_str(
+        "func(Tensor self, bool inplace=False) -> Tensor"
+    )
+    assert parsed_cpp is not None
+    assert parsed_cpp[1][0][0] == "inplace"
+
+    # Test invalid syntax after normalization to hit inner SyntaxError handler
+    assert _parse_c_extension_sig_str("func(a b c)") is None
+
+    # Test _normalize_c_sig_args with empty string and bracket ending
+    assert _normalize_c_sig_args("") == ""
+    assert _normalize_c_sig_args("std::vector<int>") == "std::vector<int>"
+
+    # Test fallback scanning lines where candidate parse fails first, then succeeds
+    def usage_func() -> Any:
+        pass
+
+    usage_func.__doc__ = (
+        "Some description\n"
+        ">>> usage_func(invalid syntax arg)\n"
+        ">>> usage_func(valid_arg: int) -> int\n"
+    )
+    sig_usage = extract_c_extension_signature(usage_func, "usage_func")
+    assert sig_usage is not None
+    assert sig_usage[0][0] == "valid_arg"

@@ -46,11 +46,14 @@ def S_MOV_B32 : SOP1_32 <"s_mov_b32">;
             "ml_framework_snapshots.tools.scrape_amd_rdna.fetch_td_file"
         ) as mock_fetch:
 
-            def fetch_side_effect(filename: str) -> str:
+            def fetch_side_effect(
+                filename: str, local_dir: typing.Optional[str] = None
+            ) -> str:
                 """Mock fetch_td_file side effect.
 
                 Args:
                     filename: The filename to fetch.
+                    local_dir: Optional local directory parameter.
 
                 Returns:
                     The mocked content.
@@ -204,3 +207,191 @@ def test_parse_td_content_multiclass() -> None:
     assert len(ops) == 1
     assert ops[0]["mnemonic"] == "v_dual_fmac_f32"
     assert ops[0]["encoding"] == "VOPD"
+
+
+def test_parse_llvm_tblgen_json() -> None:
+    """Test parse_llvm_tblgen_json extracting register classes, encodings, and modifiers."""
+    mock_tblgen = {
+        "!tablegen_json_version": 1,
+        "!instanceof": {"VOP1Inst": ["V_MOV_B32_e32"]},
+        "ignore_str": "not_a_dict",
+        "V_MOV_B32_e32": {
+            "!superclasses": ["VOP1Inst", "GFX10"],
+            "Mnemonic": "v_mov_b32_e32",
+            "OutOperandList": [{"def": "VGPR_32"}],
+            "InOperandList": [{"def": "VGPR_32"}],
+        },
+        "V_FMA_F32_e64": {
+            "!superclasses": ["VOP3Inst", "GFX11"],
+            "Mnemonic": {"def": "v_fma_f32"},
+            "OutOperandList": ["VGPR_32"],
+            "InOperandList": ["VGPR_32", "VGPR_32", "VGPR_32"],
+        },
+        "V_PK_ADD_F16": {
+            "!superclasses": ["VOP3PInst", "GFX12"],
+            "Mnemonic": "v_pk_add_f16",
+            "OutOperandList": ["VReg_64"],
+            "InOperandList": ["VReg_64", "VReg_64"],
+        },
+        "V_DUAL_ADD_F32": {
+            "!superclasses": ["VOPDInst", "GFX11_5"],
+            "OutOperandList": ["VGPR_32"],
+            "InOperandList": ["VGPR_32", "VGPR_32"],
+        },
+        "V_MFMA_F32": {
+            "!superclasses": ["VOP3Inst", "GFX9"],
+            "Mnemonic": "v_mfma_f32_16x16x16f16",
+            "OutOperandList": ["AReg_32"],
+            "InOperandList": ["VReg_64", "VReg_64", "AReg_32"],
+        },
+        "V_NOP": {
+            "!superclasses": ["VOP1Inst", "GFX10_3"],
+            "Mnemonic": "v_nop",
+            "OutOperandList": [],
+            "InOperandList": [],
+        },
+        "V_ADD_GENERIC": {
+            "!superclasses": ["VOP2Inst"],
+            "Mnemonic": "v_add_generic",
+            "OutOperandList": ["VGPR_32"],
+            "InOperandList": ["VGPR_32", "VGPR_32"],
+        },
+    }
+
+    results = scrape_amd_rdna.parse_llvm_tblgen_json(mock_tblgen)
+    res_map = {r["mnemonic"]: r for r in results}
+
+    assert "v_add_generic" in res_map
+    assert res_map["v_add_generic"]["architecture"] == "GFX10+"
+    assert "_e32" in res_map["v_add_generic"]["modifiers"]
+
+    assert "v_mov_b32" in res_map
+    assert res_map["v_mov_b32"]["encoding"] == "VOP1"
+    assert res_map["v_mov_b32"]["architecture"] == "GFX10/RDNA1"
+    assert res_map["v_mov_b32"]["operands"] == [["VGPR_32", "VGPR_32"]]
+    assert "_e32" in res_map["v_mov_b32"]["modifiers"]
+
+    assert "v_fma_f32" in res_map
+    assert res_map["v_fma_f32"]["encoding"] == "VOP3"
+    assert res_map["v_fma_f32"]["architecture"] == "GFX11/RDNA3"
+    assert "clamp" in res_map["v_fma_f32"]["modifiers"]
+
+    assert "v_pk_add_f16" in res_map
+    assert res_map["v_pk_add_f16"]["encoding"] == "VOP3P"
+    assert res_map["v_pk_add_f16"]["architecture"] == "GFX12/RDNA4"
+    assert "op_sel" in res_map["v_pk_add_f16"]["modifiers"]
+
+    assert "v_dual_add_f32" in res_map
+    assert res_map["v_dual_add_f32"]["encoding"] == "VOPD"
+    assert res_map["v_dual_add_f32"]["architecture"] == "GFX11.5"
+    assert "dual" in res_map["v_dual_add_f32"]["modifiers"]
+
+    assert "v_mfma_f32_16x16x16f16" in res_map
+    assert res_map["v_mfma_f32_16x16x16f16"]["architecture"] == "GFX9/CDNA"
+
+    assert "v_nop" in res_map
+    assert res_map["v_nop"]["architecture"] == "GFX10.3/RDNA2"
+
+
+def test_scrape_amd_rdna_with_tblgen_json(tmp_path: typing.Any) -> None:
+    """Test scrape_amd_rdna reading from a TableGen JSON export file."""
+    mock_tblgen = {
+        "V_ADD_F32_e32": {
+            "!superclasses": ["VOP2Inst", "GFX10"],
+            "Mnemonic": "v_add_f32",
+            "OutOperandList": [{"def": "VGPR_32"}],
+            "InOperandList": [{"def": "VGPR_32"}, {"def": "VGPR_32"}],
+        }
+    }
+    json_path = tmp_path / "dump.json"
+    json_path.write_text(json.dumps(mock_tblgen), encoding="utf-8")
+    out_path = tmp_path / "out.json"
+
+    result = scrape_amd_rdna.scrape_amd_rdna(
+        output_path=str(out_path), tblgen_json_path=str(json_path)
+    )
+    assert len(result) == 1
+    assert result[0]["mnemonic"] == "v_add_f32"
+    assert result[0]["encoding"] == "VOP2"
+
+
+def test_parse_llvm_tblgen_json_operand_and_encoding_fallbacks() -> None:
+    """Test TableGen JSON parsing edge cases for operand lists, unknown encoding, and non-VOPD."""
+    mock_tblgen = {
+        # 1. Unknown encoding profile with empty operands -> covers 305->327, 332->339, 339->345, 349->350, line 350
+        "CUSTOM_NOP": {
+            "!superclasses": ["SomeCustomClass"],
+            "Mnemonic": "custom_nop",
+            "OutOperandList": None,
+            "InOperandList": None,
+        },
+        # 2. Empty op_name in OutOperandList and InOperandList -> covers 335->333, 342->340
+        "V_EMPTY_OPS": {
+            "!superclasses": ["VOP1Inst"],
+            "Mnemonic": "v_empty_ops",
+            "OutOperandList": [{"def": ""}],
+            "InOperandList": [{"def": ""}],
+        },
+        # 3. Non-VOPD encoding with non-empty operands -> covers 359->363
+        "S_MOV_SOP1": {
+            "!superclasses": ["SOP1_32"],
+            "Mnemonic": "s_mov_sop1",
+            "OutOperandList": ["SGPR_32"],
+            "InOperandList": ["SGPR_32"],
+        },
+    }
+
+    results = scrape_amd_rdna.parse_llvm_tblgen_json(mock_tblgen)
+    res_map = {r["mnemonic"]: r for r in results}
+
+    assert "custom_nop" in res_map
+    assert "v_empty_ops" in res_map
+    assert "s_mov_sop1" in res_map
+    assert res_map["s_mov_sop1"]["encoding"] == "SOP1"
+    assert res_map["s_mov_sop1"]["modifiers"] == []
+
+
+def test_scrape_amd_rdna_duplicate_operand_signatures(tmp_path: typing.Any) -> None:
+    """Test scrape_amd_rdna when multiple records produce duplicate operand signatures."""
+    mock_tblgen = {
+        "V_ADD_F32_e32_1": {
+            "!superclasses": ["VOP2Inst", "GFX10"],
+            "Mnemonic": "v_add_f32",
+            "OutOperandList": ["VGPR_32"],
+            "InOperandList": ["VGPR_32", "VGPR_32"],
+        },
+        "V_ADD_F32_e32_2": {
+            "!superclasses": ["VOP2Inst", "GFX10"],
+            "Mnemonic": "v_add_f32",
+            "OutOperandList": ["VGPR_32"],
+            "InOperandList": ["VGPR_32", "VGPR_32"],
+        },
+    }
+    json_path = tmp_path / "dump_dup.json"
+    json_path.write_text(json.dumps(mock_tblgen), encoding="utf-8")
+    out_path = tmp_path / "out_dup.json"
+
+    result = scrape_amd_rdna.scrape_amd_rdna(
+        output_path=str(out_path), tblgen_json_path=str(json_path)
+    )
+    assert len(result) == 1
+    assert result[0]["mnemonic"] == "v_add_f32"
+    assert len(result[0]["operands"]) == 1
+
+
+def test_fetch_td_file_local_dir(tmp_path: typing.Any) -> None:
+    """Test fetching TableGen file from local checkout directory."""
+    local_td = tmp_path / "VOPDInstructions.td"
+    local_td.write_text('def V_DUAL_ADD : VOPD<"v_dual_add">;', encoding="utf-8")
+
+    content = scrape_amd_rdna.fetch_td_file(
+        "VOPDInstructions.td", local_dir=str(tmp_path)
+    )
+    assert 'def V_DUAL_ADD : VOPD<"v_dual_add">' in content
+
+    # Test scrape_amd_rdna using local_dir
+    out_path = tmp_path / "local_out.json"
+    res = scrape_amd_rdna.scrape_amd_rdna(
+        output_path=str(out_path), local_dir=str(tmp_path)
+    )
+    assert isinstance(res, list)

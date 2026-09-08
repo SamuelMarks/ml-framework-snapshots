@@ -20,7 +20,7 @@ import inspect
 import io
 import logging
 import re
-from typing import Any, Callable, Dict, List, Literal, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, ConfigDict
 from ml_switcheroo_ir.schema.ghost import GhostParam as GhostParam, GhostRef as GhostRef
@@ -103,10 +103,14 @@ class GhostResult(BaseModel):
 
 
 class ExtendedGhostParam(GhostParam):
-    """Extended GhostParam supporting operand directionality and IR parameter roles."""
+    """Extended GhostParam supporting operand directionality, IR roles, dtypes, rank, and factory defaults."""
 
     model_config = ConfigDict(extra="allow")
 
+    default: Optional[Union[str, Any]] = Field(
+        default=None,
+        description="Default value representation.",
+    )
     direction: Optional[OperandDirection] = Field(
         default=None,
         description="Operand directionality (READ, WRITE, READ_WRITE, PREDICATE).",
@@ -115,6 +119,69 @@ class ExtendedGhostParam(GhostParam):
         default=None,
         description="IR parameter role (OPERAND, ATTRIBUTE, RESULT, etc.).",
     )
+    dtypes: Optional[List[str]] = Field(
+        default=None,
+        description="Allowed tensor dtypes (e.g. ['float32', 'bfloat16', 'float16']).",
+    )
+    rank: Optional[Union[int, str]] = Field(
+        default=None,
+        description="Allowed tensor rank (e.g. 0 for scalar, 1, 2, 'N-D').",
+    )
+    default_factory: Optional[str] = Field(
+        default=None,
+        description="Name or representation of factory function producing default value.",
+    )
+    is_mandatory: Optional[bool] = Field(
+        default=None,
+        description="Whether parameter is mandatory (no default value).",
+    )
+
+
+def sanitize_param_default(
+    val: Any,
+) -> Tuple[Optional[str], Optional[str], bool]:
+    """Sanitize parameter default value while preserving semantic literals and scrubbing memory addresses.
+
+    Args:
+        val: Raw default value from inspect.Parameter or AST.
+
+    Returns:
+        Tuple of (default_value_string, default_factory_string, is_mandatory_bool).
+    """
+    if val is inspect.Parameter.empty:
+        return (None, None, True)
+    if val is Ellipsis:
+        return ("...", None, False)
+    if val is None:
+        return ("None", None, False)
+    if isinstance(val, bool):
+        return ("True" if val else "False", None, False)
+    if isinstance(val, (int, float)):
+        return (str(val), None, False)
+    if isinstance(val, str):
+        return (repr(val), None, False)
+
+    try:
+        if callable(val):
+            func_name = getattr(val, "__name__", None)
+            factory_str = (
+                f"<function {func_name}>" if func_name else "<factory_default>"
+            )
+            return ("<factory_default>", factory_str, False)
+
+        val_repr = repr(val)
+        if " at 0x" in val_repr:
+            scrubbed = re.sub(r" at 0x[0-9a-fA-F]+", "", val_repr)
+            if scrubbed.startswith("<") and scrubbed.endswith(">"):
+                return ("<factory_default>", scrubbed, False)
+            return (scrubbed, None, False)
+
+        val_str = str(val)
+        if " at 0x" in val_str:
+            return ("<factory_default>", "<factory_default>", False)
+        return (val_str, None, False)
+    except Exception:
+        return ("<unrepresentable>", None, False)
 
 
 class ExtendedGhostRef(GhostRef):
@@ -122,12 +189,53 @@ class ExtendedGhostRef(GhostRef):
 
     model_config = ConfigDict(extra="allow")
 
+    params: List[Union[ExtendedGhostParam, GhostParam]] = Field(
+        default_factory=list,
+        description="List of extended parameter specifications.",
+    )
     returns: Optional[List[GhostResult]] = Field(
         default=None, description="Multiple SSA returns or results."
     )
     domain_metadata: Optional[Dict[str, Any]] = Field(
         default=None,
         description="Structured domain metadata for ISAs and compilers.",
+    )
+    signature_completeness: Optional[Literal["exact", "heuristic", "opaque"]] = Field(
+        default="exact",
+        description="Completeness of signature resolution: exact, heuristic, or opaque.",
+    )
+    is_c_extension: Optional[bool] = Field(
+        default=False,
+        description="Whether the symbol originates from a compiled C/C++ extension.",
+    )
+
+
+class SnapshotEnvelope(BaseModel):
+    """Structured provenance envelope for framework and ISA/IR snapshots."""
+
+    model_config = ConfigDict(extra="allow")
+
+    schema_version: str = Field(default="1.0.0", description="Snapshot schema version.")
+    target: str = Field(..., description="Target framework, dialect, or hardware ISA.")
+    version: Optional[str] = Field(
+        default=None,
+        description="Upstream framework version or toolkit release.",
+    )
+    source_type: Optional[str] = Field(
+        default=None,
+        description="Extraction source (tablegen, binary_disassembly, python_ast).",
+    )
+    upstream_commit: Optional[str] = Field(
+        default=None, description="Upstream git commit hash or release tag."
+    )
+    generated_at: Optional[str] = Field(
+        default=None, description="ISO-8601 generation timestamp."
+    )
+    environment: Optional[Dict[str, Any]] = Field(
+        default=None, description="Build host environment metadata."
+    )
+    categories: Dict[str, List[Any]] = Field(
+        default_factory=dict, description="Categorized symbol dictionaries."
     )
 
 
@@ -373,6 +481,8 @@ class GhostInspector:
         kind = determined_kind
         params = []
         has_varargs = False
+        is_c_ext = False
+        sig_completeness: Literal["exact", "heuristic", "opaque"] = "exact"
 
         # Determine visibility
         determined_is_public = True
@@ -717,27 +827,9 @@ class GhostInspector:
                     if param.kind == inspect.Parameter.VAR_POSITIONAL:
                         has_varargs = True
 
-                    default_val = None
-                    if param.default is not inspect.Parameter.empty:
-                        val = param.default
-
-                        try:
-                            is_addr = " at 0x" in repr(val)
-                        except Exception:  # pragma: no cover
-                            is_addr = False
-
-                        if callable(val) or is_addr:
-                            default_val = None
-                        else:
-                            try:
-                                if isinstance(val, str):
-                                    default_val = repr(val)
-                                else:
-                                    default_val = str(val)
-                                if " at 0x" in default_val:
-                                    default_val = None
-                            except Exception:  # pragma: no cover
-                                default_val = "<unrepresentable>"
+                    default_val, _factory, _is_mand = sanitize_param_default(
+                        param.default
+                    )
 
                     anno_val = None
                     if param.name in resolved_hints:
@@ -753,10 +845,52 @@ class GhostInspector:
                         (param.name, str(param.kind), default_val, anno_val)
                     )
 
+                if (
+                    inspect.isbuiltin(obj)
+                    or getattr(target, "__module__", "").startswith("_")
+                    or "torch._C" in str(target)
+                    or type(target).__name__ == "builtin_function_or_method"
+                ):
+                    is_c_ext = True
+
             except (ValueError, TypeError):
+                is_c_ext = True
                 # Try parsing C-Extension docstring signature as a fallback
                 c_ext_params = extract_c_extension_signature(target, name)
+
+                # ATen & native function introspection for PyTorch
+                is_torch_target = (
+                    (name and name.startswith("torch."))
+                    or (getattr(target, "__module__", "") or "").startswith("torch")
+                    or api_path.startswith("torch.")
+                )
+                if is_torch_target:
+                    try:
+                        from .frameworks.torch import (
+                            extract_aten_c_extension_signature,
+                        )
+
+                        aten_sig = extract_aten_c_extension_signature(
+                            target,
+                            name,
+                            is_method=(
+                                kind == "method"
+                                or (name is not None and ".Tensor." in name)
+                            ),
+                        )
+                        if aten_sig is not None:
+                            if c_ext_params is None:
+                                c_ext_params = aten_sig
+                            elif (
+                                not getattr(c_ext_params, "overloads", None)
+                                and aten_sig.overloads
+                            ):
+                                c_ext_params.overloads = aten_sig.overloads
+                    except Exception:  # pragma: no cover
+                        pass
+
                 if c_ext_params is not None:
+                    sig_completeness = "heuristic"
                     if (returns_type is None or returns_type == "NoneType") and getattr(
                         c_ext_params, "returns_type", None
                     ):
@@ -769,6 +903,7 @@ class GhostInspector:
                         sanitized_pa = sanitize_type_str(pa) if pa else None
                         extracted_params.append((pn, pk, pd, sanitized_pa))
                 elif kind == "function":
+                    sig_completeness = "opaque"
                     has_varargs = True
                     extracted_params.append(("args", "VAR_POSITIONAL", None, None))
                     extracted_params.append(("kwargs", "VAR_KEYWORD", None, None))
@@ -776,6 +911,8 @@ class GhostInspector:
                         environment_tags = []
                     if "inexact_signature" not in environment_tags:
                         environment_tags.append("inexact_signature")
+                    if "opaque_c_extension" not in environment_tags:
+                        environment_tags.append("opaque_c_extension")
 
         if has_super_kwargs_call and hasattr(obj, "__mro__") and len(obj.__mro__) > 1:
             for parent in obj.__mro__[1:]:
@@ -844,6 +981,12 @@ class GhostInspector:
                 )
 
         # 4. Finalize GhostParams by merging in CDD docstring descriptions
+        is_torch_target = (
+            (name and name.startswith("torch."))
+            or (getattr(target, "__module__", "") or "").startswith("torch")
+            or api_path.startswith("torch.")
+        )
+
         for p_name, p_kind, p_default, p_anno in extracted_params:
             p_desc = None
             if p_name in cdd_params and cdd_params[p_name].get("doc"):
@@ -858,14 +1001,33 @@ class GhostInspector:
                 elif p_name in cdd_ast_params and cdd_ast_params[p_name].get("typ"):
                     p_anno = sanitize_type_str(cdd_ast_params[p_name]["typ"])
 
+            p_dtypes, p_rank = None, None
+            if is_torch_target:
+                try:
+                    from .frameworks.torch import infer_torch_dtype_and_rank
+
+                    p_dtypes, p_rank = infer_torch_dtype_and_rank(
+                        name, p_name, p_anno or ""
+                    )
+                except Exception:  # pragma: no cover
+                    pass
+
+            p_factory = None
+            if p_default and "<factory_default>" in str(p_default):
+                p_factory = "<factory_default>"
+
             params.append(
-                GhostParam(
+                ExtendedGhostParam(
                     name=p_name,
                     standardized_name=STANDARD_ARG_MAP.get(p_name),
                     kind=p_kind,
                     default=p_default,
                     annotation=p_anno,
                     description=p_desc,
+                    dtypes=p_dtypes,
+                    rank=p_rank,
+                    default_factory=p_factory,
+                    is_mandatory=p_default is None,
                 )
             )
 
@@ -960,14 +1122,34 @@ class GhostInspector:
                     if pk == "VAR_POSITIONAL":
                         ov_has_varargs = True
                     sanitized_pa = sanitize_type_str(pa) if pa else None
+
+                    ov_dtypes, ov_rank = None, None
+                    if is_torch_target:
+                        try:
+                            from .frameworks.torch import infer_torch_dtype_and_rank
+
+                            ov_dtypes, ov_rank = infer_torch_dtype_and_rank(
+                                name, pn, sanitized_pa or ""
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
+
+                    ov_factory = None
+                    if pd and "<factory_default>" in str(pd):
+                        ov_factory = "<factory_default>"
+
                     ov_params.append(
-                        GhostParam(
+                        ExtendedGhostParam(
                             name=pn,
                             standardized_name=STANDARD_ARG_MAP.get(pn),
                             kind=pk,
                             default=pd,
                             annotation=sanitized_pa,
                             description=None,
+                            dtypes=ov_dtypes,
+                            rank=ov_rank,
+                            default_factory=ov_factory,
+                            is_mandatory=pd is None,
                         )
                     )
                 ov_ret = (
@@ -993,7 +1175,7 @@ class GhostInspector:
                     )
                 )
 
-        return GhostRef(
+        return GhostPythonRef(
             name=name,
             api_path=api_path,
             kind=kind,
@@ -1007,6 +1189,8 @@ class GhostInspector:
             raises=raises,
             environment_tags=env_tags,
             overloads=overloads_refs,
+            signature_completeness=sig_completeness,
+            is_c_extension=is_c_ext,
         )
 
     @staticmethod

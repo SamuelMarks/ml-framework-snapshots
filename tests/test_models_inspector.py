@@ -168,3 +168,77 @@ def test_models_raises_no_typ(mocker: Any) -> None:
         dummy_func_with_docstring, "tests.dummy_func_with_docstring"
     )
     assert not ref.raises
+
+
+def test_ghost_inspector_aten_overload_and_factory_default(mocker: Any) -> None:
+    """Test GhostInspector when c_ext_params already has overloads and overload has factory default.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    from ml_framework_snapshots.utils import CExtensionSignature
+
+    existing_overload = CExtensionSignature(
+        params=[
+            ("y", "POSITIONAL_OR_KEYWORD", "<factory_default>", "float"),
+            ("z", "POSITIONAL_OR_KEYWORD", "1.0", "float"),
+        ]
+    )
+    existing_sig = CExtensionSignature(
+        params=[("x", "POSITIONAL_OR_KEYWORD", None, "int")],
+        overloads=[existing_overload],
+    )
+    aten_sig = CExtensionSignature(
+        params=[("x", "POSITIONAL_OR_KEYWORD", None, "int")],
+        overloads=[
+            CExtensionSignature(params=[("z", "POSITIONAL_OR_KEYWORD", None, "str")])
+        ],
+    )
+
+    mocker.patch(
+        "ml_framework_snapshots.models.extract_c_extension_signature",
+        return_value=existing_sig,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.frameworks.torch.extract_aten_c_extension_signature",
+        return_value=aten_sig,
+    )
+    mocker.patch("inspect.signature", side_effect=TypeError("no python signature"))
+
+    def dummy_torch_fn(x: int) -> None:
+        """Dummy function for torch inspection test.
+
+        Args:
+            x: Integer parameter.
+        """
+        pass
+
+    ref = GhostInspector.inspect(dummy_torch_fn, "torch.dummy_torch_fn")
+    assert len(ref.overloads) == 1
+    assert ref.overloads[0].params[0].default_factory == "<factory_default>"
+
+
+def test_ghost_inspector_aten_none(mocker: Any) -> None:
+    """Test GhostInspector when extract_aten_c_extension_signature returns None.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mocker.patch("inspect.signature", side_effect=TypeError("no python signature"))
+    mocker.patch(
+        "ml_framework_snapshots.frameworks.torch.extract_aten_c_extension_signature",
+        return_value=None,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.models.extract_c_extension_signature",
+        return_value=None,
+    )
+
+    def dummy_torch_fn() -> None:
+        """Dummy function for torch inspection test."""
+        pass
+
+    ref = GhostInspector.inspect(dummy_torch_fn, "torch.dummy_torch_fn")
+    assert len(ref.params) == 2
+    assert ref.params[0].name == "args"
+    assert ref.params[1].name == "kwargs"

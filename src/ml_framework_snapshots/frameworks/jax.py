@@ -6,7 +6,7 @@ generate GhostRefs for activations, losses, and optimizers.
 
 import inspect
 from ml_framework_snapshots.utils import get_all_members
-from typing import List
+from typing import Any, List
 import typing
 
 from ml_framework_snapshots.models import GhostInspector
@@ -74,6 +74,42 @@ def _scan_jax_initializers(include_nonpublic: bool) -> List[GhostRef]:
     return found
 
 
+def _attach_jax_static_arg_metadata(ref: GhostRef, obj: Any) -> GhostRef:
+    """Attach static argument numbers and names from JIT-compiled functions as metadata.
+
+    Args:
+        ref: GhostRef representation of function.
+        obj: Live JAX function or JIT wrapper.
+
+    Returns:
+        Augmented GhostRef with static argument metadata.
+    """
+    static_nums = getattr(obj, "_static_argnums", None) or getattr(
+        obj, "static_argnums", None
+    )
+    static_names = getattr(obj, "_static_argnames", None) or getattr(
+        obj, "static_argnames", None
+    )
+
+    if static_nums:
+        ref.environment_tags.append(
+            f"static_argnums:{','.join(map(str, sorted(list(static_nums))))}"
+        )
+        for idx, p in enumerate(ref.params):
+            if idx in static_nums:
+                p.standardized_name = "static_arg"
+
+    if static_names:
+        ref.environment_tags.append(
+            f"static_argnames:{','.join(map(str, sorted(list(static_names))))}"
+        )
+        for p in ref.params:
+            if p.name in static_names:
+                p.standardized_name = "static_arg"
+
+    return ref
+
+
 def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
     """Scan JAX for array API functions, primitives, random generation, and transforms.
 
@@ -95,7 +131,8 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                 continue
             if callable(obj) and not inspect.isclass(obj):
                 try:
-                    found.append(GhostInspector.inspect(obj, f"jax.numpy.{name}"))
+                    ref = GhostInspector.inspect(obj, f"jax.numpy.{name}")
+                    found.append(_attach_jax_static_arg_metadata(ref, obj))
                 except Exception:  # pragma: no cover
                     pass
 
@@ -108,7 +145,8 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                     and not inspect.isclass(obj)
                 ):
                     try:
-                        found.append(GhostInspector.inspect(obj, f"jax.lax.{name}"))
+                        ref = GhostInspector.inspect(obj, f"jax.lax.{name}")
+                        found.append(_attach_jax_static_arg_metadata(ref, obj))
                     except Exception:  # pragma: no cover
                         pass
 

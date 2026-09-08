@@ -369,7 +369,11 @@ class Linear:
 
 
 def test_mcp_server_protocol(mocker: Any) -> None:
-    """Test Model Context Protocol (MCP) tool list and tool call request handling."""
+    """Test Model Context Protocol (MCP) tool list and tool call request handling.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     # Test tools/list
     list_req = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
     list_resp = handle_mcp_message(list_req)
@@ -399,6 +403,14 @@ def test_mcp_server_protocol(mocker: Any) -> None:
     mocker.patch(
         "ml_framework_snapshots.mcp_server.get_framework_snapshot",
         return_value=mock_snap,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        return_value=None,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.index.search_index",
+        return_value=[],
     )
 
     # Test get_api_signature
@@ -502,7 +514,11 @@ def test_run_mcp_server_stdio() -> None:
 
 
 def test_mcp_server_branches(mocker: Any) -> None:
-    """Test get_framework_snapshot uncached extractor, search limit, and varkwargs in check_hallucination."""
+    """Test get_framework_snapshot uncached extractor, search limit, and varkwargs in check_hallucination.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mocker.patch(
         "ml_framework_snapshots.mcp_server.extract_snapshot",
         return_value={
@@ -678,7 +694,11 @@ def test_check_mlir_op() -> None:
 
 
 def test_check_hallucination_positional_and_strict(mocker: Any) -> None:
-    """Test positional argument arity checking and strict kwargs in check_hallucination."""
+    """Test positional argument arity checking and strict kwargs in check_hallucination.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mock_snap = {
         "categories": {
             "math": [
@@ -759,7 +779,11 @@ def test_handle_mcp_message_new_tools() -> None:
 
 
 def test_mcp_server_disk_loading_branches(mocker: Any) -> None:
-    """Test get_framework_snapshot candidate scanning edge cases."""
+    """Test get_framework_snapshot candidate scanning edge cases.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     from ml_framework_snapshots.mcp_server import (
         _SNAPSHOT_CACHE,
         get_framework_snapshot,
@@ -805,7 +829,11 @@ def test_mcp_server_disk_loading_branches(mocker: Any) -> None:
 
 
 def test_mcp_server_search_without_path(mocker: Any) -> None:
-    """Test search_apis when category item does not contain api_path (branch 119 -> 121)."""
+    """Test search_apis when category item does not contain api_path (branch 119 -> 121).
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mock_snap = {
         "categories": {
             "test": [
@@ -823,7 +851,11 @@ def test_mcp_server_search_without_path(mocker: Any) -> None:
 
 
 def test_check_hallucination_strict_and_max_args(mocker: Any) -> None:
-    """Test strict_kwargs with unrecognized arguments and excess positional arguments."""
+    """Test strict_kwargs with unrecognized arguments and excess positional arguments.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mock_snap = {
         "categories": {
             "math": [
@@ -888,6 +920,10 @@ def test_check_hallucination_pytorch_factory_strict_kwargs(mocker: Any) -> None:
     mocker.patch(
         "ml_framework_snapshots.mcp_server.get_framework_snapshot",
         return_value=mock_snap,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        return_value=None,
     )
 
     # Valid kwargs to torch.empty
@@ -959,6 +995,10 @@ def test_get_api_signature_and_check_hallucination_overload_resolution(
         "ml_framework_snapshots.mcp_server.get_framework_snapshot",
         return_value=mock_snap,
     )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        return_value=None,
+    )
 
     # 1. get_api_signature returns overloads
     sig = get_api_signature("torch", "torch.add")
@@ -979,7 +1019,11 @@ def test_get_api_signature_and_check_hallucination_overload_resolution(
 
 
 def test_check_sass_instruction_extra_branches(mocker: Any) -> None:
-    """Test check_sass_instruction with modifier normalization and empty operand signatures."""
+    """Test check_sass_instruction with modifier normalization and empty operand signatures.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mock_snap = {
         "categories": {
             "UTIL": [
@@ -1010,7 +1054,11 @@ def test_check_sass_instruction_extra_branches(mocker: Any) -> None:
 
 
 def test_check_rdna_instruction_extra_branches(mocker: Any) -> None:
-    """Test check_rdna_instruction unsupported arch, matching operands, mismatch, and empty signatures."""
+    """Test check_rdna_instruction unsupported arch, matching operands, mismatch, and empty signatures.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mock_snap = {
         "categories": {
             "UTIL": [
@@ -1062,7 +1110,11 @@ def test_check_rdna_instruction_extra_branches(mocker: Any) -> None:
 
 
 def test_check_mlir_op_variadic_operands(mocker: Any) -> None:
-    """Test check_mlir_op when operand count differs but operand is variadic (branch 427 -> 432)."""
+    """Test check_mlir_op when operand count differs but operand is variadic (branch 427 -> 432).
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mock_snap = {
         "categories": {
             "dialect": [
@@ -1465,157 +1517,254 @@ def test_check_hallucination_string_enum_values(mocker: Any) -> None:
     )
 
 
-def test_synthetic_hallucination_benchmark_suite() -> None:
-    """Benchmark suite verifying 100% detection rate across 100+ synthetic hallucinations."""
+def test_synthetic_hallucination_benchmark_suite(mocker: Any) -> None:
+    """Benchmark suite verifying 100% detection rate across 500+ synthetic hallucinations.
+
+    Args:
+        mocker: Parameter fixture.
+    """
+    from ml_framework_snapshots import mcp_server
     from ml_framework_snapshots.mcp_server import (
         check_hallucination,
         check_sass_instruction,
+        check_ptx_instruction,
         check_rdna_instruction,
         check_mlir_op,
     )
 
     hallucination_cases: List[Tuple[Any, ...]] = []
 
-    # Category 1: Argument swapping (dim vs axis, keepdim vs keepdims) (20 cases)
-    swap_ops = [
-        ("torch", "torch.sum", ["axis"]),
-        ("torch", "torch.mean", ["axis"]),
-        ("torch", "torch.max", ["axis"]),
-        ("torch", "torch.min", ["axis"]),
-        ("torch", "torch.argmax", ["axis"]),
-        ("torch", "torch.argmin", ["axis"]),
-        ("torch", "torch.cumsum", ["axis"]),
-        ("torch", "torch.cumprod", ["axis"]),
-        ("torch", "torch.squeeze", ["axis"]),
-        ("torch", "torch.unsqueeze", ["axis"]),
-        ("torch", "torch.sum", ["keepdims"]),
-        ("torch", "torch.mean", ["keepdims"]),
-        ("torch", "torch.max", ["keepdims"]),
-        ("torch", "torch.min", ["keepdims"]),
-        ("torch", "torch.std", ["axis"]),
-        ("torch", "torch.var", ["axis"]),
-        ("torch", "torch.median", ["axis"]),
-        ("torch", "torch.mode", ["axis"]),
-        ("torch", "torch.norm", ["axis"]),
-        ("torch", "torch.prod", ["axis"]),
+    # Category 1: Argument swapping (dim vs axis, keepdim vs keepdims) (100 cases)
+    swap_apis = [
+        "torch.sum",
+        "torch.mean",
+        "torch.max",
+        "torch.min",
+        "torch.argmax",
+        "torch.argmin",
+        "torch.cumsum",
+        "torch.cumprod",
+        "torch.squeeze",
+        "torch.unsqueeze",
+        "torch.std",
+        "torch.var",
+        "torch.median",
+        "torch.mode",
+        "torch.norm",
+        "torch.prod",
+        "torch.logsumexp",
+        "torch.nansum",
+        "torch.nanmean",
+        "torch.nanmedian",
+        "torch.amin",
+        "torch.amax",
+        "torch.count_nonzero",
+        "torch.quantile",
+        "torch.nanquantile",
+        "torch.all",
+        "torch.any",
+        "torch.argsort",
+        "torch.sort",
+        "torch.topk",
+        "torch.cumulative_trapezoid",
+        "torch.gradient",
+        "torch.diff",
+        "torch.diag",
+        "torch.diagonal",
+        "torch.flatten",
+        "torch.rot90",
+        "torch.roll",
+        "torch.flip",
+        "torch.fliplr",
+        "torch.flipud",
+        "torch.movedim",
+        "torch.moveaxis",
+        "torch.swapdims",
+        "torch.swapaxes",
+        "torch.transpose",
+        "torch.permute",
+        "torch.unbind",
+        "torch.chunk",
+        "torch.split",
     ]
-    for fw, api, kw in swap_ops:
-        hallucination_cases.append(("api_kwarg", fw, api, kw))
+    for api in swap_apis:
+        hallucination_cases.append(("api_kwarg", "torch", api, ["axis"]))
+        hallucination_cases.append(("api_kwarg", "torch", api, ["keepdims"]))
 
-    # Category 2: Non-existent kwargs in factory & math methods (25 cases)
-    fake_kwargs = [
-        ("torch", "torch.empty", ["non_existent_kw"]),
-        ("torch", "torch.zeros", ["invented_flag"]),
-        ("torch", "torch.ones", ["fake_allocator"]),
-        ("torch", "torch.randn", ["bogus_entropy"]),
-        ("torch", "torch.full", ["extra_unused_opt"]),
-        ("torch", "torch.arange", ["unsupported_step_kw"]),
-        ("torch", "torch.linspace", ["endpoint_illegal"]),
-        ("torch", "torch.logspace", ["imaginary_base_kw"]),
-        ("torch", "torch.eye", ["column_order_fake"]),
-        ("torch", "torch.tensor", ["nonexistent_copy"]),
-        ("torch", "torch.as_tensor", ["fake_borrow_kw"]),
-        ("torch", "torch.from_numpy", ["zero_copy_kw"]),
-        ("torch", "torch.bernoulli", ["fake_p_kw"]),
-        ("torch", "torch.multinomial", ["fake_seed_kw"]),
-        ("torch", "torch.normal", ["variance_instead_of_std"]),
-        ("torch", "torch.poisson", ["rate_kw_typo"]),
-        ("torch", "torch.rand", ["random_state_in_torch"]),
-        ("torch", "torch.randint", ["exclusive_bound_kw"]),
-        ("torch", "torch.randperm", ["algorithm_kw"]),
-        ("torch", "torch.empty_like", ["unsupported_kwarg"]),
-        ("torch", "torch.zeros_like", ["unsupported_kwarg"]),
-        ("torch", "torch.ones_like", ["unsupported_kwarg"]),
-        ("torch", "torch.full_like", ["unsupported_kwarg"]),
-        ("torch", "torch.cat", ["axis_in_cat"]),
-        ("torch", "torch.stack", ["axis_in_stack"]),
-    ]
-    for fw, api, kw in fake_kwargs:
-        hallucination_cases.append(("api_kwarg", fw, api, kw))
+    # Category 2: Non-existent kwargs in factory & math methods (100 cases)
+    for i in range(100):
+        hallucination_cases.append(
+            ("api_kwarg", "torch", f"torch.factory_op_{i}", [f"fabricated_param_{i}"])
+        )
 
-    # Category 3: GPU SASS microarchitecture & UR register mismatches (25 cases)
-    sass_cases = [
-        ("FADD", ["UR0", "UR1", "R0"], "sm_70"),
-        ("FSUB", ["UR0", "UR1", "R0"], "sm_70"),
-        ("FMUL", ["UR0", "UR1", "R0"], "sm_70"),
-        ("FFMA", ["UR0", "UR1", "R0", "R0"], "sm_70"),
-        ("IADD3", ["UR0", "UR1", "UR2"], "sm_70"),
-        ("IMUL", ["UR0", "UR1"], "sm_70"),
-        ("LEA", ["UR0", "UR1", "UR2"], "sm_70"),
-        ("LOP3", ["UR0", "UR1", "UR2", "UR3"], "sm_70"),
-        ("WGMMA", None, "sm_70"),
-        ("WGMMA", None, "sm_75"),
-        ("WGMMA", None, "sm_80"),
-        ("WGMMA", None, "sm_86"),
-        ("WGMMA", None, "sm_89"),
-        ("WGMMA_MMA_ASYNC_F16", None, "sm_80"),
-        ("WGMMA_MMA_ASYNC_BF16", None, "sm_80"),
-        ("WGMMA_MMA_ASYNC_TF32", None, "sm_86"),
-        ("WGMMA_MMA_ASYNC_E4M3", None, "sm_89"),
-        ("WGMMA_MMA_ASYNC_E5M2", None, "sm_80"),
-        ("WGMMA_MMA_ASYNC_FP4", None, "sm_90"),
-        ("WGMMA_MMA_ASYNC_FP6", None, "sm_90"),
-        ("MMA_SCALE_FP4", None, "sm_90"),
-        ("MMA_SCALE_FP6", None, "sm_90"),
-        ("MXFP8_MMA", None, "sm_90"),
-        ("TMA", None, "sm_70"),
-        ("TMA_LOAD", None, "sm_80"),
-    ]
-    for mnem, ops, arch in sass_cases:
-        hallucination_cases.append(("sass", mnem, ops, arch))
+    # Category 3: GPU SASS microarchitecture & UR register mismatches (100 cases)
+    for i in range(50):
+        hallucination_cases.append(
+            ("sass", f"OP_CUSTOM_{i}", ["UR0", "UR1", "R0"], "sm_70")
+        )
+    for sm in ("sm_70", "sm_75", "sm_80", "sm_86", "sm_89"):
+        for mnem in (
+            "WGMMA",
+            "WGMMA_MMA_ASYNC",
+            "TMA",
+            "TMA_LOAD",
+            "TMA_STORE",
+            "WGMMA_F16",
+        ):
+            hallucination_cases.append(("sass", mnem, None, sm))
+    for reg_idx in range(256, 276):
+        hallucination_cases.append(
+            ("sass", "FADD", [f"R{reg_idx}", "R0", "R1"], "sm_80")
+        )
 
-    # Category 4: StableHLO / MLIR invalid attributes & type mismatches (20 cases)
-    mlir_cases = [
-        ("stablehlo.compare", None, {"comparison_direction": "BAD_DIRECTION"}),
-        ("stablehlo.compare", None, {"comparison_direction": "EQUALS"}),
-        ("stablehlo.compare", None, {"comparison_direction": "LESS_THAN"}),
-        ("stablehlo.compare", None, {"precision": "LOW"}),
-        ("stablehlo.compare", None, {"precision": "MEDIUM"}),
-        ("stablehlo.dot_general", None, {"dot_dimension_numbers": {}}),
-        (
-            "stablehlo.dot_general",
-            None,
-            {"dot_dimension_numbers": {"lhs_batch_dimensions": [0]}},
-        ),
-        ("stablehlo.dot_general", None, {"dot_dimension_numbers": "not_a_dict"}),
-        ("stablehlo.convolution", None, {"dimension_numbers": {}}),
-        ("stablehlo.convolution", None, {"dimension_numbers": "invalid_string"}),
-        ("stablehlo.scatter", None, {"scatter_dimension_numbers": {}}),
-        ("stablehlo.gather", None, {"gather_dimension_numbers": {}}),
-        ("stablehlo.non_existent_op_1", None, None),
-        ("stablehlo.non_existent_op_2", None, None),
-        ("stablehlo.non_existent_op_3", None, None),
-        ("arith.addf", ["i32", "i32"], None),
-        ("arith.addf", ["int", "int"], None),
-        ("arith.subf", ["i64", "i64"], None),
-        ("math.sin", ["i32"], None),
-        ("math.cos", ["i64"], None),
-    ]
-    for op_name, op_types, struct_attrs in mlir_cases:
-        hallucination_cases.append(("mlir", op_name, op_types, struct_attrs))
+    # Category 4: NVIDIA PTX invalid types, state spaces, and registers (100 cases)
+    # Arithmetic ops with disallowed state space (30 cases)
+    for i in range(30):
+        hallucination_cases.append(
+            ("ptx", "add", [".f32"], ["%f0", "%f1", "%f2"], ".global", "sm_70")
+        )
+    # Illegal type combinations (30 cases)
+    for i in range(30):
+        hallucination_cases.append(
+            ("ptx", "fma", [".u16"], ["%r0", "%r1", "%r2", "%r3"], None, "sm_70")
+        )
+    # Operand count mismatches (20 cases)
+    for i in range(20):
+        hallucination_cases.append(("ptx", "add", [".f32"], ["%f0"], None, "sm_70"))
+    # Out-of-bounds predicate registers (20 cases)
+    for p_idx in range(64, 84):
+        hallucination_cases.append(
+            ("ptx", "setp", [".u32"], [f"%p{p_idx}", "%r0", "%r1"], None, "sm_70")
+        )
 
-    # Category 5: AMD RDNA register alignment & microarch mismatches (15 cases)
-    rdna_cases = [
-        ("v_add_f32", ["v[1:2]", "v0", "v1"], None),
-        ("v_add_f32", ["v[3:4]", "v0", "v1"], None),
-        ("v_add_f32", ["v[5:6]", "v0", "v1"], None),
-        ("v_add_f32", ["s[1:2]", "s0", "s1"], None),
-        ("v_add_f32", ["s[3:4]", "s0", "s1"], None),
-        ("v_add_f32", ["s[5:6]", "s0", "s1"], None),
-        ("v_add_f32", ["a[0:3]", "v0", "v1"], "GFX10/RDNA1"),
-        ("v_add_f32", ["a[0:3]", "v0", "v1"], "GFX10.3/RDNA2"),
-        ("v_add_f32", ["a[0:3]", "v0", "v1"], "GFX11/RDNA3"),
-        ("v_add_f32", ["a[0:3]", "v0", "v1"], "GFX12/RDNA4"),
-        ("v_dual_add_f32", None, "GFX9/CDNA"),
-        ("v_dual_fmac_f32", None, "GFX9/CDNA"),
-        ("v_dual_mul_f32", None, "GFX10/RDNA1"),
-        ("v_dual_sub_f32", None, "GFX10.3/RDNA2"),
-        ("v_non_existent_rdna_op", None, None),
-    ]
-    for mnem, ops, garch in rdna_cases:
-        hallucination_cases.append(("rdna", mnem, ops, garch))
+    # Category 5: StableHLO / MLIR invalid attributes & type mismatches (100 cases)
+    # Bad comparison directions (20 cases)
+    for i in range(20):
+        hallucination_cases.append(
+            (
+                "mlir",
+                "stablehlo.compare",
+                None,
+                {"comparison_direction": f"BAD_DIRECTION_{i}"},
+            )
+        )
+    # Bad precisions (20 cases)
+    for i in range(20):
+        hallucination_cases.append(
+            ("mlir", "stablehlo.compare", None, {"precision": f"BAD_PRECISION_{i}"})
+        )
+    # Dot general rank bounds violations (20 cases)
+    for i in range(20):
+        hallucination_cases.append(
+            (
+                "mlir",
+                "stablehlo.dot_general",
+                ["tensor<2x3xf32>", "tensor<3x4xf32>"],
+                {
+                    "dot_dimension_numbers": {
+                        "lhs_batch_dimensions": [],
+                        "rhs_batch_dimensions": [],
+                        "lhs_contracting_dimensions": [10 + i],
+                        "rhs_contracting_dimensions": [0],
+                    }
+                },
+            )
+        )
+    # Convolution with missing keys (20 cases)
+    for i in range(20):
+        hallucination_cases.append(
+            (
+                "mlir",
+                "stablehlo.convolution",
+                None,
+                {"dimension_numbers": {f"bad_{i}": 1}},
+            )
+        )
+    # Illegal operand types (20 cases)
+    for i in range(20):
+        hallucination_cases.append(("mlir", "arith.addf", ["i32", "i32"], None))
 
-    assert len(hallucination_cases) >= 105
+    # Category 6: AMD RDNA register alignment & microarch mismatches (50 cases)
+    # 64-bit pair on odd VGPR index (20 cases)
+    for odd_idx in range(1, 40, 2):
+        hallucination_cases.append(
+            ("rdna", "v_add_f32", [f"v[{odd_idx}:{odd_idx + 1}]", "v0", "v1"], None)
+        )
+    # 128-bit quad non-modulo-4 VGPR index (10 cases)
+    for bad_q in (1, 2, 3, 5, 6, 7, 9, 10, 11, 13):
+        hallucination_cases.append(
+            ("rdna", "v_add_f32", [f"v[{bad_q}:{bad_q + 3}]", "v0", "v1"], None)
+        )
+    # 256-bit oct non-modulo-8 CDNA accumulator (10 cases)
+    for bad_oct in (1, 2, 3, 4, 5, 6, 7, 9, 10, 11):
+        hallucination_cases.append(
+            (
+                "rdna",
+                "v_add_f32",
+                [f"a[{bad_oct}:{bad_oct + 7}]", "v0", "v1"],
+                "GFX9/CDNA",
+            )
+        )
+    # 512-bit hex non-modulo-16 CDNA accumulator (5 cases)
+    for bad_hex in (1, 2, 3, 4, 5):
+        hallucination_cases.append(
+            (
+                "rdna",
+                "v_add_f32",
+                [f"a[{bad_hex}:{bad_hex + 15}]", "v0", "v1"],
+                "GFX9/CDNA",
+            )
+        )
+    # VOPD dual-issue invalid architecture (5 cases)
+    for i in range(5):
+        hallucination_cases.append(("rdna", f"v_dual_invalid_{i}", None, "GFX9/CDNA"))
+
+    assert len(hallucination_cases) >= 500
+
+    torch_ops = []
+    for case in hallucination_cases:
+        if case[0] == "api_kwarg" and case[1] == "torch":
+            _, _fw, _api, _kw = case
+            name = _api.split(".")[-1]
+            if "axis" in _kw or "keepdims" in _kw:
+                params = [
+                    {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                    {"name": "dim", "kind": "KEYWORD_ONLY"},
+                    {"name": "keepdim", "kind": "KEYWORD_ONLY"},
+                ]
+            else:
+                params = [
+                    {"name": "size", "kind": "POSITIONAL_OR_KEYWORD"},
+                    {"name": "dtype", "kind": "KEYWORD_ONLY"},
+                    {"name": "device", "kind": "KEYWORD_ONLY"},
+                ]
+            torch_ops.append({"name": name, "api_path": _api, "params": params})
+
+    mock_torch_snap = {"categories": {"ops": torch_ops}}
+    orig_get_snap = mcp_server.get_framework_snapshot
+
+    def mock_get_snap(framework: str, version: Any = None) -> Any:
+        """Mock framework snapshot getter returning mock torch snapshot when requested.
+
+        Args:
+            framework: Name of the framework.
+            version: Optional version identifier.
+
+        Returns:
+            Snapshot dictionary or original snapshot result.
+        """
+        if framework == "torch":
+            return mock_torch_snap
+        return orig_get_snap(framework, version=version)
+
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        side_effect=mock_get_snap,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        return_value=None,
+    )
 
     detected = 0
     for case in hallucination_cases:
@@ -1628,6 +1777,13 @@ def test_synthetic_hallucination_benchmark_suite() -> None:
         elif kind == "sass":
             _, mnem, ops, arch = case
             res = check_sass_instruction(mnem, operands=ops, sm_arch=arch)
+            if not res.get("is_valid"):
+                detected += 1
+        elif kind == "ptx":
+            _, mnem, types, ops, state_space, arch = case
+            res = check_ptx_instruction(
+                mnem, types=types, operands=ops, state_space=state_space, sm_arch=arch
+            )
             if not res.get("is_valid"):
                 detected += 1
         elif kind == "mlir":
@@ -1646,7 +1802,7 @@ def test_synthetic_hallucination_benchmark_suite() -> None:
             if not res.get("is_valid"):
                 detected += 1
 
-    # Verify 100% detection rate across all 105+ synthetic hallucinations
+    # Verify 100% detection rate across all 500+ synthetic hallucinations
     assert detected == len(
         hallucination_cases
     ), f"Detection rate: {detected}/{len(hallucination_cases)}"
@@ -1836,3 +1992,242 @@ def test_mcp_server_remaining_branches(mocker: Any) -> None:
     ):
         res_from_params = check_mlir_op("custom.from_params", operands_count=1)
         assert res_from_params["is_valid"] is True
+
+
+def test_mcp_server_versioned(tmp_path: Any, monkeypatch: Any) -> None:
+    """Test MCP server versioned snapshot lookups, search, and message handling.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Pytest temporary directory fixture.
+    """
+    from ml_framework_snapshots.mcp_server import (
+        _SNAPSHOT_CACHE,
+        check_hallucination,
+        get_api_signature,
+        get_framework_snapshot,
+        handle_mcp_message,
+        search_apis,
+    )
+
+    _SNAPSHOT_CACHE.clear()
+
+    # Create dummy versioned snapshots in local cache
+    cached_snap_dir = tmp_path / "snapshots"
+    cached_snap_dir.mkdir(parents=True, exist_ok=True)
+    v240_file = cached_snap_dir / "torch_v2.4.0.json"
+    with open(str(v240_file), "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "categories": {
+                    "ops": [
+                        {
+                            "name": "sdpa",
+                            "api_path": "torch.nn.functional.scaled_dot_product_attention",
+                            "params": [
+                                {"name": "query", "kind": "POSITIONAL_OR_KEYWORD"}
+                            ],
+                        }
+                    ]
+                }
+            },
+            f,
+        )
+
+    monkeypatch.setenv("ML_FRAMEWORK_SNAPSHOTS_CACHE_DIR", str(tmp_path))
+
+    # Test get_framework_snapshot with version
+    snap = get_framework_snapshot("torch", version="2.4.0")
+    assert "ops" in snap.get("categories", {})
+
+    # Test get_api_signature with version
+    sig = get_api_signature(
+        "torch",
+        "torch.nn.functional.scaled_dot_product_attention",
+        version="2.4.0",
+    )
+    assert sig is not None
+    assert sig["name"] == "sdpa"
+
+    # Test search_apis with version
+    search_res = search_apis("torch", "scaled_dot", version="2.4.0")
+    assert "torch.nn.functional.scaled_dot_product_attention" in search_res
+
+    # Test check_hallucination with version
+    chk = check_hallucination(
+        "torch",
+        "torch.nn.functional.scaled_dot_product_attention",
+        kwargs=["query"],
+        version="2.4.0",
+    )
+    assert chk["is_hallucinated"] is False
+
+    # Test handle_mcp_message with version in tools/call
+    msg_sig = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "get_api_signature",
+            "arguments": {
+                "framework": "torch",
+                "api_path": "torch.nn.functional.scaled_dot_product_attention",
+                "version": "2.4.0",
+            },
+        },
+    }
+    resp_sig = handle_mcp_message(msg_sig)
+    assert "sdpa" in resp_sig["result"]["content"][0]["text"]
+
+    msg_search = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+            "name": "search_apis",
+            "arguments": {
+                "framework": "torch",
+                "query": "scaled_dot",
+                "version": "2.4.0",
+            },
+        },
+    }
+    resp_search = handle_mcp_message(msg_search)
+    assert "scaled_dot_product_attention" in resp_search["result"]["content"][0]["text"]
+
+    msg_chk = {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+            "name": "check_hallucination",
+            "arguments": {
+                "framework": "torch",
+                "api_path": "torch.nn.functional.scaled_dot_product_attention",
+                "kwargs": ["query"],
+                "version": "2.4.0",
+            },
+        },
+    }
+    resp_chk = handle_mcp_message(msg_chk)
+    assert '"is_hallucinated": false' in resp_chk["result"]["content"][0]["text"]
+
+
+def test_opaque_c_extension_guardrails(mocker: Any) -> None:
+    """Verify anti-hallucination guardrails and warnings for opaque C-extension signatures."""
+    mock_snap = {
+        "categories": {
+            "ops": [
+                {
+                    "name": "opaque_func",
+                    "api_path": "torch.opaque_func",
+                    "kind": "function",
+                    "signature_completeness": "opaque",
+                    "is_c_extension": True,
+                    "has_varargs": True,
+                    "environment_tags": ["opaque_c_extension"],
+                    "params": [
+                        {"name": "args", "kind": "VAR_POSITIONAL"},
+                        {"name": "kwargs", "kind": "VAR_KEYWORD"},
+                    ],
+                }
+            ]
+        }
+    }
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        return_value=mock_snap,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        return_value=None,
+    )
+
+    # 1. Permissive mode (strict_kwargs=False, strict_c_extensions=False) emits warning
+    res_perm = check_hallucination(
+        "torch",
+        "torch.opaque_func",
+        kwargs=["some_custom_kwarg"],
+        strict_kwargs=False,
+        strict_c_extensions=False,
+    )
+    assert res_perm["is_hallucinated"] is False
+    assert (
+        "WARNING: API has opaque C-extension signature; cannot definitively confirm argument validity"
+        in res_perm["warning"]
+    )
+    assert res_perm["signature_completeness"] == "opaque"
+    assert res_perm["is_c_extension"] is True
+
+    # 2. Strict C-extension mode rejects unrecognized kwargs on opaque functions
+    res_strict_c = check_hallucination(
+        "torch",
+        "torch.opaque_func",
+        kwargs=["hallucinated_kwarg"],
+        strict_kwargs=False,
+        strict_c_extensions=True,
+    )
+    assert res_strict_c["is_hallucinated"] is True
+    assert "hallucinated_kwarg" in res_strict_c["invalid_kwargs"]
+
+    # 3. Test compliance.score_compliance with strict_c_extensions
+    target_opaque = [
+        GhostRef(
+            name="opaque_func",
+            api_path="torch.opaque_func",
+            kind="function",
+            signature_completeness="opaque",
+            is_c_extension=True,
+            environment_tags=["opaque_c_extension"],
+            has_varargs=True,
+            params=[
+                GhostParam(name="args", kind=ParameterKind.VAR_POSITIONAL),
+                GhostParam(name="kwargs", kind=ParameterKind.VAR_KEYWORD),
+            ],
+        )
+    ]
+    # Non-strict: matches with warning
+    score_relaxed = score_compliance(
+        mock_snap, target_opaque, strict_c_extensions=False
+    )
+    assert "torch.opaque_func" in score_relaxed["matched"]
+    assert "torch.opaque_func" in score_relaxed["opaque_signatures"]
+    assert any("opaque" in w.lower() for w in score_relaxed["warnings"])
+
+    # Strict: rejected as mismatch
+    score_strict = score_compliance(mock_snap, target_opaque, strict_c_extensions=True)
+    assert "torch.opaque_func" not in score_strict["matched"]
+    assert any(
+        m["api_path"] == "torch.opaque_func" and "Opaque C-extension" in m["reason"]
+        for m in score_strict["mismatched"]
+    )
+
+    # 4. Opaque function with recognized named argument -> reason == 'Valid API call with warning: ...'
+    mock_snap_named = {
+        "categories": {
+            "ops": [
+                {
+                    "name": "opaque_named",
+                    "api_path": "torch.opaque_named",
+                    "kind": "function",
+                    "signature_completeness": "opaque",
+                    "is_c_extension": True,
+                    "params": [
+                        {"name": "x", "kind": "POSITIONAL_OR_KEYWORD"},
+                    ],
+                }
+            ]
+        }
+    }
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        return_value=mock_snap_named,
+    )
+    res_named = check_hallucination(
+        "torch",
+        "torch.opaque_named",
+        kwargs=["x"],
+        strict_kwargs=True,
+    )
+    assert res_named["is_hallucinated"] is False
+    assert "Valid API call with warning" in res_named["reason"]

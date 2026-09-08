@@ -161,7 +161,7 @@ def test_memory_address_default() -> None:
         pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
-    assert ref.params[0].default is None
+    assert ref.params[0].default == "<factory_default>"
 
 
 def test_callable_default() -> None:
@@ -180,7 +180,7 @@ def test_callable_default() -> None:
         pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
-    assert ref.params[0].default is None
+    assert ref.params[0].default == "<factory_default>"
 
 
 def test_ghost_inspector_str_throws() -> None:
@@ -268,7 +268,7 @@ def test_ghost_inspector_str_has_address() -> None:
         pass  # pragma: no cover
 
     ref = GhostInspector.inspect(f, "f")
-    assert ref.params[0].default is None
+    assert ref.params[0].default == "<factory_default>"
 
 
 def test_ghost_inspector_cdd_raises_no_typ(mocker: Any) -> None:
@@ -651,7 +651,11 @@ def test_sanitize_type_str_empty_after_strip() -> None:
 
 
 def test_ghost_inspector_griffe_class_init(mocker: Any) -> None:
-    """Test griffe class inspection resolving parameters from __init__."""
+    """Test griffe class inspection resolving parameters from __init__.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     mock_param = mocker.MagicMock()
     mock_param.name = "val"
     mock_param.kind.name = "POSITIONAL_OR_KEYWORD"

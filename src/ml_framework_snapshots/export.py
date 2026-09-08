@@ -1,6 +1,6 @@
 """Export module for generating JSON Schema, OpenAPI specifications, Pydantic classes, and Protobuf definitions."""
 
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional, Set
 from collections import OrderedDict
 
 from ml_switcheroo_ir.schema.ghost import GhostRef
@@ -100,82 +100,222 @@ def to_openapi(refs: List[GhostRef]) -> Dict[str, Any]:
     return cast(Dict[str, Any], cdd.compound.openapi.emit.openapi(nm_cruds))
 
 
-def to_pydantic(ref: GhostRef) -> str:
+def to_pydantic(ref: GhostRef, validate_varargs: bool = False) -> str:
     """Convert a GhostRef into a Pydantic V2 class definition string.
+
+    Supports overloaded signatures by generating a typing.Union of Pydantic models,
+    variable positional arguments as validated Tuple fields, and parameter descriptions
+    in Field(description=...) for OpenAPI/schema generation.
 
     Args:
         ref: The GhostRef to convert.
+        validate_varargs: Whether to represent *args as validated Tuple fields instead of skipping.
 
     Returns:
         A string containing the Python source for the Pydantic model.
-
     """
-    lines = [
+    header_lines = [
         "from pydantic import BaseModel, Field",
-        "from typing import Any, Optional, Union, List, Dict",
+        "from typing import Any, Optional, Union, List, Dict, Tuple",
         "",
         "",
-        f"class {ref.name}(BaseModel):",
     ]
 
-    if ref.docstring:
-        lines.append(f'    """{ref.docstring}"""')
-    else:
-        lines.append('    """Generated Pydantic model."""')
+    def _render_single_model(
+        name: str, doc: Optional[str], params: List[Any]
+    ) -> List[str]:
+        """Render Python source code lines for a single Pydantic model.
 
-    if not ref.params:
-        lines.append("    pass")
-    else:
-        for param in ref.params:
+        Args:
+            name: Class name for the Pydantic model.
+            doc: Optional docstring for the class.
+            params: List of GhostParam specifications.
+
+        Returns:
+            List of Python source code lines for the class.
+        """
+        m_lines = [f"class {name}(BaseModel):"]
+        if doc:
+            m_lines.append(f'    """{doc}"""')
+        else:
+            m_lines.append('    """Generated Pydantic model."""')
+
+        valid_params = []
+        for p in params:
+            if p.kind in ("VAR_POSITIONAL", "VAR_KEYWORD") and not validate_varargs:
+                continue
+            valid_params.append(p)
+
+        if not valid_params:
+            m_lines.append("    pass")
+            return m_lines
+
+        for param in valid_params:
             typ = param.annotation if param.annotation else "Any"
             desc = param.description.replace('"', "'") if param.description else ""
             default_val = param.default
 
-            if param.kind in ("VAR_POSITIONAL", "VAR_KEYWORD"):
-                continue  # Skip *args / **kwargs for structured Pydantic
+            if param.kind == "VAR_POSITIONAL":
+                typ = f"Tuple[{typ}, ...]" if typ != "Any" else "Tuple[Any, ...]"
+                field_def = (
+                    f'Field(default=(), description="{desc}")'
+                    if desc
+                    else "Field(default=())"
+                )
+                m_lines.append(f"    {param.name}: {typ} = {field_def}")
+                continue
+            if param.kind == "VAR_KEYWORD":
+                typ = f"Dict[str, {typ}]" if typ != "Any" else "Dict[str, Any]"
+                field_def = (
+                    f'Field(default_factory=dict, description="{desc}")'
+                    if desc
+                    else "Field(default_factory=dict)"
+                )
+                m_lines.append(f"    {param.name}: {typ} = {field_def}")
+                continue
 
             if default_val is None:
-                # Required field
                 field_def = (
                     f'Field(..., description="{desc}")' if desc else "Field(...)"
                 )
-                lines.append(f"    {param.name}: {typ} = {field_def}")
+                m_lines.append(f"    {param.name}: {typ} = {field_def}")
             else:
-                # Optional/Default field
                 field_def = (
                     f'Field(default={default_val}, description="{desc}")'
                     if desc
                     else f"{default_val}"
                 )
-                lines.append(f"    {param.name}: {typ} = {field_def}")
+                m_lines.append(f"    {param.name}: {typ} = {field_def}")
 
-    return "\n".join(lines) + "\n"
+        return m_lines
+
+    all_models: List[str] = []
+    if ref.overloads:
+        all_variants = [ref] + [ov for ov in ref.overloads if isinstance(ov, GhostRef)]
+        variant_names = []
+        for i, variant in enumerate(all_variants):
+            var_name = f"{ref.name}Variant{i}"
+            variant_names.append(var_name)
+            all_models.extend(
+                _render_single_model(
+                    var_name, variant.docstring or ref.docstring, variant.params
+                )
+            )
+            all_models.append("")
+
+        all_models.append(f"{ref.name} = Union[{', '.join(variant_names)}]")
+    else:
+        all_models.extend(_render_single_model(ref.name, ref.docstring, ref.params))
+
+    return "\n".join(header_lines + all_models) + "\n"
 
 
-def _py_type_to_proto(typ: str) -> str:
-    """Map Python type to Protobuf type.
+PROTO_TENSOR_DEFINITION = """message TensorProto {
+  repeated int64 shape = 1;
+  string dtype = 2;
+  bytes raw_data = 3;
+}"""
+
+PROTO_ENUM_DEFINITIONS: Dict[str, str] = {
+    "reduction": """enum ReductionType {
+  REDUCTION_UNSPECIFIED = 0;
+  REDUCTION_NONE = 1;
+  REDUCTION_MEAN = 2;
+  REDUCTION_SUM = 3;
+}""",
+    "padding": """enum PaddingMode {
+  PADDING_UNSPECIFIED = 0;
+  PADDING_VALID = 1;
+  PADDING_SAME = 2;
+  PADDING_ZEROS = 3;
+  PADDING_REFLECT = 4;
+  PADDING_REPLICATE = 5;
+  PADDING_CIRCULAR = 6;
+}""",
+    "layout": """enum LayoutMode {
+  LAYOUT_UNSPECIFIED = 0;
+  LAYOUT_NCHW = 1;
+  LAYOUT_NHWC = 2;
+  LAYOUT_NCDHW = 3;
+  LAYOUT_NDHWC = 4;
+}""",
+    "mode": """enum InterpolationMode {
+  INTERPOLATION_UNSPECIFIED = 0;
+  INTERPOLATION_NEAREST = 1;
+  INTERPOLATION_LINEAR = 2;
+  INTERPOLATION_BILINEAR = 3;
+  INTERPOLATION_BICUBIC = 4;
+  INTERPOLATION_TRILINEAR = 5;
+  INTERPOLATION_AREA = 6;
+}""",
+}
+
+
+PROTO_DEFINITIONS_BY_TYPE: Dict[str, str] = {
+    "TensorProto": PROTO_TENSOR_DEFINITION,
+    "ReductionType": PROTO_ENUM_DEFINITIONS["reduction"],
+    "PaddingMode": PROTO_ENUM_DEFINITIONS["padding"],
+    "LayoutMode": PROTO_ENUM_DEFINITIONS["layout"],
+    "InterpolationMode": PROTO_ENUM_DEFINITIONS["mode"],
+}
+
+
+def _py_type_to_proto(typ: Optional[str], param_name: str = "") -> str:
+    """Map Python type to Protobuf type with structured message and enum mapping.
 
     Args:
-        typ: python type string.
+        typ: Python type string.
+        param_name: Parameter name for shape and enum heuristic mapping.
 
     Returns:
-        proto type string.
+        Protobuf type string.
     """
     if not typ:
-        return "string"  # Fallback
+        return "string"
 
-    typ = typ.lower()
-    if "list" in typ or "tuple" in typ:
-        return "repeated string"  # Simplification for complex generics
-    elif "dict" in typ:
+    clean_t = str(typ).lower().strip()
+    p_norm = param_name.lower().strip()
+
+    # 1. Structured Tensor types -> TensorProto
+    if clean_t in (
+        "tensor",
+        "torch.tensor",
+        "tensorproto",
+        "ndarray",
+        "array",
+    ) or clean_t.startswith("tensor<"):
+        return "TensorProto"
+
+    # 2. Dimension shapes -> repeated int64
+    if p_norm in ("shape", "size", "dims", "dimensions") or clean_t in (
+        "shape",
+        "dimensions",
+        "tuple[int, ...]",
+        "sequence[int]",
+    ):
+        return "repeated int64"
+
+    # 3. Preserved Enums
+    if p_norm in ("reduction", "reduction_type"):
+        return "ReductionType"
+    if p_norm in ("padding", "padding_mode"):
+        return "PaddingMode"
+    if p_norm in ("layout", "layout_mode"):
+        return "LayoutMode"
+    if p_norm == "mode" and "interp" in clean_t:
+        return "InterpolationMode"
+
+    if "list" in clean_t or "tuple" in clean_t:
+        return "repeated string"
+    elif "dict" in clean_t:
         return "map<string, string>"
-    elif "int" in typ:
+    elif "int" in clean_t:
         return "int64"
-    elif "float" in typ:
+    elif "float" in clean_t:
         return "double"
-    elif "bool" in typ:
+    elif "bool" in clean_t:
         return "bool"
-    elif "str" in typ:
+    elif "str" in clean_t:
         return "string"
     return "string"
 
@@ -191,26 +331,21 @@ def to_protobuf(ref: GhostRef, package: str = "ml_framework") -> str:
         A string containing the .proto definition.
 
     """
-    lines = [
-        'syntax = "proto3";',
-        "",
-        f"package {package};",
-        "",
-        (
-            f"// {ref.docstring}"
-            if ref.docstring
-            else f"// Generated message for {ref.api_path}"
-        ),
-        f"message {ref.name} {{",
-    ]
+    preamble_blocks: List[str] = []
+    seen_blocks: Set[str] = set()
 
+    field_lines: List[str] = []
     field_num = 1
     for param in ref.params:
         if param.kind in ("VAR_POSITIONAL", "VAR_KEYWORD"):
             continue
 
-        proto_type = _py_type_to_proto(param.annotation or "Any")
-        # Optional semantics in proto3 can be explicit with `optional` or implicit
+        proto_type = _py_type_to_proto(param.annotation, param_name=param.name)
+        def_block = PROTO_DEFINITIONS_BY_TYPE.get(proto_type)
+        if def_block and def_block not in seen_blocks:
+            seen_blocks.add(def_block)
+            preamble_blocks.append(def_block)
+
         if (
             param.default is not None
             and not proto_type.startswith("repeated")
@@ -219,9 +354,26 @@ def to_protobuf(ref: GhostRef, package: str = "ml_framework") -> str:
             proto_type = f"optional {proto_type}"
 
         desc = f" // {param.description}" if param.description else ""
-        lines.append(f"  {proto_type} {param.name} = {field_num};{desc}")
+        field_lines.append(f"  {proto_type} {param.name} = {field_num};{desc}")
         field_num += 1
 
+    lines = [
+        'syntax = "proto3";',
+        "",
+        f"package {package};",
+        "",
+    ]
+    if preamble_blocks:
+        lines.extend(preamble_blocks)
+        lines.append("")
+
+    lines.append(
+        f"// {ref.docstring}"
+        if ref.docstring
+        else f"// Generated message for {ref.api_path}"
+    )
+    lines.append(f"message {ref.name} {{")
+    lines.extend(field_lines)
     lines.append("}")
     return "\n".join(lines) + "\n"
 
@@ -250,8 +402,18 @@ def export_llm_prompt_context(refs: List[GhostRef]) -> str:
             params_str_list.append(f"{p.name}: {type_annot}{default_part}")
 
             desc = f" - {p.description}" if p.description else ""
+
+            constraints: List[str] = []
+            p_dtypes = getattr(p, "dtypes", None)
+            if p_dtypes:
+                constraints.append(f"dtypes: {p_dtypes}")
+            p_rank = getattr(p, "rank", None)
+            if p_rank is not None:
+                constraints.append(f"rank: {p_rank}")
+            constr_str = f" [{', '.join(constraints)}]" if constraints else ""
+
             param_details.append(
-                f"  - `{p.name}` ({p.kind}, type `{type_annot}`{default_part}){desc}"
+                f"  - `{p.name}` ({p.kind}, type `{type_annot}`{default_part}){constr_str}{desc}"
             )
 
         sig = f"{ref.api_path}({', '.join(params_str_list)})"
@@ -436,6 +598,33 @@ def export_mlir_prompt_context(refs: List[GhostRef]) -> str:
     return "\n\n".join(blocks) + "\n"
 
 
+COMMON_HALLUCINATION_GUARDS: Dict[str, List[str]] = {
+    "torch": [
+        "Do NOT pass 'axis' to 'torch.sum' or reduction operations; use 'dim'.",
+        "Do NOT pass 'keepdims' to PyTorch reduction ops; use 'keepdim'.",
+        "Do NOT pass integer dtypes (e.g. 'int32') to linear algebra ops like 'torch.linalg.inv' or 'torch.cholesky'; floating-point or complex required.",
+    ],
+    "nvidia_sass": [
+        "Uniform registers (UR0-UR63) require Volta+ (sm_70+).",
+        "Align 64-bit register pairs to even indices (e.g. R0:R1, not R1:R2).",
+        "Align 128-bit register quads to modulo-4 starting indices (e.g. R0:R3).",
+    ],
+    "amd_rdna": [
+        "Dual-issue instructions (v_dual_*) are strictly restricted to GFX11/RDNA3 and GFX12/RDNA4.",
+        "Matrix accumulator instructions (v_mfma_*) are strictly restricted to GFX9/CDNA.",
+        "Align 64-bit vector registers to even indices (v[0:1], s[0:1]).",
+    ],
+    "mlir": [
+        "Do NOT pass floating-point types to signless integer ops like 'arith.addi'; use 'arith.addf'.",
+        "Ensure SSA operand segment sizes match AttrSizedOperandSegments attributes.",
+    ],
+    "stablehlo": [
+        "Verify DotDimensionNumbers contracting dimensions against input operand ranks.",
+        "Broadcast dimensions length in 'stablehlo.broadcast_in_dim' must equal input rank.",
+    ],
+}
+
+
 def export_scoped_prompt_context(
     framework: str,
     module_prefix: Optional[str] = None,
@@ -487,8 +676,15 @@ def export_scoped_prompt_context(
 
     index_lines: List[str] = [
         f"# Framework Grounding Context: `{framework}`",
-        f"## Index of Available Operations ({total_matching} total)",
     ]
+
+    guards = COMMON_HALLUCINATION_GUARDS.get(framework.lower())
+    if guards:
+        index_lines.append("\n## Common Hallucination Guards & Anti-Patterns")
+        for g in guards:
+            index_lines.append(f"- {g}")
+
+    index_lines.append(f"\n## Index of Available Operations ({total_matching} total)")
 
     grouped: Dict[str, List[str]] = {}
     for item in matching_items:

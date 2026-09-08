@@ -49,3 +49,36 @@ jobs:
 
     - name: Run pre-commit
       run: pre-commit run --all-files
+
+    - name: Build wheel and verify snapshot artifacts & zero database files
+      run: |
+        uv build --wheel
+        python3 -c "
+        import zipfile, glob, sys
+        wheels = glob.glob('dist/*.whl')
+        if not wheels:
+            sys.exit('No wheel produced!')
+        with zipfile.ZipFile(wheels[0], 'r') as zf:
+            names = zf.namelist()
+            for n in names:
+                if n.endswith(('.db', '.sqlite', '.sqlite3', '.db-wal', '.db-journal')):
+                    sys.exit(f'Database file packaged in wheel: {n}')
+            jsons = [n for n in names if n.endswith('.json')]
+            if len(jsons) < 4:
+                sys.exit(f'Expected >= 4 json snapshots in wheel, found: {len(jsons)}')
+            print(f'Verified wheel {wheels[0]}: {len(jsons)} JSON snapshots, 0 database files.')
+        "
+
+    - name: End-to-end offline smoke test with pre-built wheel
+      run: |
+        uv venv .venv_smoke --python 3.9
+        uv pip install -p .venv_smoke -e /Users/samuel/repos/ml-switcheroo-ir
+        uv pip install -p .venv_smoke --no-index --find-links=dist ml_framework_snapshots
+        .venv_smoke/bin/ml_framework_snapshots list-snapshots
+        .venv_smoke/bin/python3 -c "
+        from ml_framework_snapshots.mcp_server import check_sass_instruction, check_rdna_instruction, check_ptx_instruction
+        assert check_sass_instruction('FADD')['is_valid']
+        assert check_rdna_instruction('v_add_f32')['is_valid']
+        assert check_ptx_instruction('add')['is_valid']
+        print('Offline wheel smoke test passed successfully.')
+        "

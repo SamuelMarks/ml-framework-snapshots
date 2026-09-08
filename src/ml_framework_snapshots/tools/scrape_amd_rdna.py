@@ -17,6 +17,7 @@ TD_FILES = [
     "VOP3Instructions.td",
     "VOPCInstructions.td",
     "VOP3PInstructions.td",
+    "VOPDInstructions.td",
     "SOPInstructions.td",
     "SMInstructions.td",
     "FLATInstructions.td",
@@ -34,15 +35,23 @@ ALL_GFX_ARCHITECTURES = [
 ]
 
 
-def fetch_td_file(filename: str) -> str:
-    """Fetch a TableGen file from the LLVM repository.
+def fetch_td_file(filename: str, local_dir: Optional[str] = None) -> str:
+    """Fetch a TableGen file from local checkout or LLVM repository.
 
     Args:
         filename: The TableGen filename to fetch.
+        local_dir: Optional local directory containing LLVM AMDGPU TableGen files.
 
     Returns:
         The content of the file as string, or empty string on error.
     """
+    resolved_dir = local_dir or os.environ.get("LLVM_AMDGPU_TD_DIR")
+    if resolved_dir:
+        candidate = os.path.join(resolved_dir, filename)
+        if os.path.isfile(candidate):
+            with open(candidate, "r", encoding="utf-8") as f:
+                return f.read()
+
     url = f"{LLVM_REPO_BASE}/{filename}"
     try:
         with urllib.request.urlopen(url) as response:
@@ -263,11 +272,154 @@ def parse_td_content(content: str) -> List[Dict[str, Any]]:
     return instructions
 
 
-def scrape_amd_rdna(output_path: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Scrape AMD RDNA TableGen sources and write the exhaustive JSON dump.
+def parse_llvm_tblgen_json(tblgen_json: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Parse LLVM TableGen JSON export (from llvm-tblgen --dump-json) into structured instruction records.
+
+    Extracts real register classes (VGPR_32, VReg_64, VReg_96, VReg_128, VReg_256, VReg_512,
+    SGPR_32, SReg_64, AReg_32, a[n:n+3]) and exact encoding profiles (VOP1, VOP2, VOP3, VOP3P,
+    VOPC, VOPD, SOP1, SOP2, SOPK, SOPP, SMEM, FLAT, GLOBAL, SCRATCH, DS).
+
+    Args:
+        tblgen_json: The dictionary produced by llvm-tblgen --dump-json.
+
+    Returns:
+        List of structured instruction records.
+    """
+    instructions: List[Dict[str, Any]] = []
+
+    for def_name, record in tblgen_json.items():
+        if def_name.startswith("!"):
+            continue
+        if not isinstance(record, dict):
+            continue
+
+        superclasses = record.get("!superclasses", [])
+        sc_str = " ".join(superclasses)
+
+        # Resolve mnemonic
+        raw_mnemonic = record.get("Mnemonic")
+        if isinstance(raw_mnemonic, dict):
+            mnemonic = raw_mnemonic.get("def", "").lower()
+        elif isinstance(raw_mnemonic, str) and raw_mnemonic:
+            mnemonic = raw_mnemonic.lower()
+        else:
+            mnemonic = def_name.lower()
+
+        # Clean trailing encoding suffixes from mnemonic like _e32, _e64, _dpp
+        clean_mnemonic = re.sub(r"_(e32|e64|dpp|sdwa|nosdst)$", "", mnemonic)
+
+        # Resolve encoding profile
+        encoding = "Unknown"
+        modifiers: List[str] = []
+        for enc_candidate in [
+            "VOP3P",
+            "VOPD",
+            "VOP3",
+            "VOP2",
+            "VOP1",
+            "VOPC",
+            "SOPK",
+            "SOPP",
+            "SOP1",
+            "SOP2",
+            "SMEM",
+            "FLAT",
+            "GLOBAL",
+            "SCRATCH",
+            "DS",
+        ]:
+            if (
+                any(enc_candidate in sc for sc in superclasses)
+                or enc_candidate in def_name
+            ):
+                encoding = enc_candidate
+                break
+
+        # Register classes extraction from operand lists
+        operands: List[str] = []
+        out_ops = record.get("OutOperandList", [])
+        in_ops = record.get("InOperandList", [])
+
+        # Process out operands
+        if isinstance(out_ops, list):
+            for op in out_ops:
+                op_name = op.get("def") if isinstance(op, dict) else str(op)
+                if op_name:
+                    operands.append(op_name)
+
+        # Process in operands
+        if isinstance(in_ops, list):
+            for op in in_ops:
+                op_name = op.get("def") if isinstance(op, dict) else str(op)
+                if op_name:
+                    operands.append(op_name)
+
+        if not operands:
+            info = resolve_td_instruction_info(def_name, sc_str, clean_mnemonic)
+            operands_list = info["operands"]
+            modifiers = info["modifiers"]
+            if encoding == "Unknown":
+                encoding = info["encoding"]
+        else:
+            operands_list = [operands]
+            if encoding == "VOP3":
+                modifiers = [
+                    "_e64",
+                    "clamp",
+                    "omod:2",
+                    "omod:4",
+                    "omod:div2",
+                    "-src",
+                    "|src|",
+                ]
+            elif encoding == "VOP3P":
+                modifiers = ["_e64", "neg_lo", "neg_hi", "clamp", "op_sel"]
+            elif encoding in ("VOP1", "VOP2", "VOPC"):
+                modifiers = ["_e32", "_e64"]
+            elif encoding == "VOPD":
+                modifiers = ["dual"]
+
+        # Determine architecture
+        if any("GFX12" in sc for sc in superclasses) or "GFX12" in def_name:
+            arch = "GFX12/RDNA4"
+        elif any("GFX11_5" in sc for sc in superclasses) or "GFX11_5" in def_name:
+            arch = "GFX11.5"
+        elif any("GFX11" in sc for sc in superclasses) or "GFX11" in def_name:
+            arch = "GFX11/RDNA3"
+        elif any("GFX10_3" in sc for sc in superclasses) or "GFX10_3" in def_name:
+            arch = "GFX10.3/RDNA2"
+        elif any("GFX10" in sc for sc in superclasses) or "GFX10" in def_name:
+            arch = "GFX10/RDNA1"
+        elif any("GFX9" in sc for sc in superclasses) or "GFX9" in def_name:
+            arch = "GFX9/CDNA"
+        else:
+            arch = "GFX10+"
+
+        instructions.append(
+            {
+                "mnemonic": clean_mnemonic,
+                "architecture": arch,
+                "description": f"AMD RDNA {clean_mnemonic} instruction.",
+                "encoding": encoding,
+                "modifiers": sorted(list(set(modifiers))),
+                "operands": operands_list,
+            }
+        )
+
+    return instructions
+
+
+def scrape_amd_rdna(
+    output_path: Optional[str] = None,
+    tblgen_json_path: Optional[str] = None,
+    local_dir: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Scrape AMD RDNA TableGen sources or parse TableGen JSON and write the exhaustive JSON dump.
 
     Args:
         output_path: Optional path to save the output JSON.
+        tblgen_json_path: Optional path to an llvm-tblgen --dump-json output file.
+        local_dir: Optional local directory containing LLVM AMDGPU TableGen files.
 
     Returns:
         Exhaustive list of AMD RDNA instructions.
@@ -288,12 +440,10 @@ def scrape_amd_rdna(output_path: Optional[str] = None) -> List[Dict[str, Any]]:
         }
     )
 
-    for td_file in TD_FILES:
-        content = fetch_td_file(td_file)
-        if not content:
-            continue
-
-        parsed_instrs = parse_td_content(content)
+    if tblgen_json_path and os.path.exists(tblgen_json_path):
+        with open(tblgen_json_path, "r", encoding="utf-8") as f:
+            tblgen_json = json.load(f)
+        parsed_instrs = parse_llvm_tblgen_json(tblgen_json)
         for instr in parsed_instrs:
             base_name = instr["mnemonic"]
             instructions[base_name]["encoding"] = instr["encoding"]
@@ -305,6 +455,24 @@ def scrape_amd_rdna(output_path: Optional[str] = None) -> List[Dict[str, Any]]:
             for sig in instr["operands"]:
                 if sig not in instructions[base_name]["operands"]:
                     instructions[base_name]["operands"].append(sig)
+    else:
+        for td_file in TD_FILES:
+            content = fetch_td_file(td_file, local_dir=local_dir)
+            if not content:
+                continue
+
+            parsed_instrs = parse_td_content(content)
+            for instr in parsed_instrs:
+                base_name = instr["mnemonic"]
+                instructions[base_name]["encoding"] = instr["encoding"]
+                instructions[base_name]["architecture"] = instr["architecture"]
+
+                for mod in instr["modifiers"]:
+                    instructions[base_name]["modifiers"].add(mod)
+
+                for sig in instr["operands"]:
+                    if sig not in instructions[base_name]["operands"]:
+                        instructions[base_name]["operands"].append(sig)
 
     exhaustive_list: List[Dict[str, Any]] = []
     for mnemonic, info in sorted(instructions.items()):

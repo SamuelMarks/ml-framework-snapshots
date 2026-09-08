@@ -1,6 +1,7 @@
 """Tests for Griffe reST/Sphinx docstring parser integration and fallback."""
 
 from typing import Any
+import unittest.mock as mock
 
 from ml_framework_snapshots.models import GhostInspector, sanitize_type_str
 from ml_framework_snapshots.utils import (
@@ -105,6 +106,26 @@ def test_resolve_griffe_parser() -> None:
     invalid_parser = resolve_griffe_parser("invalid_style_123")
     assert invalid_parser is None
 
+    orig_hasattr = hasattr
+
+    def mock_hasattr(obj: Any, attr: str) -> bool:
+        """Mock hasattr to simulate missing 'rest' attribute on griffe.Parser.
+
+        Args:
+            obj: The target object.
+            attr: The attribute name.
+
+        Returns:
+            False if checking 'rest' on griffe.Parser, otherwise real hasattr result.
+        """
+        if attr == "rest":
+            return False
+        return orig_hasattr(obj, attr)
+
+    with mock.patch("builtins.hasattr", side_effect=mock_hasattr):
+        fallback_res = resolve_griffe_parser("rest")
+        assert fallback_res is not None
+
 
 def test_parse_docstring_dynamic_fallback() -> None:
     """Test dynamic fallback between conventions when a docstring style differs from requested."""
@@ -192,7 +213,11 @@ def test_ghost_inspector_sphinx_docstring() -> None:
 
 
 def test_ghost_inspector_merge_branches(mocker: Any) -> None:
-    """Test merging branches: return description only, CDD exception cleanup, param doc/type augmentation."""
+    """Test merging branches: return description only, CDD exception cleanup, param doc/type augmentation.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
 
     def dummy_return_only(a: int) -> None:
         """Dummy return only summary.
@@ -246,7 +271,11 @@ def test_ghost_inspector_merge_branches(mocker: Any) -> None:
 
 
 def test_extract_griffe_docstring_metadata_edge_cases(mocker: Any) -> None:
-    """Test extract_griffe_docstring_metadata on anonymous parameters, nameless raises, and duplicates."""
+    """Test extract_griffe_docstring_metadata on anonymous parameters, nameless raises, and duplicates.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
 
     class MockParam:
         """Mock Griffe parameter element."""
@@ -347,7 +376,11 @@ def test_ghost_inspector_custom_fault_and_doc_return() -> None:
 
 
 def test_ghost_inspector_griffe_return_type_fallback(mocker: Any) -> None:
-    """Test GhostInspector extracting returns_type from Griffe when CDD does not find one."""
+    """Test GhostInspector extracting returns_type from Griffe when CDD does not find one.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
 
     def dummy_ret(x: Any) -> Any:
         """Dummy ret summary.
@@ -377,7 +410,11 @@ def test_ghost_inspector_griffe_return_type_fallback(mocker: Any) -> None:
 
 
 def test_parse_docstring_with_griffe_unresolved(mocker: Any) -> None:
-    """Test parse_docstring_with_griffe when a candidate parser cannot be resolved."""
+    """Test parse_docstring_with_griffe when a candidate parser cannot be resolved.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     call_count = 0
 
     def mock_resolve(name: str) -> Any:
@@ -467,16 +504,108 @@ def test_promote_documented_kwargs() -> None:
 
 def test_pytorch_modules_kwargs_promotion() -> None:
     """Test parameter extraction and kwargs promotion on PyTorch nn.Linear and nn.Conv2d."""
-    import torch.nn as nn
+    try:
+        import torch.nn as nn
+    except ImportError:
+        import types
 
-    linear_ref = GhostInspector.inspect(nn.Linear, "torch.nn.Linear", kind="class")
+        class Linear:
+            """Linear layer.
+
+            :param in_features: Size of each input sample.
+            :type in_features: int
+            :param out_features: Size of each output sample.
+            :type out_features: int
+            :param bias: If set to False, the layer will not learn an additive bias.
+            :type bias: bool
+            """
+
+            def __init__(
+                self, in_features: int, out_features: int, bias: bool = True
+            ) -> None:
+                """Initialize Linear layer.
+
+                Args:
+                    in_features: Size of input sample.
+                    out_features: Size of output sample.
+                    bias: Learn additive bias.
+                """
+                pass
+
+        class Conv2d:
+            """Conv2d layer.
+
+            :param in_channels: Number of channels in the input image.
+            :type in_channels: int
+            :param out_channels: Number of channels produced by the convolution.
+            :type out_channels: int
+            :param kernel_size: Size of the convolving kernel.
+            :type kernel_size: int
+            """
+
+            def __init__(
+                self, in_channels: int, out_channels: int, kernel_size: int
+            ) -> None:
+                """Initialize Conv2d layer.
+
+                Args:
+                    in_channels: Input channels.
+                    out_channels: Output channels.
+                    kernel_size: Kernel size.
+                """
+                pass
+
+        nn_mod: Any = types.SimpleNamespace(Linear=Linear, Conv2d=Conv2d)
+    else:
+        nn_mod = nn
+
+    linear_ref = GhostInspector.inspect(nn_mod.Linear, "torch.nn.Linear", kind="class")
     linear_param_names = {p.name for p in linear_ref.params}
     assert "in_features" in linear_param_names
     assert "out_features" in linear_param_names
     assert "bias" in linear_param_names
 
-    conv_ref = GhostInspector.inspect(nn.Conv2d, "torch.nn.Conv2d", kind="class")
+    conv_ref = GhostInspector.inspect(nn_mod.Conv2d, "torch.nn.Conv2d", kind="class")
     conv_param_names = {p.name for p in conv_ref.params}
     assert "in_channels" in conv_param_names
     assert "out_channels" in conv_param_names
     assert "kernel_size" in conv_param_names
+
+
+def test_extract_griffe_docstring_metadata_duplicate_and_missing_params() -> None:
+    """Test extract_griffe_docstring_metadata handling duplicate raises and missing params."""
+    docstring = """Summary.
+
+:param x: Value.
+:raises DuplicateError: First occurrence.
+:raises DuplicateError: Second occurrence.
+"""
+    meta = extract_griffe_docstring_metadata(docstring, parser_name="rest")
+    assert meta["raises"] == ["DuplicateError"]
+
+    fake_param_section = mock.MagicMock()
+    fake_param_section.kind.value = "parameters"
+    fake_param_item = mock.MagicMock()
+    fake_param_item.name = "MisclassifiedError"
+    fake_param_item.annotation = None
+    fake_param_item.value = None
+    fake_param_item.description = "Misclassified exception"
+    fake_param_section.value = [fake_param_item]
+
+    with mock.patch(
+        "ml_framework_snapshots.utils.parse_docstring_with_griffe",
+        return_value=[fake_param_section],
+    ):
+        meta_misclassified = extract_griffe_docstring_metadata(
+            ":raises MisclassifiedError: Doc.", parser_name="rest"
+        )
+        assert "MisclassifiedError" not in meta_misclassified["params"]
+        assert "MisclassifiedError" in meta_misclassified["raises"]
+
+    with mock.patch(
+        "ml_framework_snapshots.utils.parse_docstring_with_griffe", return_value=[]
+    ):
+        meta_empty = extract_griffe_docstring_metadata(
+            ":raises SoloError: Doc.", parser_name="rest"
+        )
+        assert meta_empty["raises"] == ["SoloError"]

@@ -1,5 +1,6 @@
 """Module docstring."""
 
+from typing import Any, Dict, List
 from ml_framework_snapshots.diff import diff_snapshots, generate_changelog
 
 
@@ -478,3 +479,69 @@ def test_diff_domain_metadata_breaking_changes() -> None:
     }
     res_non_breaking = diff_snapshots(s1, s4)
     assert "nvidia_sass.inst.FADD" in res_non_breaking.non_breaking_signature_changed
+
+
+def test_diff_snapshots_list_and_non_dict() -> None:
+    """Test diff_snapshots with list inputs, invalid types, and empty items."""
+    # List format
+    list_snap1: List[Dict[str, Any]] = [{"api_path": "foo.bar", "params": []}]
+    list_snap2: List[Dict[str, Any]] = [
+        {"api_path": "foo.bar", "params": [{"name": "x"}]}
+    ]
+    res_list = diff_snapshots(list_snap1, list_snap2)
+    assert "foo.bar" in res_list.signature_changed
+
+    # Non-dict and non-list format fallback
+    res_invalid = diff_snapshots(None, 123)
+    assert res_invalid.added == []
+    assert res_invalid.removed == []
+
+    # Item without api_path, name, or mnemonic
+    empty_item_snap1: Dict[str, Any] = {"categories": {"misc": [{}]}}
+    empty_item_snap2: Dict[str, Any] = {"categories": {"misc": [{"other_key": "val"}]}}
+    res_empty_item = diff_snapshots(empty_item_snap1, empty_item_snap2)
+    assert res_empty_item.added == []
+    assert res_empty_item.removed == []
+
+
+def test_diff_metadata_and_deprecated_capabilities() -> None:
+    """Test tracking top-level envelope metadata changes and deprecated capabilities."""
+    snap_old: Dict[str, Any] = {
+        "schema_version": "1.0.0",
+        "target": "nvidia_sass",
+        "version": "11.8.0",
+        "source_type": "binary_disassembly",
+        "upstream_commit": "cuda-11.8",
+        "environment_tags": ["sm_50", "sm_60", "sm_70", "sm_80"],
+        "categories": {
+            "UTIL": [{"name": "FADD", "api_path": "FADD", "params": []}],
+        },
+    }
+    snap_new: Dict[str, Any] = {
+        "schema_version": "1.1.0",
+        "target": "nvidia_sass",
+        "version": "12.6.0",
+        "source_type": "binary_disassembly",
+        "upstream_commit": "cuda-12.6",
+        "environment_tags": ["sm_70", "sm_80", "sm_90"],  # sm_50, sm_60 deprecated
+        "categories": {
+            "UTIL": [{"name": "FADD", "api_path": "FADD", "params": []}],
+        },
+    }
+
+    diff_res = diff_snapshots(snap_old, snap_new)
+    assert "schema_version" in diff_res.metadata_changed
+    assert diff_res.metadata_changed["schema_version"] == ("1.0.0", "1.1.0")
+    assert diff_res.metadata_changed["version"] == ("11.8.0", "12.6.0")
+    assert diff_res.metadata_changed["upstream_commit"] == ("cuda-11.8", "cuda-12.6")
+    assert "sm_50" in diff_res.deprecated_capabilities
+    assert "sm_60" in diff_res.deprecated_capabilities
+
+    # Test changelog rendering
+    changelog = generate_changelog(diff_res)
+    assert "## Metadata Changes" in changelog
+    assert "- **schema_version**: `1.0.0` -> `1.1.0`" in changelog
+    assert "- **version**: `11.8.0` -> `12.6.0`" in changelog
+    assert "## Deprecated Capabilities" in changelog
+    assert "- `sm_50`" in changelog
+    assert "- `sm_60`" in changelog

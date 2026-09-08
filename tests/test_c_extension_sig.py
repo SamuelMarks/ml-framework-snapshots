@@ -244,24 +244,25 @@ def test_c_extension_leading_header_and_vararg_overloads() -> None:
         assert len(ref_no_ret.params) == 1
 
 
-def dummy_leading_empty_and_overload_header() -> None:
-    """
-
-    Overloaded function.
-
-    1. func(x: int) -> int
-
-    2. func(y: str) -> str
-    """
+def dummy_opaque_func() -> None:
+    """Opaque function without docstring signature."""
     pass
 
 
-def test_c_extension_leading_empty_lines() -> None:
-    """Test C-extension docstring with leading empty lines and 'Overloaded function.' header."""
+dummy_opaque_func.__doc__ = None
+
+
+def test_opaque_c_extension_existing_environment_tags() -> None:
+    """Test opaque fallback when environment_tags already contains tags."""
     with patch.object(inspect, "signature", side_effect=ValueError("no signature")):
         inspector = GhostInspector()
-        ref = inspector.inspect(dummy_leading_empty_and_overload_header, "func")
-        assert len(ref.params) == 1
-        assert ref.params[0].name == "x"
-        assert len(ref.overloads) == 1
-        assert ref.overloads[0].params[0].name == "y"
+        ref = inspector.inspect(
+            dummy_opaque_func,
+            "opaque_func",
+            environment_tags=["inexact_signature", "opaque_c_extension"],
+        )
+        assert ref.signature_completeness == "opaque"
+        assert ref.environment_tags == ["inexact_signature", "opaque_c_extension"]
+        assert len(ref.params) == 2
+        assert ref.params[0].name == "args"
+        assert ref.params[1].name == "kwargs"

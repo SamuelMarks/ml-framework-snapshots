@@ -723,6 +723,8 @@ def test_keras_collect(mocker: Any) -> None:
             return MockModule({"GlorotUniform": MockMember(is_class=True)})
         if path == "keras.metrics":
             return MockModule({"Accuracy": MockMember(is_class=True)})
+        if path == "keras.ops":
+            return MockModule({"add": MockMember(is_function=True)})
         raise Exception("Unknown path")
 
     mocker.patch.object(keras_fw.griffe, "load", mock_load)  # type: ignore[attr-defined]
@@ -747,6 +749,13 @@ def test_keras_collect(mocker: Any) -> None:
 
     mets = keras_fw.collect_api(SemanticTier.METRIC)
     assert any(x.name == "Accuracy" for x in mets)
+
+    ops = keras_fw.collect_api(SemanticTier.ARRAY_API)
+    assert any(x.name == "add" for x in ops)
+    add_ref = next(x for x in ops if x.name == "add")
+    assert "backend:jax" in add_ref.environment_tags
+    assert "backend:torch" in add_ref.environment_tags
+    assert "backend:tensorflow" in add_ref.environment_tags
 
     assert keras_fw.collect_api("unknown") == []
 
@@ -959,6 +968,13 @@ def test_jax_collect(mocker: Any) -> None:
         },
     )
 
+    def static_func(axis: int, data: Any) -> None:
+        """Static arg test function."""
+        pass
+
+    setattr(static_func, "_static_argnums", (0,))
+    setattr(static_func, "_static_argnames", ("axis",))
+
     mocker.patch.dict(
         "sys.modules",
         {
@@ -972,6 +988,7 @@ def test_jax_collect(mocker: Any) -> None:
                 {
                     "abs": lambda: None,
                     "transpose": lambda: None,
+                    "static_func": static_func,
                     "_hidden": lambda: None,
                     "not_callable": 123,
                 },
@@ -1008,6 +1025,9 @@ def test_jax_collect(mocker: Any) -> None:
 
     arrays = jax_fw.collect_api(SemanticTier.ARRAY_API)
     assert any("abs" in x.api_path for x in arrays)
+    static_ref = next(x for x in arrays if x.name == "static_func")
+    assert any("static_argnums:0" in t for t in static_ref.environment_tags)
+    assert any("static_argnames:axis" in t for t in static_ref.environment_tags)
     assert any(x.name == "reshape" and x.kind == "method" for x in arrays)
 
     priv_arrays = jax_fw.collect_api(SemanticTier.ARRAY_API, include_nonpublic=True)
@@ -2131,20 +2151,202 @@ def test_static_dsl_extractors() -> None:
 
 def test_tensor_instance_methods_extraction() -> None:
     """Test extraction of tensor core instance methods across Torch, JAX, and TensorFlow."""
-    import torch
-    import jax
-    import tensorflow as tf
     from ml_framework_snapshots.models import GhostInspector
+
+    try:
+        import torch
+
+        torch_mod: Any = torch
+    except ImportError:
+
+        class MockTensor:
+            """Mock Tensor."""
+
+            def view(self, *shape: int) -> "MockTensor":
+                """View tensor.
+
+                Args:
+                    shape: Desired shape.
+
+                Returns:
+                    Viewed tensor.
+                """
+                return self
+
+            def reshape(self, *shape: int) -> "MockTensor":
+                """Reshape tensor.
+
+                Args:
+                    shape: Desired shape.
+
+                Returns:
+                    Reshaped tensor.
+                """
+                return self
+
+            def permute(self, *dims: int) -> "MockTensor":
+                """Permute tensor.
+
+                Args:
+                    dims: Dimension order.
+
+                Returns:
+                    Permuted tensor.
+                """
+                return self
+
+            def transpose(self, dim0: int, dim1: int) -> "MockTensor":
+                """Transpose dimensions.
+
+                Args:
+                    dim0: First dim.
+                    dim1: Second dim.
+
+                Returns:
+                    Transposed tensor.
+                """
+                return self
+
+            def repeat(self, *sizes: int) -> "MockTensor":
+                """Repeat tensor.
+
+                Args:
+                    sizes: Repeat sizes.
+
+                Returns:
+                    Repeated tensor.
+                """
+                return self
+
+            def to(self, *args: Any, **kwargs: Any) -> "MockTensor":
+                """Cast tensor.
+
+                Args:
+                    args: Arguments.
+                    kwargs: Keyword arguments.
+
+                Returns:
+                    Casted tensor.
+                """
+                return self
+
+            def detach(self) -> "MockTensor":
+                """Detach tensor.
+
+                Returns:
+                    Detached tensor.
+                """
+                return self
+
+        torch_mod = types.SimpleNamespace(Tensor=MockTensor)
+
+    try:
+        import jax
+
+        jax_mod: Any = jax
+    except ImportError:
+
+        class MockArray:
+            """Mock JAX Array."""
+
+            def reshape(self, *args: Any, **kwargs: Any) -> "MockArray":
+                """Reshape array.
+
+                Args:
+                    args: Arguments.
+                    kwargs: Keyword arguments.
+
+                Returns:
+                    Reshaped array.
+                """
+                return self
+
+            def transpose(self, *args: Any, **kwargs: Any) -> "MockArray":
+                """Transpose array.
+
+                Args:
+                    args: Arguments.
+                    kwargs: Keyword arguments.
+
+                Returns:
+                    Transposed array.
+                """
+                return self
+
+            def flatten(self, order: str = "C") -> "MockArray":
+                """Flatten array.
+
+                Args:
+                    order: Flatten order.
+
+                Returns:
+                    Flattened array.
+                """
+                return self
+
+        jax_mod = types.SimpleNamespace(Array=MockArray)
+
+    try:
+        import tensorflow as tf
+
+        tf_mod: Any = tf
+    except ImportError:
+
+        class MockTFTensor:
+            """Mock TensorFlow Tensor."""
+
+            def get_shape(self) -> Any:
+                """Get tensor shape.
+
+                Returns:
+                    Tensor shape.
+                """
+                return (1,)
+
+            def set_shape(self, shape: Any) -> None:
+                """Set tensor shape.
+
+                Args:
+                    shape: New shape.
+                """
+                pass
+
+        class MockTFVariable:
+            """Mock TensorFlow Variable."""
+
+            def assign(self, value: Any) -> Any:
+                """Assign variable value.
+
+                Args:
+                    value: Value to assign.
+
+                Returns:
+                    Updated variable.
+                """
+                return value
+
+            def assign_add(self, delta: Any) -> Any:
+                """Assign add variable value.
+
+                Args:
+                    delta: Value delta.
+
+                Returns:
+                    Updated variable.
+                """
+                return delta
+
+        tf_mod = types.SimpleNamespace(Tensor=MockTFTensor, Variable=MockTFVariable)
 
     # 1. PyTorch Tensor methods
     for m in ("view", "reshape", "permute", "transpose", "repeat", "to"):
-        obj = getattr(torch.Tensor, m)
+        obj = getattr(torch_mod.Tensor, m)
         ref = GhostInspector.inspect(obj, f"torch.Tensor.{m}", kind="method")
         assert ref.kind == "method"
         assert ref.api_path == f"torch.Tensor.{m}"
         assert len(ref.params) > 0
 
-    detach_obj = getattr(torch.Tensor, "detach")
+    detach_obj = getattr(torch_mod.Tensor, "detach")
     detach_ref = GhostInspector.inspect(
         detach_obj, "torch.Tensor.detach", kind="method"
     )
@@ -2154,7 +2356,7 @@ def test_tensor_instance_methods_extraction() -> None:
 
     # 2. JAX Array methods
     for m in ("reshape", "transpose", "flatten"):
-        obj = getattr(jax.Array, m)
+        obj = getattr(jax_mod.Array, m)
         ref = GhostInspector.inspect(obj, f"jax.Array.{m}", kind="method")
         assert ref.kind == "method"
         assert ref.api_path == f"jax.Array.{m}"
@@ -2162,13 +2364,13 @@ def test_tensor_instance_methods_extraction() -> None:
 
     # 3. TensorFlow Tensor and Variable methods
     for m in ("get_shape", "set_shape"):
-        obj = getattr(tf.Tensor, m)
+        obj = getattr(tf_mod.Tensor, m)
         ref = GhostInspector.inspect(obj, f"tf.Tensor.{m}", kind="method")
         assert ref.kind == "method"
         assert ref.api_path == f"tf.Tensor.{m}"
 
     for m in ("assign", "assign_add"):
-        obj = getattr(tf.Variable, m)
+        obj = getattr(tf_mod.Variable, m)
         ref = GhostInspector.inspect(obj, f"tf.Variable.{m}", kind="method")
         assert ref.kind == "method"
         assert ref.api_path == f"tf.Variable.{m}"

@@ -28,6 +28,14 @@ class DiffResult(BaseModel):
         default_factory=list,
         description="List of api_paths with non-breaking signature changes.",
     )
+    metadata_changed: Dict[str, Tuple[Optional[str], Optional[str]]] = Field(
+        default_factory=dict,
+        description="List of top-level metadata differences: (old_value, new_value).",
+    )
+    deprecated_capabilities: List[str] = Field(
+        default_factory=list,
+        description="List of deprecated or removed microarchitecture capabilities.",
+    )
 
 
 def _is_breaking_change(
@@ -113,7 +121,7 @@ def _is_breaking_change(
     return False
 
 
-def diff_snapshots(snap1: Dict[str, Any], snap2: Dict[str, Any]) -> DiffResult:
+def diff_snapshots(snap1: Any, snap2: Any) -> DiffResult:
     """Diffs two snapshots to find changes.
 
     Args:
@@ -122,22 +130,30 @@ def diff_snapshots(snap1: Dict[str, Any], snap2: Dict[str, Any]) -> DiffResult:
 
     Returns:
         A DiffResult containing the differences.
-
     """
 
-    def _flatten(snap: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
-        """Flatten a snapshot dictionary into a mapping of API paths to items.
+    def _flatten(snap: Any) -> Dict[str, Dict[str, Any]]:
+        """Flatten a snapshot dictionary or list into a mapping of API paths to items.
 
         Args:
-            snap: The snapshot.
+            snap: The snapshot dictionary or list.
 
         Returns:
             The flattened dict.
         """
         flattened = {}
-        for cat, items in snap.get("categories", {}).items():
+        if isinstance(snap, list):
+            categories_dict = {"all": snap}
+        elif isinstance(snap, dict):
+            categories_dict = snap.get("categories", {})
+        else:
+            categories_dict = {}
+
+        for _cat, items in categories_dict.items():
             for item in items:
-                flattened[item["api_path"]] = item
+                key = item.get("api_path") or item.get("name") or item.get("mnemonic")
+                if key:
+                    flattened[key] = item
         return flattened
 
     flat1 = _flatten(snap1)
@@ -195,12 +211,40 @@ def diff_snapshots(snap1: Dict[str, Any], snap2: Dict[str, Any]) -> DiffResult:
             display_path = path if is_public else f"{path} (non-public)"
             removed.append(display_path)
 
+    metadata_changed: Dict[str, Tuple[Optional[str], Optional[str]]] = {}
+    deprecated_capabilities: List[str] = []
+
+    if isinstance(snap1, dict) and isinstance(snap2, dict):
+        for meta_k in (
+            "schema_version",
+            "version",
+            "upstream_commit",
+            "source_type",
+            "target",
+        ):
+            v1 = snap1.get(meta_k)
+            v2 = snap2.get(meta_k)
+            if v1 != v2 and (v1 is not None or v2 is not None):
+                metadata_changed[meta_k] = (
+                    str(v1) if v1 is not None else None,
+                    str(v2) if v2 is not None else None,
+                )
+
+        # Check for deprecated microarchitectures or environment capabilities
+        env1 = set(snap1.get("environment_tags", []))
+        env2 = set(snap2.get("environment_tags", []))
+        dep_envs = env1 - env2
+        if dep_envs:
+            deprecated_capabilities.extend(sorted(dep_envs))
+
     return DiffResult(
         added=sorted(added),
         removed=sorted(removed),
         signature_changed=sorted(signature_changed),
         breaking_signature_changed=sorted(breaking_signature_changed),
         non_breaking_signature_changed=sorted(non_breaking_signature_changed),
+        metadata_changed=metadata_changed,
+        deprecated_capabilities=deprecated_capabilities,
     )
 
 
@@ -216,9 +260,27 @@ def generate_changelog(diff: DiffResult) -> str:
     """
     lines = ["# Changelog Report", ""]
 
-    if not diff.added and not diff.removed and not diff.signature_changed:
+    if (
+        not diff.added
+        and not diff.removed
+        and not diff.signature_changed
+        and not diff.metadata_changed
+        and not diff.deprecated_capabilities
+    ):
         lines.append("No changes detected.")
         return "\n".join(lines)
+
+    if diff.metadata_changed:
+        lines.append("## Metadata Changes")
+        for k, (old_v, new_v) in sorted(diff.metadata_changed.items()):
+            lines.append(f"- **{k}**: `{old_v}` -> `{new_v}`")
+        lines.append("")
+
+    if diff.deprecated_capabilities:
+        lines.append("## Deprecated Capabilities")
+        for cap in diff.deprecated_capabilities:
+            lines.append(f"- `{cap}`")
+        lines.append("")
 
     if diff.added:
         lines.append("## Added")
