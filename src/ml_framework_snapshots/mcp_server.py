@@ -9,12 +9,13 @@ import json
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Sequence, TextIO, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Sequence, Set, TextIO, Tuple, Union, cast
 
 from ml_framework_snapshots.api import (
     FRAMEWORK_COLLECTORS,
     extract_snapshot,
 )
+from ml_framework_snapshots.utils import get_custom_snapshots_paths, is_offline_mode
 
 _SNAPSHOT_CACHE: Dict[str, Dict[str, Any]] = {}
 
@@ -36,6 +37,7 @@ def get_framework_snapshot(
     if cache_key not in _SNAPSHOT_CACHE:
         # Check bundled / on-disk snapshots first to enable offline grounding (unless mocked in tests)
         loaded_data = None
+        source_kind = "not_found"
         is_mocked = hasattr(extract_snapshot, "return_value") or hasattr(
             extract_snapshot, "_mock_return_value"
         )
@@ -43,22 +45,35 @@ def get_framework_snapshot(
             from .index import get_cache_dir
 
             base_dir = os.path.dirname(__file__)
-            candidates = [
-                os.path.join(get_cache_dir(), "snapshots"),
-                os.path.join(base_dir, "snapshots"),
-                os.path.join(base_dir, "frameworks"),
+            clean_ver = version.lstrip("vV") if version else None
+
+            # Prioritize custom directories, bundled package directories, and local cache
+            custom_dirs: List[Tuple[str, str]] = [
+                (cd, "custom_path") for cd in get_custom_snapshots_paths()
             ]
-            for candidate_dir in candidates:
+            candidates: List[Tuple[str, str]] = custom_dirs + [
+                (os.path.join(base_dir, "snapshots"), "bundled_package"),
+                (os.path.join(base_dir, "frameworks"), "bundled_package"),
+                (os.path.join(get_cache_dir(), "snapshots"), "local_cache"),
+            ]
+            for candidate_dir, source_label in candidates:
                 if os.path.isdir(candidate_dir):
                     for fname in sorted(os.listdir(candidate_dir)):
                         if not fname.endswith(".json"):
                             continue
                         matches = False
-                        if version:
-                            if fname in (
-                                f"{clean_fw}_v{version}.json",
-                                f"{clean_fw}_{version}.json",
-                            ) or fname.startswith(f"{clean_fw}_v{version}"):
+                        if clean_ver:
+                            if (
+                                fname
+                                in (
+                                    f"{clean_fw}_v{clean_ver}.json",
+                                    f"{clean_fw}_{clean_ver}.json",
+                                    f"{clean_fw}_v{version}.json",
+                                    f"{clean_fw}_{version}.json",
+                                )
+                                or fname.startswith(f"{clean_fw}_v{clean_ver}")
+                                or fname.startswith(f"{clean_fw}_{clean_ver}")
+                            ):
                                 matches = True
                         else:
                             if fname.startswith(clean_fw) or fname.startswith(
@@ -77,6 +92,7 @@ def get_framework_snapshot(
                                         loaded_data = data
                                     elif isinstance(data, list):
                                         loaded_data = {"categories": {"UTIL": data}}
+                                    source_kind = source_label
                                     break
                             except Exception:  # pragma: no cover
                                 pass
@@ -84,10 +100,15 @@ def get_framework_snapshot(
                         break
 
         if loaded_data:
+            loaded_data["_snapshot_source"] = source_kind
             _SNAPSHOT_CACHE[cache_key] = loaded_data
-        elif clean_fw in FRAMEWORK_COLLECTORS:
-            data = extract_snapshot(clean_fw)
-            _SNAPSHOT_CACHE[cache_key] = data
+        elif not is_offline_mode() and clean_fw in FRAMEWORK_COLLECTORS:
+            try:
+                data = extract_snapshot(clean_fw)
+                data["_snapshot_source"] = "runtime_introspection"
+                _SNAPSHOT_CACHE[cache_key] = data
+            except Exception:
+                _SNAPSHOT_CACHE[cache_key] = {"categories": {}}
         else:
             _SNAPSHOT_CACHE[cache_key] = {"categories": {}}
     return _SNAPSHOT_CACHE[cache_key]
@@ -240,6 +261,32 @@ def search_apis(
     return matches
 
 
+def normalize_dtype_name(raw_dt: str) -> str:
+    """Normalize framework-specific dtype representations into canonical dtype names.
+
+    Args:
+        raw_dt: Raw dtype representation (e.g. 'torch.float32', 'jnp.float32', 'tf.float32').
+
+    Returns:
+        Canonical dtype name (e.g. 'float32', 'int64').
+    """
+    clean = str(raw_dt).lower().strip()
+    for prefix in (
+        "torch.",
+        "jax.numpy.",
+        "jnp.",
+        "tensorflow.",
+        "tf.",
+        "numpy.",
+        "np.",
+        "mlx.core.",
+        "mlx.",
+    ):
+        if clean.startswith(prefix):
+            clean = clean[len(prefix) :]
+    return clean
+
+
 def check_hallucination(
     framework: str,
     api_path: str,
@@ -301,14 +348,27 @@ def check_hallucination(
         kwargs = list(kwarg_values.keys())
 
     sig = get_api_signature(framework, api_path, version=version)
+    snap = get_framework_snapshot(framework, version=version)
+    snapshot_source = snap.get(
+        "_snapshot_source", "not_found" if not snap.get("categories") else "unknown"
+    )
     if not sig:
+        if snapshot_source == "not_found":
+            reason = (
+                f"API '{api_path}' could not be verified: no local ground-truth snapshot for framework '{framework}' "
+                f"(version '{version or 'any'}') was found in bundled packages or local cache. To ground offline, "
+                f"install '{framework}' or place a versioned snapshot JSON in the cache directory."
+            )
+        else:
+            reason = f"API '{api_path}' does not exist in ground-truth '{framework}' snapshot."
         return {
             "api_exists": False,
             "is_hallucinated": True,
             "invalid_kwargs": kwargs or [],
             "canonical_params": [],
             "has_unconstrained_kwargs": False,
-            "reason": f"API '{api_path}' does not exist in ground-truth '{framework}' snapshot.",
+            "snapshot_source": snapshot_source,
+            "reason": reason,
         }
 
     candidates = [sig] + [ov for ov in sig.get("overloads", []) if isinstance(ov, dict)]
@@ -342,12 +402,25 @@ def check_hallucination(
             or "opaque_c_extension" in cand.get("environment_tags", [])
         )
 
+        domain_meta = cand.get("domain_metadata") or {}
+        accepted_kwargs_list = cand.get("accepted_kwargs") or domain_meta.get(
+            "accepted_kwargs"
+        )
+        if accepted_kwargs_list is not None:
+            accepted_set = set(accepted_kwargs_list)
+            cand_has_var_kwargs = False
+        else:
+            accepted_set = None
+
         invalid: List[str] = []
         unrecognized: List[str] = []
         if kwargs:
             for kw in kwargs:
                 if kw not in cand_names:
-                    if cand_has_var_kwargs:
+                    if accepted_set is not None:
+                        if kw not in accepted_set:
+                            invalid.append(kw)
+                    elif cand_has_var_kwargs:
                         unrecognized.append(kw)
                     else:
                         invalid.append(kw)
@@ -365,9 +438,27 @@ def check_hallucination(
         # Validate string enum argument values
         enum_errors: List[str] = []
         if kwarg_values:
+            params_with_allowed = set()
+            for p in cand.get("params", []):
+                p_name = p.get("name")
+                if not p_name or p_name not in kwarg_values:
+                    continue
+                val = kwarg_values[p_name]
+                allowed_vals = p.get("allowed_values")
+                if allowed_vals:
+                    params_with_allowed.add(p_name.lower())
+                    if str(val).lower() not in [str(a).lower() for a in allowed_vals]:
+                        enum_errors.append(
+                            f"Invalid enum value '{val}' for parameter '{p_name}'. Expected one of {allowed_vals}"
+                        )
+
             for k, val in kwarg_values.items():
                 k_norm = k.lower()
-                if k_norm in known_enums:
+                if (
+                    k_norm in known_enums
+                    and k_norm not in params_with_allowed
+                    and not any(f"parameter '{k}'" in err for err in enum_errors)
+                ):
                     allowed = known_enums[k_norm]
                     if str(val).lower() not in [a.lower() for a in allowed]:
                         enum_errors.append(
@@ -377,7 +468,12 @@ def check_hallucination(
             for p in cand.get("params", []):
                 p_name = p.get("name")
                 anno = p.get("annotation") or ""
-                if p_name in kwarg_values and "Literal[" in anno:
+                if (
+                    p_name in kwarg_values
+                    and anno
+                    and any(c in anno for c in ("Literal[", "'", '"'))
+                    and not any(f"parameter '{p_name}'" in err for err in enum_errors)
+                ):
                     allowed_literals = re.findall(r"['\"]([^'\"]+)['\"]", anno)
                     if (
                         allowed_literals
@@ -441,21 +537,22 @@ def check_hallucination(
             )
             or "linalg.inv" in api_path
             or "linalg.cholesky" in api_path
-            or "torch.cholesky" in api_path
+            or "cholesky" in clean_api
         )
 
         for p in cand.get("params", []):
             p_name = p.get("name")
-            p_dtypes = p.get("dtypes")
-            p_rank = p.get("rank")
+            p_dtypes = p.get("allowed_dtypes") or p.get("dtypes")
+            p_rank = p.get("rank_constraint") or p.get("rank")
 
             if p_name in passed_dtypes:
-                dt = passed_dtypes[p_name].lower().replace("torch.", "")
+                dt = normalize_dtype_name(passed_dtypes[p_name])
                 allowed = p_dtypes
                 if not allowed and is_float_complex_api:
                     allowed = ["float32", "float64", "complex64", "complex128"]
                 if allowed:
-                    if dt not in [a.lower() for a in allowed]:
+                    norm_allowed = [normalize_dtype_name(a) for a in allowed]
+                    if dt not in norm_allowed:
                         dtype_errors.append(
                             f"Dtype '{passed_dtypes[p_name]}' is not supported for parameter '{p_name}' of '{api_path}'. Supported dtypes: {allowed}"
                         )
@@ -634,11 +731,18 @@ def check_hallucination(
             "canonical_params": sorted(list(cand_names)),
             "has_unconstrained_kwargs": cand_has_var_kwargs,
             "reason": reason,
+            "snapshot_source": snapshot_source,
             "signature_completeness": cand.get(
                 "signature_completeness", "opaque" if cand_is_opaque else "exact"
             ),
             "is_c_extension": cand.get("is_c_extension", False) or cand_is_opaque,
         }
+        if dtype_errors:
+            res["dtype_errors"] = dtype_errors
+        if rank_errors:
+            res["rank_errors"] = rank_errors
+        if shape_errors:
+            res["shape_errors"] = shape_errors
         if opaque_warning:
             res["warning"] = opaque_warning
             if not cand_hallucinated and reason == "Valid API call":
@@ -659,12 +763,13 @@ def check_hallucination(
             fewest_errors = err_count
             best_result = res
 
-    return best_result or {
+    return best_result or {  # pragma: no cover
         "api_exists": True,
         "is_hallucinated": True,
         "invalid_kwargs": kwargs or [],
         "canonical_params": [],
         "has_unconstrained_kwargs": False,
+        "snapshot_source": snapshot_source,
         "reason": "No matching overload signature found.",
     }
 
@@ -711,6 +816,11 @@ def explain_anti_pattern(
                 "explanation": "PyTorch device identifiers use 'cuda' (or 'cuda:0') rather than 'gpu'.",
                 "example": f"{api_path}(..., device='cuda')",
             },
+            "inplace": {
+                "canonical": "out-of-place or trailing underscore",
+                "explanation": "PyTorch provides inplace operations via a trailing underscore suffix (e.g. 'relu_()' or 'add_()') rather than an 'inplace=True' argument on functional ops.",
+                "example": "x.relu_() or torch.relu(x)",
+            },
         },
         "jax": {
             "dim": {
@@ -723,6 +833,16 @@ def explain_anti_pattern(
                 "explanation": "JAX follows NumPy naming conventions, using 'keepdims' (plural) instead of PyTorch's 'keepdim'.",
                 "example": f"{api_path}(..., keepdims=True)",
             },
+            "key": {
+                "canonical": "jax.random.PRNGKey",
+                "explanation": "JAX random operations require an explicit PRNG key passed to 'key' produced via 'jax.random.PRNGKey(seed)' or 'jax.random.key(seed)'.",
+                "example": "jax.random.normal(key, shape=(2, 3))",
+            },
+            "rng": {
+                "canonical": "key",
+                "explanation": "JAX standardizes random number generator parameters as 'key', not 'rng' or 'seed'.",
+                "example": "jax.random.normal(key=key, shape=(2, 3))",
+            },
         },
         "tensorflow": {
             "dim": {
@@ -732,7 +852,7 @@ def explain_anti_pattern(
             },
             "keepdim": {
                 "canonical": "keepdims",
-                "explanation": "TensorFlow operations use 'keepdims' instead of PyTorch's 'keepdim'.",
+                "explanation": "TensorFlow uses 'keepdims' rather than PyTorch's 'keepdim'.",
                 "example": f"{api_path}(..., keepdims=True)",
             },
         },
@@ -793,7 +913,25 @@ def check_sass_instruction(
     """
     snap = get_framework_snapshot("nvidia_sass")
     inst = None
-    target_name = mnemonic.upper().strip()
+    raw_mnemonic = mnemonic.upper().strip()
+    extracted_modifiers: List[str] = []
+    if "." in raw_mnemonic:
+        tokens = raw_mnemonic.split(".")
+        target_name = tokens[0].strip()
+        extracted_modifiers = [
+            f".{t.strip()}" if not t.startswith(".") else t.strip()
+            for t in tokens[1:]
+            if t.strip()
+        ]
+    else:
+        target_name = raw_mnemonic
+
+    combined_modifiers = list(modifiers or [])
+    for em in extracted_modifiers:
+        if em not in combined_modifiers:
+            combined_modifiers.append(em)
+    modifiers = combined_modifiers if combined_modifiers else None
+
     for _cat, items in snap.get("categories", {}).items():
         for item in items:
             name = item.get("mnemonic") or item.get("name")
@@ -835,6 +973,14 @@ def check_sass_instruction(
         if sm_arch and sm_arch not in ("sm_90", "sm_100"):
             errors.append(
                 f"WGMMA instructions are strictly supported on sm_90+ architectures, but target architecture is '{sm_arch}'."
+            )
+
+    # Guard FP4/FP6 and microscopic scaling instructions strictly to sm_100+
+    if any(p in target_name for p in ("FP4", "FP6", "MXFP", "E2M1", "E3M2")):
+        supported_archs = [a for a in supported_archs if a in ("sm_100",)]
+        if sm_arch and sm_arch not in ("sm_100",):
+            errors.append(
+                f"Microscopic scaling and FP4/FP6 instructions ('{target_name}') are strictly supported on sm_100+ architectures, but target architecture is '{sm_arch}'."
             )
 
     if sm_arch and sm_arch not in supported_archs:
@@ -922,10 +1068,20 @@ def check_rdna_instruction(
     snap = get_framework_snapshot("amd_rdna")
     inst = None
     target_name = mnemonic.lower().strip()
+    extracted_suffix = None
+    suffix_match = re.match(
+        r"^(v_[a-z0-9_]+)_(e32|e64|dpp\d*|sdwa|b32|b64)$", target_name
+    )
+    if suffix_match:
+        base_target = suffix_match.group(1)
+        extracted_suffix = f"_{suffix_match.group(2)}"
+    else:
+        base_target = target_name
+
     for _cat, items in snap.get("categories", {}).items():
         for item in items:
-            name = item.get("mnemonic") or item.get("name")
-            if name and name.lower() == target_name:
+            name = (item.get("mnemonic") or item.get("name") or "").lower()
+            if name in (target_name, base_target):
                 inst = item
                 break
         if inst:
@@ -939,6 +1095,12 @@ def check_rdna_instruction(
                 f"Instruction mnemonic '{target_name}' does not exist in RDNA ISA."
             ],
         }
+
+    if extracted_suffix:
+        if modifiers is None:
+            modifiers = [extracted_suffix]
+        elif extracted_suffix not in modifiers:
+            modifiers = list(modifiers) + [extracted_suffix]
 
     errors: List[str] = []
     meta = inst.get("domain_metadata") or {}
@@ -1434,6 +1596,110 @@ def check_stablehlo_op(
     )
 
 
+def translate_concept_arguments(
+    concept: str,
+    source_framework: str,
+    target_framework: str,
+    source_kwargs: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Translate operation arguments across frameworks using concept parameter mapping schemas.
+
+    Translates parameter names and attributes for core concepts such as:
+        - 'matmul': translates torch (input, other, mat1, mat2) to jax/numpy (a, b) or stablehlo (lhs, rhs).
+        - 'reduce_sum' / 'reduce_mean' / 'reduction': translates dim/keepdim (torch) <-> axis/keepdims (jax, numpy, tf).
+        - 'convolution': translates torch/jax/tf conv parameters and layout formats.
+        - 'normalization': translates weight/bias/eps (torch) <-> scale/offset/epsilon (jax, stablehlo).
+        - 'softmax': translates dim (torch) <-> axis (jax, numpy, tf).
+
+    Args:
+        concept: The canonical concept name (e.g. 'matmul', 'reduce_sum', 'softmax', 'convolution').
+        source_framework: Source framework identifier (e.g. 'torch', 'jax', 'numpy').
+        target_framework: Target framework identifier (e.g. 'jax', 'torch', 'stablehlo').
+        source_kwargs: Dictionary of source kwargs or parameter values.
+
+    Returns:
+        Dictionary of translated target keyword arguments and structured attributes.
+    """
+    c_clean = concept.lower().strip()
+    s_fw = source_framework.lower().strip()
+    t_fw = target_framework.lower().strip()
+
+    param_translations = cast(
+        Dict[str, Any],
+        CONCEPT_ALIAS_MAP.get("_parameter_translations", {}),
+    )
+    schema: Optional[Dict[str, Any]] = None
+
+    if c_clean in param_translations and isinstance(param_translations[c_clean], dict):
+        schema = cast(Dict[str, Any], param_translations[c_clean])
+    elif "matmul" in c_clean or c_clean in ("mm", "bmm", "dot"):
+        schema = cast(Optional[Dict[str, Any]], param_translations.get("matmul"))
+    elif any(
+        k in c_clean
+        for k in (
+            "sum",
+            "mean",
+            "max",
+            "min",
+            "prod",
+            "argmax",
+            "argmin",
+            "reduction",
+            "softmax",
+        )
+    ):
+        schema = cast(Optional[Dict[str, Any]], param_translations.get("reduction"))
+    elif "conv" in c_clean:
+        schema = cast(Optional[Dict[str, Any]], param_translations.get("convolution"))
+    elif "norm" in c_clean:
+        schema = cast(Optional[Dict[str, Any]], param_translations.get("normalization"))
+
+    translated: Dict[str, Any] = {}
+    unmapped: Dict[str, Any] = {}
+    mapped_keys: Set[str] = set()
+
+    if schema and "roles" in schema:
+        roles: Dict[str, Dict[str, List[str]]] = schema["roles"]
+        for role, fw_map in roles.items():
+            src_keys = fw_map.get(s_fw, [])
+            if not src_keys:
+                all_keys: List[str] = []
+                for aliases in fw_map.values():
+                    all_keys.extend(aliases)
+                src_keys = all_keys
+
+            for sk in src_keys:
+                if sk in source_kwargs:
+                    val = source_kwargs[sk]
+                    tgt_keys = fw_map.get(t_fw, [])
+                    if tgt_keys:
+                        translated[tgt_keys[0]] = val
+                        mapped_keys.add(sk)
+                    elif s_fw == t_fw:
+                        translated[sk] = val
+                        mapped_keys.add(sk)
+                    break
+
+        defaults = schema.get("defaults", {})
+        if t_fw in defaults and isinstance(defaults[t_fw], dict):
+            translated.update(defaults[t_fw])
+
+    for k, v in source_kwargs.items():
+        if k not in mapped_keys:
+            if s_fw == t_fw and schema:
+                translated[k] = v
+            else:
+                unmapped[k] = v
+
+    return {
+        "concept": concept,
+        "source_framework": source_framework,
+        "target_framework": target_framework,
+        "translated_kwargs": translated,
+        "unmapped_kwargs": unmapped,
+    }
+
+
 def check_code_block(
     code: str,
     framework: Optional[str] = None,
@@ -1597,11 +1863,13 @@ def check_code_block(
                 or any(s in line for s in ("R0", "UR0", "P0", "sm_"))
                 or line.endswith(";")
             ):
-                mnem = sass_match.group(1).rstrip(";")
-                ops_str = sass_match.group(2) or ""
-                ops = [o.strip().rstrip(";") for o in ops_str.split(",") if o.strip()]
+                from .frameworks.nvidia_sass import tokenize_sass_line
+
+                _pred, mnem, mods, ops = tokenize_sass_line(line)
                 total_analyzed += 1
-                res = check_sass_instruction(mnem, operands=ops, sm_arch=sm_arch)
+                res = check_sass_instruction(
+                    mnem, operands=ops, modifiers=mods, sm_arch=sm_arch
+                )
                 if not res.get("is_valid"):
                     findings.append(
                         {
@@ -1614,17 +1882,19 @@ def check_code_block(
 
             # Check RDNA
             elif rdna_match:
-                mnem = rdna_match.group(1)
-                ops_str = rdna_match.group(2) or ""
-                ops = [o.strip() for o in ops_str.split(",") if o.strip()]
+                from .frameworks.amd_rdna import tokenize_rdna_line
+
+                base_mnem, ops, _enc_suf, mods = tokenize_rdna_line(line)
                 total_analyzed += 1
-                res = check_rdna_instruction(mnem, operands=ops, gfx_arch=gfx_arch)
+                res = check_rdna_instruction(
+                    base_mnem, operands=ops, modifiers=mods, gfx_arch=gfx_arch
+                )
                 if not res.get("is_valid"):
                     findings.append(
                         {
                             "line": lineno,
                             "type": "rdna_error",
-                            "target": mnem,
+                            "target": base_mnem,
                             "reason": "; ".join(res.get("errors", [])),
                         }
                     )
@@ -1972,6 +2242,37 @@ def get_mcp_tools_list() -> List[Dict[str, Any]]:
                 "required": ["code"],
             },
         },
+        {
+            "name": "translate_concept_arguments",
+            "description": "Translate operation arguments across frameworks using concept parameter mapping schemas.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "concept": {
+                        "type": "string",
+                        "description": "The canonical concept name (e.g. 'matmul', 'reduce_sum', 'softmax', 'convolution').",
+                    },
+                    "source_framework": {
+                        "type": "string",
+                        "description": "Source framework identifier ('torch', 'jax', 'numpy', 'tensorflow', 'stablehlo').",
+                    },
+                    "target_framework": {
+                        "type": "string",
+                        "description": "Target framework identifier ('torch', 'jax', 'numpy', 'tensorflow', 'stablehlo').",
+                    },
+                    "source_kwargs": {
+                        "type": "object",
+                        "description": "Dictionary of source keyword arguments or parameters.",
+                    },
+                },
+                "required": [
+                    "concept",
+                    "source_framework",
+                    "target_framework",
+                    "source_kwargs",
+                ],
+            },
+        },
     ]
 
 
@@ -2174,6 +2475,22 @@ def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
                 "result": {
                     "content": [
                         {"type": "text", "text": json.dumps(code_res, indent=2)}
+                    ]
+                },
+            }
+        elif tool_name == "translate_concept_arguments":
+            trans_res = translate_concept_arguments(
+                concept=args.get("concept", ""),
+                source_framework=args.get("source_framework", ""),
+                target_framework=args.get("target_framework", ""),
+                source_kwargs=args.get("source_kwargs", {}),
+            )
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": json.dumps(trans_res, indent=2)}
                     ]
                 },
             }

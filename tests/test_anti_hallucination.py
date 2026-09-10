@@ -2231,3 +2231,364 @@ def test_opaque_c_extension_guardrails(mocker: Any) -> None:
     )
     assert res_named["is_hallucinated"] is False
     assert "Valid API call with warning" in res_named["reason"]
+
+
+def test_framework_agnostic_dtype_validation(mocker: Any) -> None:
+    """Test framework-agnostic dtype normalization and parameter validation.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    from ml_framework_snapshots.mcp_server import normalize_dtype_name
+
+    # Normalization across all framework prefixes
+    assert normalize_dtype_name("torch.float32") == "float32"
+    assert normalize_dtype_name("jnp.float32") == "float32"
+    assert normalize_dtype_name("jax.numpy.bfloat16") == "bfloat16"
+    assert normalize_dtype_name("tf.float64") == "float64"
+    assert normalize_dtype_name("tensorflow.int32") == "int32"
+    assert normalize_dtype_name("np.int64") == "int64"
+    assert normalize_dtype_name("numpy.bool_") == "bool_"
+    assert normalize_dtype_name("mlx.core.float16") == "float16"
+
+    # Schema with allowed_dtypes and rank_constraint
+    mock_snap_dtypes = {
+        "categories": {
+            "math": [
+                {
+                    "name": "solve",
+                    "api_path": "jax.numpy.linalg.solve",
+                    "kind": "function",
+                    "params": [
+                        {
+                            "name": "a",
+                            "kind": "POSITIONAL_OR_KEYWORD",
+                            "allowed_dtypes": ["float32", "float64"],
+                            "rank_constraint": ">=2",
+                        },
+                        {
+                            "name": "b",
+                            "kind": "POSITIONAL_OR_KEYWORD",
+                            "allowed_dtypes": ["float32", "float64"],
+                        },
+                    ],
+                }
+            ]
+        }
+    }
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        return_value=mock_snap_dtypes,
+    )
+
+    # Valid call using jnp dtypes
+    res_valid = check_hallucination(
+        "jax",
+        "jax.numpy.linalg.solve",
+        kwarg_dtypes={"a": "jnp.float32", "b": "jnp.float32"},
+        arg_ranks={"a": 2},
+    )
+    assert res_valid["is_hallucinated"] is False
+
+    # Invalid call with unsupported dtype (int32 on floating-point solver)
+    res_invalid_dtype = check_hallucination(
+        "jax",
+        "jax.numpy.linalg.solve",
+        kwarg_dtypes={"a": "tf.int32"},
+    )
+    assert res_invalid_dtype["is_hallucinated"] is True
+    assert any(
+        "Dtype 'tf.int32' is not supported" in err
+        for err in res_invalid_dtype.get("dtype_errors", [])
+    )
+
+
+def test_translate_concept_arguments() -> None:
+    """Test translate_concept_arguments across core operations and frameworks."""
+    from ml_framework_snapshots.mcp_server import (
+        handle_mcp_message,
+        translate_concept_arguments,
+    )
+
+    # 1. Matmul: torch -> stablehlo
+    shlo_res = translate_concept_arguments(
+        concept="matmul",
+        source_framework="torch",
+        target_framework="stablehlo",
+        source_kwargs={"input": "A", "other": "B"},
+    )
+    assert shlo_res["translated_kwargs"]["lhs"] == "A"
+    assert shlo_res["translated_kwargs"]["rhs"] == "B"
+    assert "dot_dimension_numbers" in shlo_res["translated_kwargs"]
+
+    # 2. Matmul: torch -> jax
+    jax_res = translate_concept_arguments(
+        concept="matmul",
+        source_framework="torch",
+        target_framework="jax",
+        source_kwargs={"mat1": "A", "mat2": "B"},
+    )
+    assert jax_res["translated_kwargs"]["a"] == "A"
+    assert jax_res["translated_kwargs"]["b"] == "B"
+
+    # 3. Matmul: jax -> torch
+    torch_res = translate_concept_arguments(
+        concept="matmul",
+        source_framework="jax",
+        target_framework="torch",
+        source_kwargs={"a": "A", "b": "B"},
+    )
+    assert torch_res["translated_kwargs"]["input"] == "A"
+    assert torch_res["translated_kwargs"]["other"] == "B"
+
+    # 4. Matmul: torch -> tf
+    tf_res = translate_concept_arguments(
+        concept="matmul",
+        source_framework="torch",
+        target_framework="tf",
+        source_kwargs={"input": "A", "other": "B"},
+    )
+    assert tf_res["translated_kwargs"]["a"] == "A"
+    assert tf_res["translated_kwargs"]["b"] == "B"
+
+    # 5. Reductions: dim/keepdim (torch) <-> axis/keepdims (jax, numpy, tf)
+    red_res = translate_concept_arguments(
+        concept="reduce_sum",
+        source_framework="torch",
+        target_framework="jax",
+        source_kwargs={"dim": 1, "keepdim": True, "extra_flag": 42},
+    )
+    assert red_res["translated_kwargs"]["axis"] == 1
+    assert red_res["translated_kwargs"]["keepdims"] is True
+    assert red_res["unmapped_kwargs"]["extra_flag"] == 42
+
+    red_to_torch = translate_concept_arguments(
+        concept="reduce_mean",
+        source_framework="jax",
+        target_framework="torch",
+        source_kwargs={"axis": [0, 1], "keepdims": False},
+    )
+    assert red_to_torch["translated_kwargs"]["dim"] == [0, 1]
+    assert red_to_torch["translated_kwargs"]["keepdim"] is False
+
+    # 6. Softmax
+    sm_to_jax = translate_concept_arguments(
+        concept="softmax",
+        source_framework="torch",
+        target_framework="jax",
+        source_kwargs={"dim": -1},
+    )
+    assert sm_to_jax["translated_kwargs"]["axis"] == -1
+
+    sm_to_torch = translate_concept_arguments(
+        concept="softmax",
+        source_framework="jax",
+        target_framework="torch",
+        source_kwargs={"axis": -1},
+    )
+    assert sm_to_torch["translated_kwargs"]["dim"] == -1
+
+    # 7. Convolution: torch -> stablehlo & tf
+    conv_shlo = translate_concept_arguments(
+        concept="convolution",
+        source_framework="torch",
+        target_framework="stablehlo",
+        source_kwargs={
+            "input": "X",
+            "weight": "W",
+            "stride": [1, 1],
+            "padding": "SAME",
+        },
+    )
+    assert conv_shlo["translated_kwargs"]["lhs"] == "X"
+    assert conv_shlo["translated_kwargs"]["rhs"] == "W"
+    assert conv_shlo["translated_kwargs"]["window_strides"] == [1, 1]
+
+    conv_tf = translate_concept_arguments(
+        concept="conv2d",
+        source_framework="torch",
+        target_framework="tensorflow",
+        source_kwargs={"input": "X", "weight": "W", "stride": 2, "padding": "VALID"},
+    )
+    assert conv_tf["translated_kwargs"]["input"] == "X"
+    assert conv_tf["translated_kwargs"]["filters"] == "W"
+    assert conv_tf["translated_kwargs"]["strides"] == 2
+
+    conv_torch = translate_concept_arguments(
+        concept="conv2d",
+        source_framework="torch",
+        target_framework="torch",
+        source_kwargs={"input": "X", "weight": "W", "stride": 1, "padding": 0},
+    )
+    assert conv_torch["translated_kwargs"]["input"] == "X"
+    assert conv_torch["translated_kwargs"]["weight"] == "W"
+
+    conv_jax = translate_concept_arguments(
+        concept="conv2d",
+        source_framework="torch",
+        target_framework="jax",
+        source_kwargs={"input": "X", "weight": "W", "stride": 1, "padding": 0},
+    )
+    assert conv_jax["translated_kwargs"]["lhs"] == "X"
+    assert conv_jax["translated_kwargs"]["rhs"] == "W"
+
+    # 7b. Normalization: torch -> jax, tf, stablehlo
+    norm_jax = translate_concept_arguments(
+        concept="normalization",
+        source_framework="torch",
+        target_framework="jax",
+        source_kwargs={"weight": "gamma", "bias": "beta", "eps": 1e-5},
+    )
+    assert norm_jax["translated_kwargs"]["scale"] == "gamma"
+    assert norm_jax["translated_kwargs"]["bias"] == "beta"
+    assert norm_jax["translated_kwargs"]["epsilon"] == 1e-5
+
+    norm_shlo = translate_concept_arguments(
+        concept="layer_norm",
+        source_framework="torch",
+        target_framework="stablehlo",
+        source_kwargs={"weight": "gamma", "bias": "beta", "eps": 1e-5},
+    )
+    assert norm_shlo["translated_kwargs"]["scale"] == "gamma"
+    assert norm_shlo["translated_kwargs"]["offset"] == "beta"
+    assert norm_shlo["translated_kwargs"]["epsilon"] == 1e-5
+
+    # 8. Test MCP JSON-RPC protocol message
+    mcp_msg = {
+        "jsonrpc": "2.0",
+        "id": 88,
+        "method": "tools/call",
+        "params": {
+            "name": "translate_concept_arguments",
+            "arguments": {
+                "concept": "matmul",
+                "source_framework": "torch",
+                "target_framework": "stablehlo",
+                "source_kwargs": {"input": "A", "other": "B"},
+            },
+        },
+    }
+    resp = handle_mcp_message(mcp_msg)
+    assert resp["id"] == 88
+    content = json.loads(resp["result"]["content"][0]["text"])
+    assert content["translated_kwargs"]["lhs"] == "A"
+
+    # 9. Full branch coverage for unmapped/identity/empty branches
+    empty_matmul = translate_concept_arguments("matmul", "torch", "custom_fw", {})
+    assert empty_matmul["translated_kwargs"] == {}
+
+    custom_red = translate_concept_arguments(
+        "reduce_sum",
+        "custom_fw",
+        "custom_fw",
+        {"dim": 0, "axis": 1, "keepdim": True, "keepdims": False},
+    )
+    assert custom_red["translated_kwargs"]["dim"] == 0
+    assert custom_red["translated_kwargs"]["axis"] == 1
+    assert custom_red["translated_kwargs"]["keepdim"] is True
+    assert custom_red["translated_kwargs"]["keepdims"] is False
+
+    custom_sm = translate_concept_arguments(
+        "softmax", "custom_fw", "custom_fw", {"dim": 0, "axis": 1}
+    )
+    assert custom_sm["translated_kwargs"]["dim"] == 0
+    assert custom_sm["translated_kwargs"]["axis"] == 1
+
+    empty_conv = translate_concept_arguments("conv2d", "torch", "custom_fw", {})
+    assert empty_conv["translated_kwargs"] == {}
+
+    # Partial matmul and conv operands for 100% branch coverage
+    partial_mm = translate_concept_arguments("matmul", "torch", "torch", {"other": "B"})
+    assert "input" not in partial_mm["translated_kwargs"]
+    assert partial_mm["translated_kwargs"]["other"] == "B"
+
+    partial_mm2 = translate_concept_arguments(
+        "matmul", "torch", "torch", {"input": "A"}
+    )
+    assert partial_mm2["translated_kwargs"]["input"] == "A"
+    assert "other" not in partial_mm2["translated_kwargs"]
+
+    partial_conv = translate_concept_arguments(
+        "conv2d", "torch", "torch", {"input": "X"}
+    )
+    assert partial_conv["translated_kwargs"]["input"] == "X"
+    assert "weight" not in partial_conv["translated_kwargs"]
+
+    partial_conv_no_inp = translate_concept_arguments(
+        "conv2d", "torch", "torch", {"weight": "W"}
+    )
+    assert "input" not in partial_conv_no_inp["translated_kwargs"]
+    assert partial_conv_no_inp["translated_kwargs"]["weight"] == "W"
+
+    unknown_conv = translate_concept_arguments(
+        "conv2d", "torch", "custom_fw", {"input": "X"}
+    )
+    assert unknown_conv["translated_kwargs"] == {}
+    assert unknown_conv["unmapped_kwargs"]["input"] == "X"
+
+    # Completely unrecognized concept falling through all branches
+    unknown_concept = translate_concept_arguments(
+        "unrecognized_op", "torch", "jax", {"foo": "bar"}
+    )
+    assert unknown_concept["translated_kwargs"] == {}
+    assert unknown_concept["unmapped_kwargs"]["foo"] == "bar"
+
+    # SASS and RDNA modifier branch tests
+    from ml_framework_snapshots.mcp_server import (
+        check_sass_instruction,
+        check_rdna_instruction,
+    )
+
+    assert check_sass_instruction("FADD.FTZ", modifiers=[".FTZ"])["is_valid"] is True
+    assert (
+        check_rdna_instruction("v_add_f32_e32", modifiers=["_e32"])["is_valid"] is True
+    )
+    assert (
+        check_rdna_instruction("v_add_f32_e64", modifiers=["_e64"])["is_valid"] is True
+    )
+    # Test line 1023: append extracted suffix when modifiers is already provided but does not include suffix
+    res_comb = check_rdna_instruction("v_add_f32_e32", modifiers=["_e64"])
+    assert res_comb["mnemonic_exists"] is True
+
+
+def test_check_hallucination_parameter_allowed_values_error(mocker: Any) -> None:
+    """Test check_hallucination flags invalid values for parameters with allowed_values.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mock_snap = {
+        "categories": {
+            "math": [
+                {
+                    "name": "custom_norm",
+                    "api_path": "torch.custom_norm",
+                    "params": [
+                        {
+                            "name": "mode",
+                            "kind": "KEYWORD_ONLY",
+                            "allowed_values": ["fast", "precise"],
+                        }
+                    ],
+                }
+            ]
+        }
+    }
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        return_value=mock_snap,
+    )
+    res = check_hallucination(
+        "torch",
+        "torch.custom_norm",
+        kwarg_values={"mode": "invalid_mode"},
+    )
+    assert res["is_hallucinated"] is True
+    assert "Invalid enum value 'invalid_mode' for parameter 'mode'" in res["reason"]
+
+    res_valid = check_hallucination(
+        "torch",
+        "torch.custom_norm",
+        kwarg_values={"mode": "fast"},
+    )
+    assert res_valid["is_hallucinated"] is False

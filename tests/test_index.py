@@ -507,6 +507,15 @@ def test_get_readonly_connection_and_clean_cache(tmp_path: Any) -> None:
     orig_connect = sqlite3.connect
 
     def mock_connect(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        """Mock sqlite3 connect to simulate readonly failure.
+
+        Args:
+            *args: Connection arguments.
+            **kwargs: Connection keyword arguments.
+
+        Returns:
+            A sqlite3.Connection instance.
+        """
         if args and "mode=ro" in str(args[0]):
             raise sqlite3.OperationalError("Readonly open failed")
         return cast(sqlite3.Connection, orig_connect(*args, **kwargs))
@@ -518,18 +527,33 @@ def test_get_readonly_connection_and_clean_cache(tmp_path: Any) -> None:
 
     # 5. init_db PRAGMA OperationalError handling
     class MockConn:
+        """Mock connection to test PRAGMA journal_mode failure."""
+
         def __init__(self) -> None:
+            """Initialize MockConn."""
             self.row_factory: Any = None
 
         def execute(self, sql: str, *args: Any, **kwargs: Any) -> Any:
+            """Mock execute method to raise OperationalError on WAL pragma.
+
+            Args:
+                sql: SQL query string.
+                *args: Positional arguments.
+                **kwargs: Keyword arguments.
+
+            Returns:
+                MagicMock cursor.
+            """
             if "PRAGMA journal_mode=WAL" in sql:
                 raise sqlite3.OperationalError("WAL not supported")
             return mock.MagicMock()
 
         def __enter__(self) -> "MockConn":
+            """Enter context manager."""
             return self
 
         def __exit__(self, *args: Any) -> None:
+            """Exit context manager."""
             pass
 
     with patch("sqlite3.connect", return_value=MockConn()):

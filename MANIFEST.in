@@ -1,7 +1,14 @@
 recursive-include src/ml_framework_snapshots *.json
 recursive-exclude * *.db
+recursive-exclude * *.db-*
 recursive-exclude * *.db-journal
 recursive-exclude * *.db-wal
+recursive-exclude * *.db-shm
 recursive-exclude * *.sqlite
 recursive-exclude * *.sqlite3
 recursive-exclude * *.sqlite-journal
+recursive-exclude * .pytest_cache
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * test_out
+recursive-exclude * .coverage

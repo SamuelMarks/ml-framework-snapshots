@@ -8,13 +8,14 @@ from enum import Enum
 import json
 import os
 import re
-from typing import Any, Dict, List, Optional, Set, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
 
 from ..models import (
     ExtendedGhostParam,
     ExtendedGhostRef,
+    GhostIsaRef,
     IRParameterRole,
     OperandDirection,
 )
@@ -439,6 +440,72 @@ def resolve_gfx_architectures(arch_spec: Optional[str]) -> List[str]:
     ]
 
 
+def tokenize_rdna_line(
+    line: str,
+) -> Tuple[str, List[str], Optional[str], List[str]]:
+    """Tokenize an AMD RDNA assembly line into mnemonic, operands, encoding suffix, and modifiers.
+
+    Args:
+        line: A single RDNA assembly instruction line (e.g. 'v_add_f32_e32 v0, v1, v2 clamp').
+
+    Returns:
+        A tuple of (base_mnemonic, operands, encoding_suffix, modifiers).
+    """
+    clean = line.strip().rstrip(";")
+    if not clean:
+        return "", [], None, []
+
+    tokens = clean.split(None, 1)
+    inst_token = tokens[0].lower()
+    rest = tokens[1] if len(tokens) > 1 else ""
+
+    encoding_suffix = None
+    suffix_match = re.match(
+        r"^(v_[a-z0-9_]+)_(e32|e64|dpp\d*|sdwa|b32|b64)$", inst_token
+    )
+    if suffix_match:
+        base_mnemonic = suffix_match.group(1)
+        encoding_suffix = f"_{suffix_match.group(2)}"
+    else:
+        base_mnemonic = inst_token
+
+    # Parse operands and trailing modifiers
+    raw_parts = [p.strip() for p in rest.split(",") if p.strip()]
+    operands: List[str] = []
+    modifiers: List[str] = []
+
+    known_mod_prefixes = (
+        "clamp",
+        "omod:",
+        "op_sel:",
+        "neg_lo:",
+        "neg_hi:",
+        "quad_perm:",
+        "row_mask:",
+        "bank_mask:",
+    )
+
+    for i, part in enumerate(raw_parts):
+        subparts = part.split()
+        if i == len(raw_parts) - 1 and len(subparts) > 1:
+            operands.append(subparts[0])
+            for sub in subparts[1:]:
+                if any(sub.startswith(p) for p in known_mod_prefixes):
+                    modifiers.append(sub)
+                else:
+                    operands.append(sub)
+        else:
+            if any(part.startswith(p) for p in known_mod_prefixes):
+                modifiers.append(part)
+            else:
+                operands.append(part)
+
+    if encoding_suffix and encoding_suffix not in modifiers:
+        modifiers.append(encoding_suffix)
+
+    return base_mnemonic, operands, encoding_suffix, modifiers
+
+
 def _load_exhaustive_rdna() -> List[Dict[str, Any]]:
     """Load the exhaustive AMD RDNA JSON instructions file.
 
@@ -578,7 +645,7 @@ def collect_api(
             )
 
         refs.append(
-            ExtendedGhostRef(
+            GhostIsaRef(
                 name=mnemonic,
                 api_path=f"amd_rdna.inst.{mnemonic}",
                 kind="function",
@@ -587,6 +654,8 @@ def collect_api(
                 environment_tags=env_tags,
                 overloads=overloads,
                 domain_metadata=domain_metadata,
+                instruction_modifiers=modifiers,
+                supported_architectures=valid_archs,
             )
         )
 

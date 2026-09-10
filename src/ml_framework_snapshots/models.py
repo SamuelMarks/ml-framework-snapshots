@@ -66,6 +66,28 @@ FRAMEWORK_CAPABILITIES: Dict[str, List[str]] = {
     "stablehlo": ["cpu", "cuda", "rocm", "tpu"],
 }
 
+STANDARD_ENUM_MAP: Dict[str, List[str]] = {
+    "reduction": ["none", "mean", "sum"],
+    "mode": [
+        "nearest",
+        "linear",
+        "bilinear",
+        "bicubic",
+        "trilinear",
+        "area",
+        "nearest-exact",
+    ],
+    "padding": [
+        "valid",
+        "same",
+        "zeros",
+        "reflect",
+        "replicate",
+        "circular",
+    ],
+    "layout": ["NCHW", "NHWC", "NCDHW", "NDHWC"],
+}
+
 
 class OperandDirection(str, Enum):
     """Structured operand directionality for assembly and low-level instructions."""
@@ -123,9 +145,25 @@ class ExtendedGhostParam(GhostParam):
         default=None,
         description="Allowed tensor dtypes (e.g. ['float32', 'bfloat16', 'float16']).",
     )
+    allowed_dtypes: Optional[List[str]] = Field(
+        default=None,
+        description="Canonical allowed tensor dtypes (e.g. ['float32', 'bfloat16']).",
+    )
+    allowed_values: Optional[List[str]] = Field(
+        default=None,
+        description="Allowed enum or literal string values (e.g. ['none', 'mean', 'sum']).",
+    )
     rank: Optional[Union[int, str]] = Field(
         default=None,
         description="Allowed tensor rank (e.g. 0 for scalar, 1, 2, 'N-D').",
+    )
+    rank_constraint: Optional[str] = Field(
+        default=None,
+        description="Allowed tensor rank constraint (e.g. '==2', '>=2', 'scalar').",
+    )
+    is_contracting_dim: Optional[bool] = Field(
+        default=None,
+        description="Whether this parameter represents a contracting tensor dimension.",
     )
     default_factory: Optional[str] = Field(
         default=None,
@@ -163,6 +201,10 @@ def sanitize_param_default(
 
     try:
         if callable(val):
+            val_repr = repr(val)
+            if val_repr.startswith("<class '") and val_repr.endswith("'>"):
+                cls_name = val_repr[8:-2]
+                return (cls_name, None, False)
             func_name = getattr(val, "__name__", None)
             factory_str = (
                 f"<function {func_name}>" if func_name else "<factory_default>"
@@ -170,14 +212,24 @@ def sanitize_param_default(
             return ("<factory_default>", factory_str, False)
 
         val_repr = repr(val)
-        if " at 0x" in val_repr:
-            scrubbed = re.sub(r" at 0x[0-9a-fA-F]+", "", val_repr)
+        if re.match(r"^<dtype:\s*'([^']+)'\s*>$", val_repr):
+            m_dt = re.match(r"^<dtype:\s*'([^']+)'\s*>$", val_repr)
+            return (f"tf.{m_dt.group(1)}" if m_dt else val_repr, None, False)
+
+        if "device(type=" in val_repr:
+            m_dev = re.search(r"type='([^']+)'", val_repr)
+            dev_type = m_dev.group(1) if m_dev else "cpu"
+            return (repr(dev_type), val_repr, False)
+
+        if " at 0x" in val_repr or re.search(r"\b0x[0-9a-fA-F]{4,}\b", val_repr):
+            scrubbed = re.sub(r"\s*at\s*0x[0-9a-fA-F]+", "", val_repr)
+            scrubbed = re.sub(r"\b0x[0-9a-fA-F]{4,}\b", "<addr>", scrubbed)
             if scrubbed.startswith("<") and scrubbed.endswith(">"):
                 return ("<factory_default>", scrubbed, False)
             return (scrubbed, None, False)
 
         val_str = str(val)
-        if " at 0x" in val_str:
+        if " at 0x" in val_str or re.search(r"\b0x[0-9a-fA-F]{4,}\b", val_str):
             return ("<factory_default>", "<factory_default>", False)
         return (val_str, None, False)
     except Exception:
@@ -208,6 +260,10 @@ class ExtendedGhostRef(GhostRef):
         default=False,
         description="Whether the symbol originates from a compiled C/C++ extension.",
     )
+    accepted_kwargs: Optional[List[str]] = Field(
+        default=None,
+        description="Explicit list of accepted keyword arguments when **kwargs is present.",
+    )
 
 
 class SnapshotEnvelope(BaseModel):
@@ -221,12 +277,20 @@ class SnapshotEnvelope(BaseModel):
         default=None,
         description="Upstream framework version or toolkit release.",
     )
+    upstream_version: Optional[str] = Field(
+        default=None,
+        description="Upstream hardware specification or compiler version.",
+    )
     source_type: Optional[str] = Field(
         default=None,
         description="Extraction source (tablegen, binary_disassembly, python_ast).",
     )
     upstream_commit: Optional[str] = Field(
         default=None, description="Upstream git commit hash or release tag."
+    )
+    supported_microarchitectures: Optional[List[str]] = Field(
+        default=None,
+        description="Explicit list of supported GPU compute capabilities or target architectures.",
     )
     generated_at: Optional[str] = Field(
         default=None, description="ISO-8601 generation timestamp."
@@ -251,6 +315,38 @@ class GhostIsaRef(ExtendedGhostRef):
 
     model_config = ConfigDict(extra="allow")
     domain_type: Literal["isa"] = "isa"
+    predicate_guards: Optional[List[str]] = Field(
+        default=None,
+        description="Allowed predicate guard registers (e.g. ['@P0', '@!P1', '@PT']).",
+    )
+    register_classes: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Register classes for operands (e.g. {'op0': 'VGPR_32', 'op1': 'VReg_64'}).",
+    )
+    control_codes: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Instruction control code and scheduling schema.",
+    )
+    instruction_modifiers: Optional[List[str]] = Field(
+        default=None,
+        description="Valid instruction modifiers (e.g. ['.SAT', '.FTZ', 'omod:2']).",
+    )
+    structured_modifiers: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Structured modifier bitfields (e.g. rounding, cache, saturation).",
+    )
+    structured_operands: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Detailed operand records with roles, register classes, and immediate constraints.",
+    )
+    vopd_profile: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="VOPD dual-issue profile and pairing rules for RDNA3/GFX11.",
+    )
+    supported_architectures: Optional[List[str]] = Field(
+        default=None,
+        description="Microarchitectures supporting this instruction.",
+    )
 
 
 class GhostMlirRef(ExtendedGhostRef):
@@ -258,6 +354,30 @@ class GhostMlirRef(ExtendedGhostRef):
 
     model_config = ConfigDict(extra="allow")
     domain_type: Literal["mlir"] = "mlir"
+    traits: Optional[List[str]] = Field(
+        default=None,
+        description="Dialect verification traits (e.g. ['SameOperandsAndResultType', 'Commutative']).",
+    )
+    operands: Optional[List[Union[ExtendedGhostParam, GhostParam]]] = Field(
+        default=None,
+        description="Strictly decoupled SSA value arguments (operands).",
+    )
+    attributes: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Structured attribute specifications and schemas.",
+    )
+    regions: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Region definitions with block arguments and yield types.",
+    )
+    successors: Optional[List[str]] = Field(
+        default=None,
+        description="Successor block identifiers for control flow operations.",
+    )
+    type_constraints: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Type constraints for operands and results (e.g. RankedTensorOf, AnyFloat).",
+    )
 
 
 _GRIFFE_CACHE: Dict[str, Any] = {}
@@ -864,6 +984,7 @@ class GhostInspector:
                     or (getattr(target, "__module__", "") or "").startswith("torch")
                     or api_path.startswith("torch.")
                 )
+                is_exact_aten = False
                 if is_torch_target:
                     try:
                         from .frameworks.torch import (
@@ -881,16 +1002,18 @@ class GhostInspector:
                         if aten_sig is not None:
                             if c_ext_params is None:
                                 c_ext_params = aten_sig
+                                is_exact_aten = True
                             elif (
                                 not getattr(c_ext_params, "overloads", None)
                                 and aten_sig.overloads
                             ):
                                 c_ext_params.overloads = aten_sig.overloads
+                                is_exact_aten = True
                     except Exception:  # pragma: no cover
                         pass
 
                 if c_ext_params is not None:
-                    sig_completeness = "heuristic"
+                    sig_completeness = "exact" if is_exact_aten else "heuristic"
                     if (returns_type is None or returns_type == "NoneType") and getattr(
                         c_ext_params, "returns_type", None
                     ):
@@ -1016,6 +1139,12 @@ class GhostInspector:
             if p_default and "<factory_default>" in str(p_default):
                 p_factory = "<factory_default>"
 
+            p_allowed_values = None
+            if p_anno and "Literal[" in p_anno:
+                p_allowed_values = re.findall(r"['\"]([^'\"]+)['\"]", p_anno)
+            elif p_name.lower() in STANDARD_ENUM_MAP:
+                p_allowed_values = STANDARD_ENUM_MAP[p_name.lower()]
+
             params.append(
                 ExtendedGhostParam(
                     name=p_name,
@@ -1026,6 +1155,7 @@ class GhostInspector:
                     description=p_desc,
                     dtypes=p_dtypes,
                     rank=p_rank,
+                    allowed_values=p_allowed_values,
                     default_factory=p_factory,
                     is_mandatory=p_default is None,
                 )
@@ -1080,14 +1210,23 @@ class GhostInspector:
                             else None
                         )
 
+                        ov_allowed_values = None
+                        if anno_val and "Literal[" in anno_val:
+                            ov_allowed_values = re.findall(
+                                r"['\"]([^'\"]+)['\"]", anno_val
+                            )
+                        elif param.name.lower() in STANDARD_ENUM_MAP:
+                            ov_allowed_values = STANDARD_ENUM_MAP[param.name.lower()]
+
                         overload_params.append(
-                            GhostParam(
+                            ExtendedGhostParam(
                                 name=param.name,
                                 standardized_name=STANDARD_ARG_MAP.get(param.name),
                                 kind=p_kind_str,
                                 default=default_val,
                                 annotation=anno_val,
                                 description=None,
+                                allowed_values=ov_allowed_values,
                             )
                         )
 
@@ -1138,6 +1277,14 @@ class GhostInspector:
                     if pd and "<factory_default>" in str(pd):
                         ov_factory = "<factory_default>"
 
+                    ov_allowed_values = None
+                    if sanitized_pa and "Literal[" in sanitized_pa:
+                        ov_allowed_values = re.findall(
+                            r"['\"]([^'\"]+)['\"]", sanitized_pa
+                        )
+                    elif pn.lower() in STANDARD_ENUM_MAP:
+                        ov_allowed_values = STANDARD_ENUM_MAP[pn.lower()]
+
                     ov_params.append(
                         ExtendedGhostParam(
                             name=pn,
@@ -1148,6 +1295,7 @@ class GhostInspector:
                             description=None,
                             dtypes=ov_dtypes,
                             rank=ov_rank,
+                            allowed_values=ov_allowed_values,
                             default_factory=ov_factory,
                             is_mandatory=pd is None,
                         )
@@ -1238,6 +1386,35 @@ class GhostInspector:
             domain_metadata.setdefault("valid_architectures", valid_archs)
             domain_metadata.setdefault("modifiers", modifiers)
             domain_metadata.setdefault("operand_signatures", operands_list)
+            isa_overloads: List[ExtendedGhostRef] = []
+            for sig_idx, sig in enumerate(operands_list):
+                sig_params: List[ExtendedGhostParam] = []
+                for idx, op_type in enumerate(sig):
+                    role = "dst" if idx == 0 else f"src{idx - 1}"
+                    direction = (
+                        OperandDirection.WRITE if idx == 0 else OperandDirection.READ
+                    )
+                    sig_params.append(
+                        ExtendedGhostParam(
+                            name=f"op{idx}",
+                            kind="POSITIONAL_ONLY",
+                            annotation=str(op_type),
+                            standardized_name=role,
+                            direction=direction,
+                            role=IRParameterRole.OPERAND,
+                        )
+                    )
+                isa_overloads.append(
+                    ExtendedGhostRef(
+                        name=name,
+                        api_path=str(data.get("api_path") or f"isa.inst.{name}"),
+                        kind="function",
+                        params=sig_params,
+                        docstring=f"Overload {sig_idx} for {name}: {', '.join(str(s) for s in sig)}",
+                        environment_tags=valid_archs,
+                        domain_metadata=domain_metadata,
+                    )
+                )
             return GhostIsaRef(
                 name=name,
                 api_path=str(data.get("api_path") or f"isa.inst.{name}"),
@@ -1245,11 +1422,14 @@ class GhostInspector:
                 params=params,
                 docstring=desc,
                 environment_tags=valid_archs,
+                overloads=isa_overloads if isa_overloads else None,
                 domain_metadata=domain_metadata,
             )
 
-        if ("attributes" in data or "results" in data) and (
-            "name" not in data or "params" not in data
+        if (
+            ("attributes" in data or "results" in data)
+            and ("name" not in data or "params" not in data)
+            and data.get("domain_type") != "mlir"
         ):
             api_path = str(data.get("api_path") or "mlir.op")
             name = str(data.get("name") or api_path.split(".")[-1])
@@ -1288,6 +1468,10 @@ class GhostInspector:
                         ),
                     )
                 )
+            raw_traits = data.get("traits")
+            raw_regions = data.get("regions")
+            raw_successors = data.get("successors")
+            raw_attrs = data.get("attributes")
             return GhostMlirRef(
                 name=name,
                 api_path=api_path,
@@ -1295,6 +1479,11 @@ class GhostInspector:
                 params=params,
                 returns=results,
                 docstring=data.get("docstring") or data.get("description"),
+                traits=raw_traits if isinstance(raw_traits, list) else None,
+                regions=raw_regions if isinstance(raw_regions, dict) else None,
+                successors=raw_successors if isinstance(raw_successors, list) else None,
+                domain_metadata=data.get("domain_metadata"),
+                attributes=raw_attrs if isinstance(raw_attrs, dict) else None,
             )
 
         domain_type = data.get("domain_type")

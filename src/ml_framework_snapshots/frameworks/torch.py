@@ -16,6 +16,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 import typing
 
 try:
+    import torch  # noqa: F401
     import torch.nn as _nn
     import torch.optim as _optim  # pragma: no cover
     import torch.utils.data as _data  # pragma: no cover
@@ -23,7 +24,7 @@ try:
     nn: typing.Any = _nn  # pragma: no cover
     optim: typing.Any = _optim  # pragma: no cover
     data: typing.Any = _data  # pragma: no cover
-except ImportError:  # pragma: no cover
+except (ImportError, RuntimeError):  # pragma: no cover
     nn = None
     optim = None
     data = None
@@ -369,13 +370,33 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                     continue
                 if callable(obj) and not inspect.isclass(obj):
                     try:
-                        found.append(
-                            GhostInspector.inspect(
-                                obj, f"torch.Tensor.{name}", kind="method"
-                            )
+                        ref = GhostInspector.inspect(
+                            obj, f"torch.Tensor.{name}", kind="method"
                         )
+                        is_in_place = name.endswith("_") and not name.startswith("__")
+                        if ref.domain_metadata is None:  # pragma: no cover
+                            ref.domain_metadata = {}
+                        ref.domain_metadata["is_in_place"] = is_in_place
+                        if is_in_place:
+                            if ref.environment_tags is None:  # pragma: no cover
+                                ref.environment_tags = []
+                            if "in_place_mutation" not in ref.environment_tags:
+                                ref.environment_tags.append("in_place_mutation")
+                        found.append(ref)
                     except Exception:  # pragma: no cover
                         pass
+
+        # 9. torch.ops.aten operations
+        if hasattr(torch, "ops") and hasattr(torch.ops, "aten"):
+            for name, obj in inspect.getmembers(torch.ops.aten):
+                if not name.startswith("_"):
+                    if callable(obj) and not inspect.isclass(obj):
+                        try:
+                            found.append(
+                                GhostInspector.inspect(obj, f"torch.ops.aten.{name}")
+                            )
+                        except Exception:  # pragma: no cover
+                            pass
 
     except ImportError:
         pass

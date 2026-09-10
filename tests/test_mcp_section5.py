@@ -5,7 +5,7 @@ batch code block verification (check_code_block), and expanded semantic concept 
 """
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from unittest import mock
 
 from ml_framework_snapshots.mcp_server import (
@@ -772,8 +772,105 @@ v_add_f32 v0, v1, v2
     assert '"is_valid": true' in resp["result"]["content"][0]["text"]
 
 
-def test_shape_and_dtype_grounding() -> None:
-    """Test shape broadcasting, matmul contracting dimensions, and specialized dtype validations."""
+def test_shape_and_dtype_grounding(mocker: Any) -> None:
+    """Test shape broadcasting, matmul contracting dimensions, and specialized dtype validations.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mock_snap = {
+        "categories": {
+            "math": [
+                {
+                    "name": "add",
+                    "api_path": "torch.add",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "other", "kind": "POSITIONAL_OR_KEYWORD"},
+                    ],
+                },
+                {
+                    "name": "mm",
+                    "api_path": "torch.mm",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD", "rank": 2},
+                        {"name": "mat2", "kind": "POSITIONAL_OR_KEYWORD", "rank": 2},
+                    ],
+                },
+                {
+                    "name": "matmul",
+                    "api_path": "torch.matmul",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "other", "kind": "POSITIONAL_OR_KEYWORD"},
+                    ],
+                },
+                {
+                    "name": "bitwise_and",
+                    "api_path": "torch.bitwise_and",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "other", "kind": "POSITIONAL_OR_KEYWORD"},
+                    ],
+                },
+                {
+                    "name": "quantize_per_tensor",
+                    "api_path": "torch.quantize_per_tensor",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "scale", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "zero_point", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "dtype", "kind": "KEYWORD_ONLY"},
+                    ],
+                },
+            ]
+        }
+    }
+    from ml_framework_snapshots.index import lookup_symbol
+
+    orig_get_framework_snapshot = get_framework_snapshot
+    orig_lookup_symbol = lookup_symbol
+
+    def mock_get_snap(framework: str, version: Any = None) -> Dict[str, Any]:
+        """Return mock snapshot for torch, otherwise delegate to original getter.
+
+        Args:
+            framework: Target framework identifier.
+            version: Optional version string.
+
+        Returns:
+            Framework snapshot dictionary.
+        """
+        if framework == "torch":
+            return mock_snap
+        return orig_get_framework_snapshot(framework, version)
+
+    def mock_lookup(
+        framework: str, api_path: str, version: Any = None
+    ) -> Optional[Dict[str, Any]]:
+        """Mock lookup_symbol returning None for torch.
+
+        Args:
+            framework: Target framework identifier.
+            api_path: Target API path.
+            version: Optional version string.
+
+        Returns:
+            Optional symbol dictionary.
+        """
+        if framework == "torch":
+            return None
+        return orig_lookup_symbol(framework, api_path, version=version)
+
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        side_effect=mock_get_snap,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        side_effect=mock_lookup,
+    )
+
     # 1. Elementwise broadcasting
     res_add_valid = check_hallucination(
         "torch", "torch.add", arg_shapes=[[2, 3], [1, 3]]
@@ -884,6 +981,20 @@ def test_explain_anti_pattern_tool() -> None:
     assert res_tf["is_known_anti_pattern"] is True
     assert res_tf["canonical_argument"] == "keepdims"
 
+    # PyTorch inplace migration
+    res_inp = explain_anti_pattern("torch", "torch.relu", "inplace")
+    assert res_inp["is_known_anti_pattern"] is True
+    assert "underscore" in res_inp["explanation"]
+
+    # JAX PRNG key and rng migration
+    res_key = explain_anti_pattern("jax", "jax.random.normal", "key")
+    assert res_key["is_known_anti_pattern"] is True
+    assert "PRNGKey" in res_key["explanation"]
+
+    res_rng = explain_anti_pattern("jax", "jax.random.normal", "rng")
+    assert res_rng["is_known_anti_pattern"] is True
+    assert res_rng["canonical_argument"] == "key"
+
     # 5. Unknown argument fallback
     res_unknown = explain_anti_pattern("torch", "torch.sum", "unrecognized_kwarg")
     assert res_unknown["is_known_anti_pattern"] is False
@@ -910,8 +1021,88 @@ def test_explain_anti_pattern_tool() -> None:
     assert '"canonical_argument": "dim"' in resp["result"]["content"][0]["text"]
 
 
-def test_mcp_edge_coverage_branches() -> None:
-    """Test MCP server edge branches for hallucination checks, anti-patterns, and MLIR ops."""
+def test_mcp_edge_coverage_branches(mocker: Any) -> None:
+    """Test MCP server edge branches for hallucination checks, anti-patterns, and MLIR ops.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mock_snap = {
+        "categories": {
+            "math": [
+                {
+                    "name": "add",
+                    "api_path": "torch.add",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "other", "kind": "POSITIONAL_OR_KEYWORD"},
+                    ],
+                },
+                {
+                    "name": "bitwise_and",
+                    "api_path": "torch.bitwise_and",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "other", "kind": "POSITIONAL_OR_KEYWORD"},
+                    ],
+                },
+                {
+                    "name": "quantize_per_tensor",
+                    "api_path": "torch.quantize_per_tensor",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "scale", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "zero_point", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "dtype", "kind": "KEYWORD_ONLY"},
+                    ],
+                },
+            ]
+        }
+    }
+    from ml_framework_snapshots.index import lookup_symbol
+
+    orig_get_framework_snapshot = get_framework_snapshot
+    orig_lookup_symbol = lookup_symbol
+
+    def mock_get_snap(framework: str, version: Any = None) -> Dict[str, Any]:
+        """Return mock snapshot for torch, otherwise delegate to original getter.
+
+        Args:
+            framework: Target framework identifier.
+            version: Optional version string.
+
+        Returns:
+            Framework snapshot dictionary.
+        """
+        if framework == "torch":
+            return mock_snap
+        return orig_get_framework_snapshot(framework, version)
+
+    def mock_lookup(
+        framework: str, api_path: str, version: Any = None
+    ) -> Optional[Dict[str, Any]]:
+        """Mock lookup_symbol returning None for torch.
+
+        Args:
+            framework: Target framework identifier.
+            api_path: Target API path.
+            version: Optional version string.
+
+        Returns:
+            Optional symbol dictionary.
+        """
+        if framework == "torch":
+            return None
+        return orig_lookup_symbol(framework, api_path, version=version)
+
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        side_effect=mock_get_snap,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        side_effect=mock_lookup,
+    )
     from ml_framework_snapshots.mcp_server import explain_anti_pattern
 
     # 1. explain_anti_pattern with unknown framework and API (sig is None)
@@ -994,3 +1185,57 @@ def test_mcp_edge_coverage_branches() -> None:
         result_types=["i32"],
     )
     assert res_conv_nontensor_res["is_valid"] is True
+
+
+def test_get_framework_snapshot_extraction_exception(mocker: Any) -> None:
+    """Test get_framework_snapshot fallback to empty dict when runtime extraction raises exception.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    from ml_framework_snapshots.mcp_server import (
+        _SNAPSHOT_CACHE,
+        get_framework_snapshot,
+    )
+
+    _SNAPSHOT_CACHE.clear()
+    mock_extract = mocker.MagicMock(side_effect=RuntimeError("extraction failure"))
+    mocker.patch("ml_framework_snapshots.mcp_server.extract_snapshot", mock_extract)
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.is_offline_mode", return_value=False
+    )
+
+    res = get_framework_snapshot("torch")
+    assert res == {"categories": {}}
+
+
+def test_check_sass_fp4_microscopic_scaling_architecture_gating() -> None:
+    """Test check_sass_instruction architecture gating for FP4/FP6/microscopic scaling mnemonics."""
+    from ml_framework_snapshots.mcp_server import check_sass_instruction
+
+    # sm_90 target architecture should fail for FP4 instruction
+    res_sm90 = check_sass_instruction("MMA_SCALE_FP4", sm_arch="sm_90")
+    assert res_sm90["is_valid"] is False
+    assert any(
+        "Microscopic scaling and FP4/FP6 instructions" in err
+        for err in res_sm90["errors"]
+    )
+
+    # sm_100 target architecture should succeed
+    res_sm100 = check_sass_instruction("MMA_SCALE_FP4", sm_arch="sm_100")
+    assert res_sm100["is_valid"] is True
+
+
+def test_translate_concept_arguments_direct_schema_key() -> None:
+    """Test translate_concept_arguments when concept name directly matches a parameter translation schema key."""
+    from ml_framework_snapshots.mcp_server import translate_concept_arguments
+
+    res = translate_concept_arguments("matmul", "torch", "numpy", {"dim": 0})
+    assert res["concept"] == "matmul"
+    assert res["source_framework"] == "torch"
+    assert res["target_framework"] == "numpy"
+
+    res_dot = translate_concept_arguments("dot", "torch", "numpy", {"dim": 0})
+    assert res_dot["concept"] == "dot"
+    assert res_dot["source_framework"] == "torch"
+    assert res_dot["target_framework"] == "numpy"

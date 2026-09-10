@@ -253,3 +253,65 @@ def test_offline_cli_execution(tmp_path: Any, monkeypatch: Any) -> None:
         ],
     )
     cli.main()
+
+
+def test_offline_mode_env_vars_and_custom_paths(
+    tmp_path: Any, monkeypatch: Any
+) -> None:
+    """Verify is_offline_mode and get_custom_snapshots_paths detection.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    from ml_framework_snapshots.utils import (
+        get_custom_snapshots_paths,
+        is_offline_mode,
+    )
+    from ml_framework_snapshots.mcp_server import get_framework_snapshot
+
+    # Test offline mode detection
+    monkeypatch.delenv("ML_SNAPSHOTS_OFFLINE", raising=False)
+    monkeypatch.delenv("ML_FRAMEWORK_SNAPSHOTS_OFFLINE", raising=False)
+    assert is_offline_mode() is False
+
+    monkeypatch.setenv("ML_SNAPSHOTS_OFFLINE", "1")
+    assert is_offline_mode() is True
+
+    monkeypatch.setenv("ML_SNAPSHOTS_OFFLINE", "0")
+    monkeypatch.setenv("ML_FRAMEWORK_SNAPSHOTS_OFFLINE", "true")
+    assert is_offline_mode() is True
+
+    # Test custom snapshot path resolution
+    custom_dir = tmp_path / "custom_snaps"
+    custom_dir.mkdir()
+    snap_file = custom_dir / "customfw_v1.0.0.json"
+    snap_file.write_text('{"categories": {"CUSTOM": [{"name": "custom_op"}]}}')
+
+    monkeypatch.setenv("ML_SNAPSHOTS_PATH", str(custom_dir))
+    paths = get_custom_snapshots_paths()
+    assert str(custom_dir) in paths
+
+    snap = get_framework_snapshot("customfw", "1.0.0")
+    assert "CUSTOM" in snap.get("categories", {})
+    assert snap.get("_snapshot_source") == "custom_path"
+
+
+def test_offline_cli_pull_forbidden(monkeypatch: Any) -> None:
+    """Verify that CLI pull subcommand is forbidden in offline mode.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    import sys
+    from ml_framework_snapshots import cli
+
+    monkeypatch.setenv("ML_SNAPSHOTS_OFFLINE", "1")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["ml_framework_snapshots", "pull", "torch@2.4.0"],
+    )
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main()
+    assert exc_info.value.code == 1

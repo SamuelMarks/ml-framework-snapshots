@@ -28,7 +28,15 @@ def test_wheel_packaging_and_data_assets(tmp_path: os.PathLike[str]) -> None:
             for n in namelist
             if any(
                 n.endswith(ext)
-                for ext in (".db", ".sqlite", ".sqlite3", ".db-wal", ".db-journal")
+                for ext in (
+                    ".db",
+                    ".sqlite",
+                    ".sqlite3",
+                    ".db-wal",
+                    ".db-journal",
+                    ".db-shm",
+                    ".sqlite-journal",
+                )
             )
         ]
         assert (
@@ -61,3 +69,40 @@ def test_wheel_packaging_and_data_assets(tmp_path: os.PathLike[str]) -> None:
             "nvidia_sass_exhaustive.json",
         )
         assert os.path.isfile(sass_json)
+
+
+def test_wheel_bundles_dynamic_snapshots(tmp_path: os.PathLike[str]) -> None:
+    """Verify that any snapshot JSON files in snapshots/ are bundled in .whl and .db files excluded.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+    """
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    snap_dir = os.path.join(root_dir, "src", "ml_framework_snapshots", "snapshots")
+    test_json = os.path.join(snap_dir, "testframework_v1.0.0.json")
+    test_db = os.path.join(snap_dir, "testleak.db")
+
+    try:
+        with open(test_json, "w", encoding="utf-8") as f:
+            f.write('{"categories": {"TEST": [{"name": "test_op"}]}}')
+        with open(test_db, "w", encoding="utf-8") as f:
+            f.write("test sqlite db content")
+
+        whl_filename = build_wheel(str(tmp_path))
+        whl_path = os.path.join(str(tmp_path), whl_filename)
+
+        with zipfile.ZipFile(whl_path, "r") as zf:
+            names = zf.namelist()
+            # Assert test json is included
+            assert any(
+                n.endswith("testframework_v1.0.0.json") for n in names
+            ), "Dynamic snapshot JSON was not included in wheel"
+            # Assert test db is excluded
+            assert not any(
+                n.endswith("testleak.db") for n in names
+            ), "Database file was leaked into wheel"
+    finally:
+        if os.path.exists(test_json):
+            os.remove(test_json)
+        if os.path.exists(test_db):
+            os.remove(test_db)

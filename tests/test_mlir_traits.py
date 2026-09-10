@@ -81,6 +81,24 @@ def test_validate_mlir_type() -> None:
     err_flt = mlir.validate_mlir_type("i32", constraint="AnyFloat")
     assert any("float constraint" in e for e in err_flt)
 
+    # StableHLO constraints: HLO_StaticShapeTensor
+    assert (
+        mlir.validate_mlir_type(
+            "tensor<4x8xf32>",
+            constraint="HLO_StaticShapeTensorOrPerAxisQuantizedTensor",
+        )
+        == []
+    )
+    err_dynamic = mlir.validate_mlir_type(
+        "tensor<?x8xf32>",
+        constraint="HLO_StaticShapeTensorOrPerAxisQuantizedTensor",
+    )
+    assert any("static shape constraint" in e for e in err_dynamic)
+    err_not_tensor = mlir.validate_mlir_type(
+        "i32", constraint="HLO_StaticShapeTensorOrPerAxisQuantizedTensor"
+    )
+    assert any("tensor constraint" in e for e in err_not_tensor)
+
 
 def test_validate_mlir_traits() -> None:
     """Test validation of MLIR dialect traits."""

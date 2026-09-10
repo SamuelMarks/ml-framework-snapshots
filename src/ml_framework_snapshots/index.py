@@ -12,6 +12,8 @@ import sqlite3
 import tempfile
 from typing import Any, Dict, List, Optional, Tuple, cast
 
+from .utils import get_custom_snapshots_paths
+
 
 def get_cache_dir() -> str:
     """Retrieve the platform-specific cache directory for ml-framework-snapshots.
@@ -76,8 +78,11 @@ def init_db(db_path: Optional[str] = None) -> sqlite3.Connection:
         Open sqlite3 connection with schema initialized.
     """
     path = db_path or get_index_db_path()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    conn = sqlite3.connect(path)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        conn = sqlite3.connect(path)
+    except (OSError, sqlite3.OperationalError):
+        conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("PRAGMA journal_mode=WAL")
@@ -239,6 +244,11 @@ def index_snapshot_file(json_path: str, conn: sqlite3.Connection) -> int:
 
     file_name = os.path.basename(json_path)
     framework, version = extract_framework_and_version(file_name)
+    if isinstance(data, dict):
+        if data.get("target"):
+            framework = str(data["target"])
+        if data.get("version"):
+            version = str(data["version"])
 
     items: List[Dict[str, Any]] = []
     if isinstance(data, dict):
@@ -311,7 +321,7 @@ def get_available_snapshot_files() -> List[str]:
     """
     found: List[str] = []
     base_dir = os.path.dirname(__file__)
-    search_dirs = [
+    search_dirs = get_custom_snapshots_paths() + [
         os.path.join(base_dir, "snapshots"),
         os.path.join(base_dir, "frameworks"),
         os.path.join(get_cache_dir(), "snapshots"),

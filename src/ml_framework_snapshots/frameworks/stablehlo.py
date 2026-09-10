@@ -12,7 +12,7 @@ from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
 
 from ..models import (
     ExtendedGhostParam,
-    ExtendedGhostRef,
+    GhostMlirRef,
     GhostResult,
     IRParameterRole,
     OperandDirection,
@@ -391,6 +391,19 @@ def validate_stablehlo_region(
                     f"stablehlo.sort comparator region must terminate with tensor<i1> (got {yield_types})."
                 )
 
+    elif clean_op in ("scf.for", "for"):
+        if region_name == "body":
+            if not block_args or block_args[0] != "index":
+                errors.append(
+                    f"scf.for body region first block argument (induction variable) must be 'index' type (got {block_args[0] if block_args else 'none'})."
+                )
+            if len(block_args) > 1:
+                iter_args = block_args[1:]
+                if yield_types and yield_types != iter_args:
+                    errors.append(
+                        f"scf.for body region yield types ({yield_types}) must match loop-carried iter_args ({iter_args})."
+                    )
+
     return errors
 
 
@@ -475,6 +488,102 @@ def validate_binary_broadcast(
     return len(errors) == 0, res_shape, errors
 
 
+def validate_stablehlo_op(
+    op_name: str,
+    operands: Optional[List[Dict[str, Any]]] = None,
+    attributes: Optional[Dict[str, Any]] = None,
+    regions: Optional[Dict[str, Any]] = None,
+    operand_ranks: Optional[List[int]] = None,
+) -> List[str]:
+    """Validate a StableHLO operation against dimension numbers, regions, and operand ranks.
+
+    Checks:
+        - DotDimensionNumbersAttr validation on stablehlo.dot_general
+        - ConvDimensionNumbersAttr validation on stablehlo.convolution
+        - ScatterDimensionNumbersAttr validation on stablehlo.scatter
+        - GatherDimensionNumbersAttr validation on stablehlo.gather
+        - Region block argument arity and terminator yield types
+
+    Args:
+        op_name: Qualified operation name (e.g. 'stablehlo.dot_general', 'stablehlo.reduce').
+        operands: Optional list of SSA operand descriptor dictionaries.
+        attributes: Optional dictionary of attributes passed to the operation.
+        regions: Optional dictionary of regions attached to the operation.
+        operand_ranks: Optional list of integer ranks for operands.
+
+    Returns:
+        List of validation error messages.
+    """
+    errors: List[str] = []
+    clean_op = op_name.strip().lower()
+
+    # 1. Validate structured dimension number attributes
+    if attributes:
+        for attr_k, attr_v in attributes.items():
+            k_low = attr_k.lower().replace("_", "")
+            if "dotdimensionnumbers" in k_low or "dotdimension" in k_low:
+                if isinstance(attr_v, dict):
+                    lhs_rk = (
+                        operand_ranks[0]
+                        if operand_ranks and len(operand_ranks) > 0
+                        else None
+                    )
+                    rhs_rk = (
+                        operand_ranks[1]
+                        if operand_ranks and len(operand_ranks) > 1
+                        else None
+                    )
+                    errors.extend(
+                        validate_dot_dimension_numbers(
+                            attr_v, lhs_rank=lhs_rk, rhs_rank=rhs_rk
+                        )
+                    )
+                else:
+                    errors.append(
+                        f"DotDimensionNumbersAttr for '{op_name}' must be a dictionary specification."
+                    )
+            elif "convdimensionnumbers" in k_low or k_low == "dimensionnumbers":
+                if isinstance(attr_v, dict):
+                    errors.extend(validate_conv_dimension_numbers(attr_v))
+                else:
+                    errors.append(
+                        f"ConvDimensionNumbersAttr for '{op_name}' must be a dictionary specification."
+                    )
+            elif "scatterdimensionnumbers" in k_low:
+                if isinstance(attr_v, dict):
+                    errors.extend(validate_scatter_dimension_numbers(attr_v))
+                else:
+                    errors.append(
+                        f"ScatterDimensionNumbersAttr for '{op_name}' must be a dictionary specification."
+                    )
+            elif "gatherdimensionnumbers" in k_low:
+                if isinstance(attr_v, dict):
+                    errors.extend(validate_gather_dimension_numbers(attr_v))
+                else:
+                    errors.append(
+                        f"GatherDimensionNumbersAttr for '{op_name}' must be a dictionary specification."
+                    )
+
+    # 2. Validate regions if present
+    if regions and isinstance(regions, dict):
+        for reg_name, reg_val in regions.items():
+            block_args: List[str] = []
+            yield_types: List[str] = []
+            if isinstance(reg_val, dict):
+                block_args = reg_val.get("block_arguments", [])
+                yield_types = reg_val.get("yield_types", [])
+            errors.extend(
+                validate_stablehlo_region(
+                    op_name=clean_op,
+                    region_name=reg_name,
+                    block_args=block_args,
+                    yield_types=yield_types,
+                )
+            )
+
+    return errors
+
+
 def _load_stablehlo_exhaustive() -> List[GhostRef]:
     """Load the StableHLO exhaustive JSON dump and map it to GhostRefs.
 
@@ -526,6 +635,7 @@ def _load_stablehlo_exhaustive() -> List[GhostRef]:
                 )
 
             # 2. Attributes
+            op_attributes: Dict[str, Any] = {}
             for attribute in op.get("attributes", []):
                 attr_name = (
                     attribute["name"] if isinstance(attribute, dict) else str(attribute)
@@ -545,6 +655,18 @@ def _load_stablehlo_exhaustive() -> List[GhostRef]:
                         role=IRParameterRole.ATTRIBUTE,
                     )
                 )
+                matched_schema = None
+                for schema_key, schema_val in STRUCTURED_STABLEHLO_SCHEMAS.items():
+                    clean_key = schema_key.lower().replace("attr", "")
+                    if clean_key in attr_name.lower().replace(
+                        "_", ""
+                    ) or clean_key in attr_type.lower().replace("_", ""):
+                        matched_schema = schema_val
+                        break
+                if matched_schema is not None:
+                    op_attributes[attr_name] = matched_schema
+                else:
+                    op_attributes[attr_name] = {"type": attr_type}
 
             # 3. Op Regions
             for region in op.get("regions", []):
@@ -597,17 +719,27 @@ def _load_stablehlo_exhaustive() -> List[GhostRef]:
                 "structured_attribute_schemas": STRUCTURED_STABLEHLO_SCHEMAS,
             }
 
+            ssa_operands = [
+                p for p in params if getattr(p, "role", None) == IRParameterRole.OPERAND
+            ]
+
             refs.append(
-                ExtendedGhostRef(
+                GhostMlirRef(
                     name=op.get("class_name", "UnknownOp"),
                     api_path=op.get("api_path", ""),
                     kind="function",
                     params=params,
+                    operands=ssa_operands,
                     docstring="\n".join(docstring_parts),
                     returns_type=returns_type,
                     returns=ghost_results,
                     environment_tags=["cpu", "cuda", "rocm", "tpu"],
                     domain_metadata=domain_metadata,
+                    traits=traits,
+                    attributes=op_attributes if op_attributes else None,
+                    regions=STRUCTURED_REGION_SIGNATURES.get(api_path)
+                    if isinstance(STRUCTURED_REGION_SIGNATURES.get(api_path), dict)
+                    else None,
                 )
             )
     except (json.JSONDecodeError, OSError):

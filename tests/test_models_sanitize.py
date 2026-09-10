@@ -128,3 +128,94 @@ def test_sanitize_param_default_edge_cases() -> None:
     assert def_val4 == "<unrepresentable>"
     assert factory4 is None
     assert is_mand4 is False
+
+
+def test_sanitize_param_default_pointer_scrubbing() -> None:
+    """Test scrubbing raw hexadecimal pointer addresses from default representations."""
+    from ml_framework_snapshots.models import sanitize_param_default
+
+    class PointerDefault:
+        """Class with repr containing hex address without at prefix."""
+
+        def __repr__(self) -> str:
+            """Return repr with embedded hex address.
+
+            Returns:
+                String with hex pointer.
+            """
+            return "Device(0x7fffbeef)"
+
+    class PointerStrOnly:
+        """Class with str containing hex address without at prefix."""
+
+        def __repr__(self) -> str:
+            """Return clean repr.
+
+            Returns:
+                Clean string.
+            """
+            return "CleanDevice"
+
+        def __str__(self) -> str:
+            """Return str with embedded hex address.
+
+            Returns:
+                String with hex pointer.
+            """
+            return "Device(0x7fffbeef)"
+
+    val_def, fac_def, mand_def = sanitize_param_default(PointerDefault())
+    assert val_def == "Device(<addr>)"
+    assert fac_def is None
+    assert mand_def is False
+
+    val_str, fac_str, mand_str = sanitize_param_default(PointerStrOnly())
+    assert val_str == "<factory_default>"
+    assert fac_str == "<factory_default>"
+    assert mand_str is False
+
+
+def test_sanitize_framework_constants() -> None:
+    """Test preservation of framework dtypes, classes, and device constants."""
+    import numpy as np
+    from ml_framework_snapshots.models import sanitize_param_default
+
+    # 1. NumPy dtype class
+    val_np, fac_np, mand_np = sanitize_param_default(np.float32)
+    assert val_np == "numpy.float32"
+    assert fac_np is None
+    assert mand_np is False
+
+    # 2. Mock TF dtype representation
+    class MockTFDtype:
+        """Mock TF DType with angle-bracket repr."""
+
+        def __repr__(self) -> str:
+            """Return TF dtype representation.
+
+            Returns:
+                Dtype string.
+            """
+            return "<dtype: 'float32'>"
+
+    val_tf, fac_tf, mand_tf = sanitize_param_default(MockTFDtype())
+    assert val_tf == "tf.float32"
+    assert fac_tf is None
+    assert mand_tf is False
+
+    # 3. Mock Torch device representation
+    class MockTorchDevice:
+        """Mock Torch Device."""
+
+        def __repr__(self) -> str:
+            """Return device representation.
+
+            Returns:
+                Device string.
+            """
+            return "device(type='cpu')"
+
+    val_dev, fac_dev, mand_dev = sanitize_param_default(MockTorchDevice())
+    assert val_dev == "'cpu'"
+    assert fac_dev == "device(type='cpu')"
+    assert mand_dev is False

@@ -1,11 +1,12 @@
 """Module docstring."""
 
-from typing import Any
-
-
 import types
-from ml_switcheroo_ir.schema.ghost import SemanticTier
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from typing import Any
+import pytest
+
+from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
+
+pytestmark = [pytest.mark.frameworks]
 
 
 def create_module(name: str, attrs: dict[str, Any]) -> types.ModuleType:
@@ -359,6 +360,34 @@ def test_torch_collect(mocker: Any) -> None:
         },
     )
     torch_fw.collect_api(SemanticTier.ARRAY_API)
+
+
+def test_torch_collect_in_place_mutation_already_tagged(mocker: Any) -> None:
+    """Test torch collect_api when in_place_mutation tag is already present on Tensor method.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    from ml_framework_snapshots.frameworks import torch as torch_fw
+    from ml_framework_snapshots.models import GhostInspector, GhostPythonRef
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+
+    fake_ref = GhostPythonRef(
+        name="add_",
+        api_path="torch.Tensor.add_",
+        kind="method",
+        environment_tags=["in_place_mutation"],
+        domain_metadata={},
+    )
+    fake_tensor = type("Tensor", (), {"add_": lambda self: None})
+    fake_torch = create_module("torch", {"Tensor": fake_tensor})
+
+    mocker.patch.dict("sys.modules", {"torch": fake_torch})
+    mocker.patch.object(GhostInspector, "inspect", return_value=fake_ref)
+
+    refs = torch_fw.collect_api(SemanticTier.ARRAY_API)
+    assert any(r.name == "add_" for r in refs)
+    assert refs[0].environment_tags == ["in_place_mutation"]
 
 
 def test_torch_import_error(mocker: Any) -> None:

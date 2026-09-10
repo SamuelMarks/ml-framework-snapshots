@@ -519,3 +519,52 @@ def test_load_exhaustive_rdna_variants() -> None:
         ops = amd_rdna._load_exhaustive_rdna()
         assert len(ops) == 1
         assert ops[0]["mnemonic"] == "v_test_list"
+
+
+def test_tokenize_rdna_line_and_code_block() -> None:
+    """Test tokenize_rdna_line and check_code_block with RDNA encoding suffixes."""
+    from ml_framework_snapshots.mcp_server import (
+        check_code_block,
+        check_rdna_instruction,
+    )
+
+    # Empty line
+    assert amd_rdna.tokenize_rdna_line("   ") == ("", [], None, [])
+
+    # Suffixes and trailing modifiers
+    base, ops, suf, mods = amd_rdna.tokenize_rdna_line("v_add_f32_e32 v0, v1, v2 clamp")
+    assert base == "v_add_f32"
+    assert ops == ["v0", "v1", "v2"]
+    assert suf == "_e32"
+    assert "clamp" in mods
+    assert "_e32" in mods
+
+    # Extra edge cases: early modifier, trailing non-modifier, empty comma slot
+    b_edge, ops_edge, _suf_edge, mods_edge = amd_rdna.tokenize_rdna_line(
+        "v_fma_f32 v0, clamp,  , v1, v2 v3"
+    )
+    assert b_edge == "v_fma_f32"
+    assert "clamp" in mods_edge
+    assert "v3" in ops_edge
+
+    # Direct check_rdna_instruction with suffix
+    res_direct = check_rdna_instruction("v_add_f32_e32", operands=["v0", "v1", "v2"])
+    assert res_direct["is_valid"] is True
+    assert res_direct["mnemonic_exists"] is True
+
+    # check_code_block with RDNA
+    rdna_code = """
+    // Vector add in RDNA
+    v_add_f32_e32 v0, v1, v2
+    v_fma_f32 v0, v1, v2, v3 clamp
+    """
+    block_res = check_code_block(rdna_code, framework="amd_rdna")
+    assert block_res["is_valid"] is True
+    assert block_res["hallucinations_detected"] == 0
+    assert block_res["total_analyzed"] == 2
+
+    # Hallucinated instruction in code block
+    bad_code = "v_fake_rdna_instruction_e32 v0, v1"
+    bad_res = check_code_block(bad_code, framework="amd_rdna")
+    assert bad_res["is_valid"] is False
+    assert bad_res["hallucinations_detected"] == 1

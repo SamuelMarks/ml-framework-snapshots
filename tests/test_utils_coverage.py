@@ -185,6 +185,7 @@ def test_normalize_c_sig_args_and_unparse_branches() -> None:
 
     # Test fallback scanning lines where candidate parse fails first, then succeeds
     def usage_func() -> Any:
+        """Function with usage docstring demonstrating signature parsing fallback."""
         pass
 
     usage_func.__doc__ = (
@@ -195,3 +196,99 @@ def test_normalize_c_sig_args_and_unparse_branches() -> None:
     sig_usage = extract_c_extension_signature(usage_func, "usage_func")
     assert sig_usage is not None
     assert sig_usage[0][0] == "valid_arg"
+
+
+def test_tablegen_utils_coverage() -> None:
+    """Test full branch coverage for TableGen list splitting and trait extraction."""
+    from ml_framework_snapshots.utils import (
+        extract_tablegen_traits,
+        split_tablegen_list,
+    )
+
+    # Empty and simple cases
+    assert split_tablegen_list("") == []
+    assert split_tablegen_list("  ") == []
+    assert split_tablegen_list("Pure, Commutative") == ["Pure", "Commutative"]
+
+    # Nested brackets, angles, parens, strings with commas and escaped characters
+    complex_raw = (
+        'Pure, AllElementTypesMatch<["operand", "result"]>, '
+        'DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>, '
+        'SomeAttr<"foo, bar", (ins I32:$x)>, // line comment\n'
+        'Escaped<"hello \\"world\\", test">'
+    )
+    res = split_tablegen_list(complex_raw)
+    assert "Pure" in res
+    assert 'AllElementTypesMatch<["operand", "result"]>' in res
+    assert 'DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>' in res
+    assert 'SomeAttr<"foo, bar", (ins I32:$x)>' in res
+    assert 'Escaped<"hello \\"world\\", test">' in res
+
+    # extract_tablegen_traits without brackets
+    assert extract_tablegen_traits("No brackets here") == []
+
+    # extract_tablegen_traits with malformed or unclosed bracket
+    assert extract_tablegen_traits("[UnclosedTrait") == []
+
+    # extract_tablegen_traits with escaped quote inside brackets and string with brackets
+    escaped_bracket_text = (
+        'let x = "[not_a_trait]"; let traits = [Trait<"nested \\"quote\\" [inside]">];'
+    )
+    assert extract_tablegen_traits(escaped_bracket_text) == [
+        'Trait<"nested \\"quote\\" [inside]">'
+    ]
+
+    # extract_tablegen_traits with specialized interfaces
+    sample_text = (
+        'Op<"custom", [Pure, "getAsmResultNames", ["getAsmResultNames"], '
+        '"inferReturnTypeComponents", ["inferReturnTypeComponents"], '
+        '"inferResultRanges", ["inferResultRanges"], // ignore comment\n'
+        'AllTypesMatch<["a", "b"]>]>'
+    )
+    traits = extract_tablegen_traits(sample_text)
+    assert "Pure" in traits
+    assert "OpAsmOpInterface::getAsmResultNames" in traits
+    assert "InferTypeOpInterface::inferReturnTypeComponents" in traits
+    assert "InferIntRangeInterface::inferResultRanges" in traits
+    assert 'AllTypesMatch<["a", "b"]>' in traits
+
+    # Branch 676 -> 678: empty elements between commas
+    assert split_tablegen_list("Trait1, , Trait2, ") == ["Trait1", "Trait2"]
+
+    # Escaped backslash and quotes before outer bracket (lines 703-704, 706-707)
+    text_with_escaped_pre_bracket = (
+        r'let x = "escaped \"quote\" before [not_a_trait]"; let traits = [Trait1];'
+    )
+    assert extract_tablegen_traits(text_with_escaped_pre_bracket) == ["Trait1"]
+
+    # Fallback and interface loops (line 748 and branch 758 -> 745)
+    from unittest.mock import patch
+
+    with patch(
+        "ml_framework_snapshots.utils.split_tablegen_list",
+        return_value=["// comment", "   ", "TraitA"],
+    ):
+        res_mocked = extract_tablegen_traits("[dummy]")
+        assert res_mocked == ["TraitA"]
+
+
+def test_get_custom_snapshots_paths_deduplication(
+    tmp_path: Any, monkeypatch: Any
+) -> None:
+    """Test deduplication and existence check in get_custom_snapshots_paths.
+
+    Args:
+        tmp_path: Pytest tmp_path fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    import os
+    from ml_framework_snapshots.utils import get_custom_snapshots_paths
+
+    p1 = str(tmp_path / "snap1")
+    os.makedirs(p1, exist_ok=True)
+    monkeypatch.setenv(
+        "ML_SNAPSHOTS_PATH",
+        f"{p1}{os.pathsep}{p1}{os.pathsep}/non/existent/path",
+    )
+    paths = get_custom_snapshots_paths()
+    assert paths == [p1]

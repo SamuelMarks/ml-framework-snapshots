@@ -22,11 +22,93 @@ def test_fetch_td_file_success() -> None:
         assert "defm V_ADD_F32" in content
 
 
+def test_fetch_td_file_cache(tmp_path: typing.Any, monkeypatch: typing.Any) -> None:
+    """Test fetch_td_file with disk cache hit and write.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+    cache_dir = os.path.join(str(tmp_path), "ml_framework_snapshots", "amdgpu_td")
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_file = os.path.join(cache_dir, "cached.td")
+    with open(cache_file, "w", encoding="utf-8") as f:
+        f.write("cached_td_content")
+
+    # Hit cache without urlopen
+    cached_content = scrape_amd_rdna.fetch_td_file("cached.td", use_cache=True)
+    assert cached_content == "cached_td_content"
+
+    # Miss cache and write new file
+    with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        mock_response = mock.MagicMock()
+        mock_response.read.return_value = b"downloaded_td_content"
+        mock_response.__enter__.return_value = mock_response
+        mock_urlopen.return_value = mock_response
+
+        downloaded = scrape_amd_rdna.fetch_td_file("new.td", use_cache=True)
+        assert downloaded == "downloaded_td_content"
+        new_cache_file = os.path.join(cache_dir, "new.td")
+        assert os.path.isfile(new_cache_file)
+
+
+def test_fetch_td_file_cache_exceptions(
+    tmp_path: typing.Any, monkeypatch: typing.Any
+) -> None:
+    """Test fetch_td_file handling of read/write cache exceptions and empty content.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+    cache_dir = os.path.join(str(tmp_path), "ml_framework_snapshots", "amdgpu_td")
+    os.makedirs(cache_dir, exist_ok=True)
+    unreadable = os.path.join(cache_dir, "unreadable.td")
+    with open(unreadable, "w", encoding="utf-8") as f:
+        f.write("content")
+
+    # 1. Read exception falls through to urlopen
+    with mock.patch(
+        "builtins.open", side_effect=[OSError("Permission denied"), mock.mock_open()()]
+    ):
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+            mock_resp = mock.MagicMock()
+            mock_resp.read.return_value = b"fallback_content"
+            mock_resp.__enter__.return_value = mock_resp
+            mock_urlopen.return_value = mock_resp
+
+            res = scrape_amd_rdna.fetch_td_file("unreadable.td", use_cache=True)
+            assert res == "fallback_content"
+
+    # 2. Write exception after download does not crash
+    with mock.patch("os.makedirs", side_effect=OSError("Disk full")):
+        with mock.patch("urllib.request.urlopen") as mock_urlopen:
+            mock_resp = mock.MagicMock()
+            mock_resp.read.return_value = b"no_write_content"
+            mock_resp.__enter__.return_value = mock_resp
+            mock_urlopen.return_value = mock_resp
+
+            res2 = scrape_amd_rdna.fetch_td_file("no_write.td", use_cache=True)
+            assert res2 == "no_write_content"
+
+    # 3. Empty downloaded content (branch use_cache and content: content is "")
+    with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        mock_resp = mock.MagicMock()
+        mock_resp.read.return_value = b""
+        mock_resp.__enter__.return_value = mock_resp
+        mock_urlopen.return_value = mock_resp
+
+        res3 = scrape_amd_rdna.fetch_td_file("empty.td", use_cache=True)
+        assert res3 == ""
+
+
 def test_fetch_td_file_error() -> None:
     """Test fetch_td_file on error."""
     with mock.patch("urllib.request.urlopen") as mock_urlopen:
         mock_urlopen.side_effect = urllib.error.URLError("Not Found")
-        content = scrape_amd_rdna.fetch_td_file("test.td")
+        content = scrape_amd_rdna.fetch_td_file("error.td", use_cache=False)
         assert content == ""
 
 

@@ -27,6 +27,7 @@ linux_x64 = ["requirements-linux-x64.txt"]
 allow-direct-references = true
 
 [tool.mypy]
+mypy_path = "src"
 ignore_missing_imports = true
 strict = true
 warn_unused_ignores = false
@@ -36,6 +37,9 @@ module = "ml_framework_snapshots.models"
 disallow_subclassing_any = false
 
 [tool.hatch.build.targets.sdist]
+artifacts = [
+    "src/ml_framework_snapshots/**/*.json",
+]
 exclude = [
     "/.venv_311",
     "/.venv*",
@@ -43,8 +47,10 @@ exclude = [
     "/snapshots",
     "/test_out",
     "*.db",
+    "*.db-*",
     "*.db-journal",
     "*.db-wal",
+    "*.db-shm",
     "*.sqlite",
     "*.sqlite3",
     "*.sqlite-journal",
@@ -53,11 +59,15 @@ exclude = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/ml_framework_snapshots"]
 include = ["src/ml_framework_snapshots/**/*.json"]
-artifacts = ["src/ml_framework_snapshots/snapshots/*.json"]
+artifacts = [
+    "src/ml_framework_snapshots/**/*.json",
+]
 exclude = [
     "*.db",
+    "*.db-*",
     "*.db-journal",
     "*.db-wal",
+    "*.db-shm",
     "*.sqlite",
     "*.sqlite3",
     "*.sqlite-journal",

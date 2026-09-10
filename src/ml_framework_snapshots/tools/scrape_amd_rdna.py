@@ -35,12 +35,15 @@ ALL_GFX_ARCHITECTURES = [
 ]
 
 
-def fetch_td_file(filename: str, local_dir: Optional[str] = None) -> str:
+def fetch_td_file(
+    filename: str, local_dir: Optional[str] = None, use_cache: bool = True
+) -> str:
     """Fetch a TableGen file from local checkout or LLVM repository.
 
     Args:
         filename: The TableGen filename to fetch.
         local_dir: Optional local directory containing LLVM AMDGPU TableGen files.
+        use_cache: Whether to check and write to disk cache.
 
     Returns:
         The content of the file as string, or empty string on error.
@@ -52,10 +55,33 @@ def fetch_td_file(filename: str, local_dir: Optional[str] = None) -> str:
             with open(candidate, "r", encoding="utf-8") as f:
                 return f.read()
 
+    cache_dir = os.path.join(
+        os.environ.get(
+            "XDG_CACHE_HOME", os.path.expanduser(os.path.join("~", ".cache"))
+        ),
+        "ml_framework_snapshots",
+        "amdgpu_td",
+    )
+    cache_path = os.path.join(cache_dir, filename)
+    if use_cache and os.path.isfile(cache_path):
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            pass
+
     url = f"{LLVM_REPO_BASE}/{filename}"
     try:
         with urllib.request.urlopen(url) as response:
-            return str(response.read().decode("utf-8"))
+            content = str(response.read().decode("utf-8"))
+            if use_cache and content:
+                try:
+                    os.makedirs(cache_dir, exist_ok=True)
+                    with open(cache_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+                except Exception:
+                    pass
+            return content
     except Exception as e:
         print(f"Error fetching {url}: {e}")
         return ""

@@ -599,3 +599,32 @@ def test_aten_edge_cases_and_mocks(mocker: Any) -> None:
     assert sig[0][0] == "x"
     assert len(sig.overloads) == 1
     assert sig.overloads[0][0][0] == "y"
+
+
+def test_torch_collect_api_array_api_aten(mocker: Any) -> None:
+    """Test collect_api(ARRAY_API) with real PyTorch to verify aten ops collection.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    import torch
+    from ml_framework_snapshots.frameworks import torch as torch_fw
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+
+    mocker.patch.object(
+        torch_fw,
+        "get_all_members",
+        return_value=[("add", torch.add), ("relu", torch.relu)],
+    )
+    res = torch_fw.collect_api(SemanticTier.ARRAY_API)
+    assert len(res) > 0
+    assert any(r.api_path.startswith("torch.") for r in res)
+
+    tensor_in_place = [
+        r
+        for r in res
+        if r.api_path.startswith("torch.Tensor.") and r.name.endswith("_")
+    ]
+    if tensor_in_place:
+        assert tensor_in_place[0].domain_metadata.get("is_in_place") is True
+        assert "in_place_mutation" in tensor_in_place[0].environment_tags

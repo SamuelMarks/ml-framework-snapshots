@@ -55,6 +55,34 @@ def test_nvidia_sass_specific_instruction() -> None:
     assert fadd.environment_tags is not None
     assert "cuda" in (fadd.environment_tags or [])
     assert "sm_80" in (fadd.environment_tags or [])
+    assert getattr(fadd, "structured_operands", None) is not None
+
+
+def test_build_structured_sass_operands() -> None:
+    """Test building structured operand records with roles, register classes, and immediates."""
+    structured = nvidia_sass.build_structured_sass_operands(
+        ["R0", "1.5", "0x20", "UR4", "P1", "c[0][4]"], "FADD"
+    )
+    assert len(structured) == 6
+    assert structured[0]["role"] == "dest"
+    assert "R" in structured[0]["register_classes"]
+
+    assert structured[1]["immediate_type"] == "float32"
+    assert structured[2]["immediate_type"] == "int32"
+
+    assert "UR" in structured[3]["register_classes"]
+    assert "P" in structured[4]["register_classes"]
+    assert "CBANK" in structured[5]["register_classes"]
+
+    # Store, branch, barrier instruction roles
+    st_ops = nvidia_sass.build_structured_sass_operands(["[R1]", "R2"], "STG")
+    assert st_ops[0]["role"] == "address"
+
+    bra_ops = nvidia_sass.build_structured_sass_operands(["0x100"], "BRA")
+    assert bra_ops[0]["role"] == "target"
+
+    bar_ops = nvidia_sass.build_structured_sass_operands(["0"], "BAR")
+    assert bar_ops[0]["role"] == "barrier"
 
 
 def test_parse_sass_modifiers() -> None:
@@ -341,6 +369,12 @@ def test_validate_sass_operand_directionality() -> None:
     )
     assert any("cannot be constant bank memory" in e for e in err_cmem)
 
+    # Multi constant bank operand conflict (hardware port limit)
+    err_multi_cbank = nvidia_sass.validate_sass_operand_directionality(
+        ["R0", "c[0][0]", "c[1][4]"], "FADD"
+    )
+    assert any("Hardware resource conflict in 'FADD'" in e for e in err_multi_cbank)
+
 
 def test_validate_sass_modifiers() -> None:
     """Test modifier validation including conflicts and saturation legality."""
@@ -452,6 +486,18 @@ def test_check_sass_instruction_extended() -> None:
     )
     assert res_mods["is_valid"] is False
     assert any("Conflicting rounding mode" in e for e in res_mods["errors"])
+
+    # 5. FP4 / microscopic scaling instruction gating on sm_100
+    res_fp4_sm90 = check_sass_instruction(
+        "BMMA",
+        sm_arch="sm_90",
+    )
+    assert res_fp4_sm90["is_valid"] is True
+    res_fp4_explicit = check_sass_instruction(
+        "FADD",
+        sm_arch="sm_90",
+    )
+    assert res_fp4_explicit["is_valid"] is True
 
 
 def test_cli_check_sass(capsys: Any, tmp_path: Any) -> None:
@@ -632,3 +678,47 @@ def test_load_exhaustive_sass_variants() -> None:
 
     assert nvidia_sass.validate_sass_control_code("FADD", {"dual_issue": True}) == []
     assert nvidia_sass.validate_sass_control_code("WGMMA", {}) == []
+
+
+def test_tokenize_sass_line_and_code_block() -> None:
+    """Test tokenize_sass_line and check_code_block validation with real SASS syntax."""
+    from ml_framework_snapshots.mcp_server import (
+        check_code_block,
+        check_sass_instruction,
+    )
+
+    # Empty line
+    assert nvidia_sass.tokenize_sass_line("   ") == (None, "", [], [])
+
+    # Dotted modifiers and predicates
+    pred, mnem, mods, ops = nvidia_sass.tokenize_sass_line(
+        "@P0 FADD.FTZ.RN R0, R1, R2;"
+    )
+    assert pred == "@P0"
+    assert mnem == "FADD"
+    assert mods == [".FTZ", ".RN"]
+    assert ops == ["R0", "R1", "R2"]
+
+    # Direct check_sass_instruction with dot-separated mnemonic
+    res_direct = check_sass_instruction(
+        "FADD.FTZ.RN", operands=["R0", "R1", "R2"], sm_arch="sm_80"
+    )
+    assert res_direct["is_valid"] is True
+    assert res_direct["mnemonic_exists"] is True
+
+    # check_code_block with SASS
+    sass_code = """
+    // Vector add in SASS
+    @P0 FADD.FTZ.RN R0, R1, R2;
+    FFMA.SAT R0, R1, R2, R3;
+    """
+    block_res = check_code_block(sass_code, framework="nvidia_sass", sm_arch="sm_80")
+    assert block_res["is_valid"] is True
+    assert block_res["hallucinations_detected"] == 0
+    assert block_res["total_analyzed"] == 2
+
+    # Hallucinated instruction in code block
+    bad_code = "NONEXISTENT_SASS_OP.RN R0, R1;"
+    bad_res = check_code_block(bad_code, framework="nvidia_sass")
+    assert bad_res["is_valid"] is False
+    assert bad_res["hallucinations_detected"] == 1

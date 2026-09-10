@@ -14,6 +14,24 @@ def get_test_coverage() -> str:
     Returns:
         The string representation of the test coverage percentage.
     """
+    if os.path.exists(".coverage"):
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "coverage",
+                    "report",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            match = re.search(r"TOTAL\s+.*\s+(\d+)%", result.stdout)
+            if match:
+                return match.group(1)
+        except Exception:
+            pass
+
     result = subprocess.run(
         [
             sys.executable,

@@ -451,7 +451,8 @@ def test_get_pkg_version_extra() -> None:
     assert get_pkg_version("html_dsl") == "1.0.0"
     assert get_pkg_version("latex_dsl") == "1.0.0"
     assert get_pkg_version("tikz") == "1.0.0"
-    assert get_pkg_version("nvidia_sass") == "1.0.0"
+    assert get_pkg_version("nvidia_sass") == "12.6.0"
+    assert get_pkg_version("amd_rdna") == "llvm-19"
 
 
 def test_get_pkg_version_more() -> None:
@@ -589,3 +590,76 @@ def test_extract_snapshot_stablehlo_zero_dep() -> None:
     assert len(snap["categories"]) > 0
     total_ops = sum(len(ops) for ops in snap["categories"].values())
     assert total_ops > 0
+
+
+def test_validate_snapshot_envelope_and_extraction_metadata() -> None:
+    """Test validate_snapshot_envelope function and envelope fields in extract_snapshot."""
+    import pytest
+    from ml_framework_snapshots.api import validate_snapshot_envelope, extract_snapshot
+
+    # Test invalid type
+    with pytest.raises(ValueError, match="Snapshot must be a dictionary"):
+        validate_snapshot_envelope("not a dict")  # type: ignore
+
+    # Test valid envelope conversion
+    valid_data = {
+        "target": "torch",
+        "version": "2.2.0",
+        "categories": {},
+    }
+    env = validate_snapshot_envelope(valid_data)
+    assert env.target == "torch"
+    assert env.version == "2.2.0"
+    assert env.schema_version == "1.0.0"
+    assert env.generated_at is not None
+
+    # Test envelope with explicit generated_at
+    custom_env = validate_snapshot_envelope(
+        {"target": "jax", "generated_at": "2026-01-01T00:00:00Z"}
+    )
+    assert custom_env.generated_at == "2026-01-01T00:00:00Z"
+
+    # Test hardware framework envelope extraction
+    sass_snap = extract_snapshot("nvidia_sass")
+    assert sass_snap["target"] == "nvidia_sass"
+    assert "supported_microarchitectures" in sass_snap
+    assert "sm_80" in sass_snap["supported_microarchitectures"]
+
+    rdna_snap = extract_snapshot("amd_rdna")
+    assert rdna_snap["target"] == "amd_rdna"
+    assert "supported_microarchitectures" in rdna_snap
+    assert "GFX11/RDNA3" in rdna_snap["supported_microarchitectures"]
+
+
+def test_get_pkg_version_hardware_and_mlir_fallbacks(mocker: Any) -> None:
+    """Test get_pkg_version for mlir and hardware targets with file present and missing."""
+    import unittest.mock as mock
+    from ml_framework_snapshots.api import get_pkg_version
+
+    # mlir with jaxlib raising exception -> reads mlir_exhaustive.json
+    mocker.patch("importlib.metadata.version", side_effect=Exception("no jaxlib"))
+    assert get_pkg_version("mlir") == "llvm-19"
+
+    # mlir with missing json file -> falls back to llvm-19
+    with mock.patch("os.path.exists", return_value=False):
+        assert get_pkg_version("mlir") == "llvm-19"
+
+    # mlir with json file corrupt
+    with mock.patch("builtins.open", side_effect=OSError("read err")):
+        assert get_pkg_version("mlir") == "llvm-19"
+
+    # json file has None/empty version
+    with mock.patch("builtins.open", mock.mock_open(read_data='{"version": null}')):
+        assert get_pkg_version("mlir") == "llvm-19"
+        assert get_pkg_version("nvidia_sass") == "12.6.0"
+
+    # hardware target with missing json file -> falls back to defaults dict
+    with mock.patch("os.path.exists", return_value=False):
+        assert get_pkg_version("nvidia_sass") == "12.6.0"
+        assert get_pkg_version("amd_rdna") == "llvm-19"
+        assert get_pkg_version("nvidia_ptx") == "8.5.0"
+        assert get_pkg_version("stablehlo") == "1.0.0"
+
+    # hardware target with corrupt json file
+    with mock.patch("builtins.open", side_effect=OSError("read err")):
+        assert get_pkg_version("nvidia_sass") == "12.6.0"

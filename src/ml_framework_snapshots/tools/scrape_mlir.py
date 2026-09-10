@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import urllib.request
 import warnings
 
+from ml_framework_snapshots.utils import extract_tablegen_traits
+
 MLIR_DOCS_URL = "https://mlir.llvm.org/docs/Dialects/"
 CORE_MLIR_DIALECTS: List[str] = [
     "arith",
@@ -637,24 +639,11 @@ def parse_mlir_tablegen(content: str, dialect_name: str) -> List[Dict[str, Any]]
 
         # Extract traits
         traits: List[str] = []
-        traits_match = re.search(r"\[(.*?)\]", targs)
-        if traits_match:
-            traits.extend(
-                [
-                    t.strip()
-                    for t in traits_match.group(1).split(",")
-                    if t.strip() and not t.strip().startswith("//")
-                ]
-            )
+        if "[" in targs:
+            traits.extend(extract_tablegen_traits(targs))
         body_traits = re.search(r"let\s+traits\s*=\s*\[(.*?)\];", body, re.DOTALL)
         if body_traits:
-            traits.extend(
-                [
-                    t.strip()
-                    for t in body_traits.group(1).split(",")
-                    if t.strip() and not t.strip().startswith("//")
-                ]
-            )
+            traits.extend(extract_tablegen_traits(body_traits.group(0)))
 
         # Resolve arguments
         args_match = re.search(
@@ -897,6 +886,9 @@ def parse_llvm_tblgen_json(
         )
 
     return ops
+
+
+parse_tblgen_json_dump = parse_llvm_tblgen_json
 
 
 def dump_ast_via_llvm_tooling(

@@ -724,3 +724,30 @@ def test_dump_ast_via_llvm_tooling() -> None:
             "test.td", "arith", tool_binary="/usr/bin/llvm-tblgen"
         )
         assert res_err is None
+
+
+def test_parse_tblgen_json_dump_alias() -> None:
+    """Test parse_tblgen_json_dump alias and schema output.
+
+    Returns:
+        None.
+    """
+    raw_json = {
+        "!instanceof": {"Op": ["Arith_SubFOp"]},
+        "Arith_SubFOp": {
+            "!name": "Arith_SubFOp",
+            "!superclasses": ["Op"],
+            "mnemonic": "subf",
+            "arguments": [
+                {"name": "lhs", "type": "AnyFloat"},
+                {"name": "rhs", "type": "AnyFloat"},
+            ],
+            "results": [{"name": "result", "type": "AnyFloat"}],
+            "traits": ["SameOperandsAndResultType"],
+        },
+    }
+    ops = scrape_mlir.parse_tblgen_json_dump(raw_json, "arith")
+    assert len(ops) == 1
+    assert ops[0]["api_path"] == "arith.subf"
+    assert len(ops[0]["operands"]) == 2
+    assert ops[0]["results"][0]["name"] == "result"

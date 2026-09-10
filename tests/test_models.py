@@ -3,7 +3,11 @@
 from typing import Any
 
 
-from ml_framework_snapshots.models import GhostInspector
+from ml_framework_snapshots.models import (
+    ExtendedGhostParam,
+    GhostInspector,
+    GhostIsaRef,
+)
 from ml_switcheroo_ir.schema.ghost import GhostParam
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
@@ -719,3 +723,146 @@ def test_ghost_inspector_griffe_class_init(mocker: Any) -> None:
 
     ref_empty = GhostInspector.inspect(mock_node_empty, "EmptyClass")
     assert ref_empty.name == "EmptyClass"
+
+
+def test_extended_ghost_param_allowed_values() -> None:
+    """Test ExtendedGhostParam instantiation with allowed_values."""
+    param = ExtendedGhostParam(
+        name="reduction",
+        kind="KEYWORD_ONLY",
+        default="mean",
+        allowed_values=["none", "mean", "sum"],
+    )
+    assert param.allowed_values == ["none", "mean", "sum"]
+
+
+def test_ghost_isa_ref_hydrate_overloads() -> None:
+    """Test GhostInspector.hydrate creates overloads for multi-signature instructions."""
+    raw_data = {
+        "mnemonic": "AL2P",
+        "operands": [["R", "R", "I"], ["R", "I"]],
+        "architecture": ["sm_80", "sm_90"],
+    }
+    hydrated = GhostInspector.hydrate(raw_data)
+    assert isinstance(hydrated, GhostIsaRef)
+    assert hydrated.overloads is not None
+    assert len(hydrated.overloads) == 2
+    assert len(hydrated.overloads[0].params) == 3
+    assert len(hydrated.overloads[1].params) == 2
+
+
+def test_ghost_inspector_overloads_with_literal_and_standard_enum(
+    mocker: Any,
+) -> None:
+    """Test extracting allowed_values from Literal and standard enums in overloads.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mock_param_lit = mocker.MagicMock()
+    mock_param_lit.name = "mode"
+    mock_param_lit.kind.name = "KEYWORD_ONLY"
+    mock_param_lit.default = None
+    mock_param_lit.annotation = 'Literal["fast", "slow"]'
+
+    mock_param_enum = mocker.MagicMock()
+    mock_param_enum.name = "reduction"
+    mock_param_enum.kind.name = "KEYWORD_ONLY"
+    mock_param_enum.default = None
+    mock_param_enum.annotation = "str"
+
+    mock_overload = mocker.MagicMock(spec=["parameters", "returns"])
+    mock_overload.parameters = [mock_param_lit, mock_param_enum]
+    mock_overload.returns = "int"
+
+    mock_node = mocker.MagicMock(
+        spec=[
+            "name",
+            "is_class",
+            "is_function",
+            "parameters",
+            "docstring",
+            "is_public",
+            "overloads",
+            "returns",
+        ]
+    )
+    mock_node.name = "func_with_ov"
+    mock_node.is_class = False
+    mock_node.is_function = True
+    mock_node.parameters = []
+    mock_node.docstring = None
+    mock_node.is_public = True
+    mock_node.overloads = [mock_overload]
+    mock_node.returns = "int"
+
+    ref = GhostInspector.inspect(mock_node, "tests.func_with_ov")
+    assert ref.overloads is not None
+    assert len(ref.overloads) == 1
+    ov_params = ref.overloads[0].params
+    assert ov_params[0].allowed_values == ["fast", "slow"]
+    assert ov_params[1].allowed_values == ["none", "mean", "sum"]
+
+
+def test_ghost_inspector_c_ext_overloads_with_literal_and_standard_enum(
+    mocker: Any,
+) -> None:
+    """Test extracting allowed_values in C-extension overloads.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mocker.patch("inspect.signature", side_effect=ValueError)
+
+    class MockCExtSig(list[Any]):
+        """Mock C-extension signature list with overloads."""
+
+        overloads: Any = None
+        returns_type: Any = "int"
+
+    class MockOverloadList(list[Any]):
+        """Mock overload list with returns_type."""
+
+        returns_type: Any = "int"
+
+    mock_c_sig = MockCExtSig([("x", "POSITIONAL_OR_KEYWORD", None, "int")])
+    mock_ov = MockOverloadList(
+        [
+            ("mode", "KEYWORD_ONLY", None, 'Literal["fast", "slow"]'),
+            ("reduction", "KEYWORD_ONLY", None, "str"),
+        ]
+    )
+    mock_c_sig.overloads = [mock_ov]
+
+    mocker.patch(
+        "ml_framework_snapshots.models.extract_c_extension_signature",
+        return_value=mock_c_sig,
+    )
+
+    def dummy_fn(*args: Any, **kwargs: Any) -> Any:
+        """Dummy C function."""
+        return None
+
+    ref = GhostInspector.inspect(dummy_fn, "pkg.dummy_fn")
+    assert ref.overloads is not None
+    assert len(ref.overloads) == 1
+    ov_params = ref.overloads[0].params
+    assert ov_params[0].allowed_values == ["fast", "slow"]
+    assert ov_params[1].allowed_values == ["none", "mean", "sum"]
+
+
+def test_ghost_inspector_literal_param() -> None:
+    """Test GhostInspector extracting allowed_values from Literal type annotation."""
+    from typing import Literal
+
+    def dummy_lit(mode: Literal["train", "eval"] = "train") -> None:
+        """Dummy function with Literal parameter.
+
+        Args:
+            mode: Operating mode.
+        """
+        pass
+
+    ref = GhostInspector.inspect(dummy_lit, "tests.dummy_lit")
+    assert len(ref.params) == 1
+    assert ref.params[0].allowed_values == ["train", "eval"]

@@ -132,20 +132,38 @@ def test_polymorphic_ref_models_and_extra_allow() -> None:
         "api_path": "nvidia_sass.inst.FADD",
         "kind": "function",
         "domain_type": "isa",
+        "predicate_guards": ["@P0", "@!P0"],
+        "register_classes": {"op0": "VGPR_32"},
+        "control_codes": {"stall_count": 1},
+        "instruction_modifiers": [".SAT", ".FTZ"],
+        "supported_architectures": ["sm_80", "sm_90"],
     }
     isa_ref = GhostInspector.hydrate(isa_data)
     assert isinstance(isa_ref, GhostIsaRef)
     assert isa_ref.domain_type == "isa"
+    assert isa_ref.predicate_guards == ["@P0", "@!P0"]
+    assert isa_ref.register_classes == {"op0": "VGPR_32"}
+    assert isa_ref.control_codes == {"stall_count": 1}
+    assert isa_ref.instruction_modifiers == [".SAT", ".FTZ"]
+    assert isa_ref.supported_architectures == ["sm_80", "sm_90"]
 
     mlir_data = {
         "name": "AddFOp",
         "api_path": "arith.addf",
         "kind": "function",
         "domain_type": "mlir",
+        "traits": ["SameOperandsAndResultType", "Commutative"],
+        "attributes": {"fastmath": "fast"},
+        "regions": {"body": []},
+        "successors": ["bb1"],
     }
     mlir_ref = GhostInspector.hydrate(mlir_data)
     assert isinstance(mlir_ref, GhostMlirRef)
     assert mlir_ref.domain_type == "mlir"
+    assert mlir_ref.traits == ["SameOperandsAndResultType", "Commutative"]
+    assert mlir_ref.attributes == {"fastmath": "fast"}
+    assert mlir_ref.regions == {"body": []}
+    assert mlir_ref.successors == ["bb1"]
 
     # Default fallback
     base_data = {

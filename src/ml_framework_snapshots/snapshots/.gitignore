@@ -1,9 +1,1 @@
 *.json
-!torch_v2.2.0.json
-!jax_v0.4.26.json
-!tensorflow_v2.16.1.json
-!numpy_v1.26.4.json
-!stablehlo_v1.0.0.json
-!mlir_v18.1.0.json
-!nvidia_sass_v12.4.json
-!amd_rdna_v6.1.json

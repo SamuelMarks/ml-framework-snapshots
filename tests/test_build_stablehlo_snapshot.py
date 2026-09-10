@@ -807,3 +807,30 @@ def test_parse_stablehlo_llvm_tblgen_json_edge_branches() -> None:
     none_op = next(r for r in refs if r["name"] == "none_op")
     assert len(none_op["operands"]) == 0
     assert len(none_op["results"]) == 0
+
+
+def test_parse_stablehlo_tblgen_json_dump_alias() -> None:
+    """Test parse_tblgen_json_dump alias in build_stablehlo_snapshot.
+
+    Returns:
+        None.
+    """
+    raw_json = {
+        "!instanceof": {"StableHLO_Op": ["StableHLO_SubtractOp"]},
+        "StableHLO_SubtractOp": {
+            "!name": "StableHLO_SubtractOp",
+            "!superclasses": ["StableHLO_Op"],
+            "mnemonic": "subtract",
+            "arguments": [
+                {"name": "lhs", "type": "HLO_Tensor"},
+                {"name": "rhs", "type": "HLO_Tensor"},
+            ],
+            "results": [{"name": "result", "type": "HLO_Tensor"}],
+            "traits": ["SameOperandsAndResultType"],
+        },
+    }
+    refs = build_stablehlo_snapshot.parse_tblgen_json_dump(raw_json)
+    assert len(refs) == 1
+    assert refs[0]["name"] == "subtract"
+    assert refs[0]["api_path"] == "stablehlo.subtract"
+    assert len(refs[0]["operands"]) == 2

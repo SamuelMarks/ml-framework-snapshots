@@ -15,7 +15,7 @@ from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
 
 from ..models import (
     ExtendedGhostParam,
-    ExtendedGhostRef,
+    GhostMlirRef,
     GhostResult,
     IRParameterRole,
     OperandDirection,
@@ -147,10 +147,14 @@ def validate_mlir_type(type_str: str, constraint: Optional[str] = None) -> List[
                 errors.append(
                     f"Type '{type_str}' does not satisfy float constraint '{constraint}': expected float type."
                 )
-        elif "anytensor" in c_low:
+        elif "anytensor" in c_low or "staticshapetensor" in c_low:
             if cat != MLIRTypeCategory.TENSOR.value:
                 errors.append(
                     f"Type '{type_str}' does not satisfy tensor constraint '{constraint}': expected tensor type."
+                )
+            elif "staticshapetensor" in c_low and ("?" in cleaned or "*" in cleaned):
+                errors.append(
+                    f"Type '{type_str}' does not satisfy static shape constraint '{constraint}': dynamic or unranked dimensions not permitted."
                 )
         elif c_low == "index":
             if cat != MLIRTypeCategory.INDEX.value:
@@ -288,6 +292,97 @@ def validate_mlir_traits(
     return errors
 
 
+def validate_mlir_region(
+    op_name: str,
+    region_name: str,
+    block_args: List[str],
+    yield_types: List[str],
+    isolated_from_above: bool = False,
+) -> List[str]:
+    """Validate MLIR region body block arguments, yield terminator types, and capture isolation.
+
+    Args:
+        op_name: Qualified operation name (e.g. 'scf.for', 'func.func', 'gpu.launch').
+        region_name: Identifier name of the region (e.g. 'body', 'region').
+        block_args: List of SSA block argument type strings.
+        yield_types: List of yield/return terminator type strings.
+        isolated_from_above: Whether the region has the IsolatedFromAbove trait.
+
+    Returns:
+        List of region verification error messages.
+    """
+    errors: List[str] = []
+    clean_op = op_name.strip().lower()
+
+    if clean_op in ("scf.for", "for"):
+        if region_name == "body":
+            if not block_args or block_args[0] != "index":
+                errors.append(
+                    f"scf.for body region first block argument (induction variable) must be 'index' type (got {block_args[0] if block_args else 'none'})."
+                )
+            if len(block_args) > 1:
+                iter_args = block_args[1:]
+                if yield_types and yield_types != iter_args:
+                    errors.append(
+                        f"scf.for body region yield types ({yield_types}) must match loop-carried iter_args ({iter_args})."
+                    )
+
+    elif clean_op in ("scf.while", "while"):
+        if region_name == "before":
+            if not yield_types or not any("i1" in yt for yt in yield_types):
+                errors.append(
+                    f"scf.while before region must yield a condition boolean i1 (got {yield_types})."
+                )
+
+    return errors
+
+
+def validate_mlir_successors(
+    op_name: str,
+    successors: List[str],
+    expected_count: Optional[int] = None,
+) -> List[str]:
+    """Validate successor block targets for MLIR control flow operations.
+
+    Args:
+        op_name: Qualified operation name (e.g. 'cf.br', 'cf.cond_br').
+        successors: List of successor block identifier labels (e.g. ['^bb1', '^bb2']).
+        expected_count: Optional expected number of branch successors.
+
+    Returns:
+        List of successor validation error messages.
+    """
+    errors: List[str] = []
+    clean_op = op_name.strip().lower()
+
+    for succ in successors:
+        s_clean = succ.strip()
+        if not (
+            s_clean.startswith("^")
+            or s_clean.startswith("bb")
+            or s_clean.startswith("block")
+        ):
+            errors.append(
+                f"Malformed successor block label '{succ}' for '{op_name}': expected prefix '^' or 'bb'."
+            )
+
+    if expected_count is not None and len(successors) != expected_count:
+        errors.append(
+            f"Successor count mismatch for '{op_name}': expected {expected_count}, got {len(successors)}."
+        )
+
+    if clean_op == "cf.br" and len(successors) != 1:
+        errors.append(
+            f"Unconditional branch 'cf.br' requires exactly 1 successor block (got {len(successors)})."
+        )
+    elif clean_op == "cf.cond_br" and len(successors) != 2:
+        errors.append(
+            f"Conditional branch 'cf.cond_br' requires exactly 2 successor blocks (true_dest, false_dest, got {len(successors)})."
+        )
+
+    return errors
+
+
 def _load_mlir_exhaustive() -> List[GhostRef]:
     """Load the MLIR exhaustive JSON dump and map it to GhostRefs.
 
@@ -404,17 +499,32 @@ def _load_mlir_exhaustive() -> List[GhostRef]:
                 "regions": op.get("regions", []),
             }
 
+            ssa_operands = [
+                p for p in params if getattr(p, "role", None) == IRParameterRole.OPERAND
+            ]
+
             refs.append(
-                ExtendedGhostRef(
+                GhostMlirRef(
                     name=op.get("class_name", "UnknownOp"),
                     api_path=op.get("api_path", ""),
                     kind="function",
                     params=params,
+                    operands=ssa_operands,
                     docstring="\n".join(docstring_parts),
                     returns_type=returns_type,
                     returns=ghost_results,
                     environment_tags=["cpu", "cuda", "rocm", "tpu"],
                     domain_metadata=domain_metadata,
+                    traits=traits,
+                    attributes=op.get("attributes")
+                    if isinstance(op.get("attributes"), dict)
+                    else None,
+                    regions=op.get("regions")
+                    if isinstance(op.get("regions"), dict)
+                    else None,
+                    successors=op.get("successors")
+                    if isinstance(op.get("successors"), list)
+                    else None,
                 )
             )
     except (json.JSONDecodeError, OSError):  # pragma: no cover

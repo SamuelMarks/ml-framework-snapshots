@@ -133,6 +133,18 @@ def test_stablehlo_regions_and_structured_schemas() -> None:
     assert "ComparisonDirectionAttr" in schemas
     assert "PrecisionAttr" in schemas
 
+    # Verify attributes scoping per operation
+    abs_op = ref_map["stablehlo.abs"]
+    assert abs_op.attributes is None
+
+    dot_op = ref_map["stablehlo.dot_general"]
+    assert dot_op.attributes is not None
+    assert "dot_dimension_numbers" in dot_op.attributes
+    assert (
+        "lhs_batch_dimensions"
+        in dot_op.attributes["dot_dimension_numbers"]["properties"]
+    )
+
 
 def test_validate_dot_dimension_numbers() -> None:
     """Test validation of DotDimensionNumbersAttr."""
@@ -534,3 +546,60 @@ def test_stablehlo_collect_api_variants() -> None:
         refs = stablehlo_fw.collect_api(SemanticTier.UTIL)
         assert len(refs) == 1
         assert refs[0].api_path == "stablehlo.test_op3"
+
+
+def test_validate_scf_for_region() -> None:
+    """Test validate_stablehlo_region for scf.for loop constructs."""
+    # 1. Valid scf.for body region with IV only
+    errs = stablehlo_fw.validate_stablehlo_region(
+        op_name="scf.for",
+        region_name="body",
+        block_args=["index"],
+        yield_types=[],
+    )
+    assert len(errs) == 0
+
+    # 2. Valid scf.for body region with loop-carried iter_args
+    errs = stablehlo_fw.validate_stablehlo_region(
+        op_name="scf.for",
+        region_name="body",
+        block_args=["index", "tensor<4xf32>"],
+        yield_types=["tensor<4xf32>"],
+    )
+    assert len(errs) == 0
+
+    # 3. Invalid induction variable (non-index)
+    errs = stablehlo_fw.validate_stablehlo_region(
+        op_name="scf.for",
+        region_name="body",
+        block_args=["i32"],
+        yield_types=[],
+    )
+    assert any("must be 'index' type" in e for e in errs)
+
+    # 4. Empty block args
+    errs = stablehlo_fw.validate_stablehlo_region(
+        op_name="scf.for",
+        region_name="body",
+        block_args=[],
+        yield_types=[],
+    )
+    assert any("must be 'index' type" in e for e in errs)
+
+    # 5. Mismatch between yield_types and iter_args
+    errs = stablehlo_fw.validate_stablehlo_region(
+        op_name="scf.for",
+        region_name="body",
+        block_args=["index", "tensor<4xf32>"],
+        yield_types=["tensor<2xf32>"],
+    )
+    assert any("yield types" in e and "match loop-carried iter_args" in e for e in errs)
+
+    # 6. Non-body region in scf.for
+    errs = stablehlo_fw.validate_stablehlo_region(
+        op_name="scf.for",
+        region_name="unknown_region",
+        block_args=[],
+        yield_types=[],
+    )
+    assert len(errs) == 0

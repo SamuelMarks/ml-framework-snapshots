@@ -55,8 +55,10 @@ cover/
 
 # Database files (ephemeral local cache only, never committed)
 *.db
+*.db-*
 *.db-journal
 *.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 *.sqlite-journal
@@ -155,3 +157,6 @@ ehthumbs.db
 Thumbs.db
 .venv_ci/
 scripts/fix_docs.py
+
+# JSON snapshots & metadata (packaged into wheels and GitHub releases, never tracked in git)
+*.json

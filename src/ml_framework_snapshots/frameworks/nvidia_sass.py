@@ -15,6 +15,7 @@ from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
 from ..models import (
     ExtendedGhostParam,
     ExtendedGhostRef,
+    GhostIsaRef,
     IRParameterRole,
     OperandDirection,
 )
@@ -386,6 +387,18 @@ def validate_sass_operand_directionality(
                 f"Operand 0 is a destination (write) slot and cannot be constant bank memory: '{dst}'."
             )
 
+    c_bank_count = sum(
+        1
+        for op in operands
+        if "c[" in op.lower()
+        or "cx[" in op.lower()
+        or op in ("c[bank][offset]", "cx[bank][offset]")
+    )
+    if c_bank_count > 1:
+        errors.append(
+            f"Hardware resource conflict in '{mnemonic}': SASS instructions permit at most 1 constant bank reference per cycle due to shared read ports (found {c_bank_count})."
+        )
+
     return errors
 
 
@@ -532,6 +545,39 @@ def parse_sass_modifiers(modifiers: List[str]) -> List[str]:
     return sorted(normalized)
 
 
+def tokenize_sass_line(
+    line: str,
+) -> Tuple[Optional[str], str, List[str], List[str]]:
+    """Tokenize a SASS assembly line into predicate, mnemonic, modifiers, and operands.
+
+    Args:
+        line: A single SASS assembly instruction line (e.g. '@P0 FADD.FTZ.RN R0, R1, R2;').
+
+    Returns:
+        A tuple of (predicate, base_mnemonic, modifiers, operands).
+    """
+    clean = line.strip().rstrip(";")
+    if not clean:
+        return None, "", [], []
+
+    predicate = None
+    pred_match = re.match(r"^(@!?U?P\d+|@!?PT|@!?UPT)\s+(.*)$", clean)
+    if pred_match:
+        predicate = pred_match.group(1)
+        clean = pred_match.group(2).strip()
+
+    tokens = clean.split(None, 1)
+    inst_token = tokens[0]
+    operands_part = tokens[1] if len(tokens) > 1 else ""
+
+    subtokens = inst_token.split(".")
+    base_mnemonic = subtokens[0].upper()
+    modifiers = [f".{m}" for m in subtokens[1:] if m]
+
+    operands = [op.strip() for op in operands_part.split(",") if op.strip()]
+    return predicate, base_mnemonic, modifiers, operands
+
+
 def resolve_sm_architectures(arch_spec: Optional[Any]) -> List[str]:
     """Resolve an SM architecture specification into discrete targeted SM architectures.
 
@@ -592,6 +638,69 @@ def normalize_sass_operand_type(raw_op: str) -> str:
     if "c[" in cleaned:
         return "c[bank][offset]"
     return cleaned
+
+
+def build_structured_sass_operands(
+    operands: List[str], mnemonic: str
+) -> List[Dict[str, Any]]:
+    """Build structured operand records detailing roles, register classes, and immediate constraints.
+
+    Args:
+        operands: Raw list of operand tokens (e.g. ['R0', 'R1', 'c[0x0][0x10]']).
+        mnemonic: Instruction mnemonic (e.g. 'FADD', 'STG', 'BRA').
+
+    Returns:
+        List of structured operand dictionaries detailing index, role, register_classes, and imm limits.
+    """
+    structured: List[Dict[str, Any]] = []
+    is_store = mnemonic.startswith("ST")
+    is_branch = mnemonic in ("BRA", "BRX", "JMP", "JMX", "CALL", "RET")
+    is_barrier = mnemonic in ("DEPBAR", "BAR", "SYNC", "WARPSYNC")
+
+    for idx, op in enumerate(operands):
+        role = (
+            "dest"
+            if idx == 0 and not (is_store or is_branch or is_barrier)
+            else f"src{idx - 1 if idx > 0 else 0}"
+        )
+        if is_store and idx == 0:
+            role = "address"
+        elif is_branch:
+            role = "target"
+        elif is_barrier:
+            role = "barrier"
+
+        reg_classes: List[str] = []
+        op_u = op.upper()
+        if "UR" in op_u:
+            reg_classes.append("UR")
+        if "R" in op_u and "UR" not in op_u and "BAR" not in op_u:
+            reg_classes.append("R")
+        if "P" in op_u and "UP" not in op_u and "DEPBAR" not in op_u:
+            reg_classes.append("P")
+        if "UP" in op_u:
+            reg_classes.append("UP")
+        if "B" in op_u:
+            reg_classes.append("B")
+        if "C[" in op_u or "CX[" in op_u:
+            reg_classes.append("CBANK")
+
+        imm_type: Optional[str] = None
+        if re.match(r"^-?\d+\.\d+", op):
+            imm_type = "float32"
+        elif re.match(r"^-?(0x[0-9a-fA-F]+|\d+)$", op):
+            imm_type = "int32"
+
+        rec: Dict[str, Any] = {
+            "index": idx,
+            "raw_token": op,
+            "role": role,
+            "register_classes": reg_classes,
+        }
+        if imm_type:
+            rec["immediate_type"] = imm_type
+        structured.append(rec)
+    return structured
 
 
 def _load_exhaustive_sass() -> List[Dict[str, Any]]:
@@ -719,7 +828,7 @@ def collect_api(
             )
 
         refs.append(
-            ExtendedGhostRef(
+            GhostIsaRef(
                 name=mnemonic,
                 api_path=f"nvidia_sass.inst.{mnemonic}",
                 kind="function",
@@ -728,6 +837,11 @@ def collect_api(
                 environment_tags=env_tags,
                 overloads=overloads,
                 domain_metadata=domain_metadata,
+                predicate_guards=["@P0", "@!P0", "@P1", "@!P1", "@PT"],
+                instruction_modifiers=parsed_modifiers,
+                supported_architectures=valid_archs,
+                control_codes=DEFAULT_SASS_CONTROL_CODE_SCHEMA,
+                structured_operands=build_structured_sass_operands(max_sig, mnemonic),
             )
         )
 

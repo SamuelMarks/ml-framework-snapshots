@@ -383,6 +383,23 @@ def test_cli_mcp(mocker: Any) -> None:
     mock_run.assert_called_once()
 
 
+def test_cli_offline_flag(mocker: Any, monkeypatch: Any) -> None:
+    """Test passing --offline flag sets ML_SNAPSHOTS_OFFLINE environment variable.
+
+    Args:
+        mocker: Pytest mocker fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    monkeypatch.delenv("ML_SNAPSHOTS_OFFLINE", raising=False)
+    mocker.patch("sys.argv", ["ml-snapshots", "--offline", "mcp"])
+    mocker.patch("ml_framework_snapshots.mcp_server.run_mcp_server")
+    try:
+        main()
+        assert os.environ.get("ML_SNAPSHOTS_OFFLINE") == "1"
+    finally:
+        os.environ.pop("ML_SNAPSHOTS_OFFLINE", None)
+
+
 def test_cli_export_unknown_format(mocker: Any, capsys: Any) -> None:
     """Function docstring.
 
@@ -398,6 +415,7 @@ def test_cli_export_unknown_format(mocker: Any, capsys: Any) -> None:
     mock_args.input = "in.json"
     mock_args.out_dir = "out"
     mock_args.format = "unknown"
+    mock_args.offline = False
     mock_args.func = cmd_export
     mocker.patch("argparse.ArgumentParser.parse_args", return_value=mock_args)
 

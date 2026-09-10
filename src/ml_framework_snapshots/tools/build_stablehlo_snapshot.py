@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Union
 import urllib.request
 
 from ml_framework_snapshots.tools.scrape_mlir import TableGenASTParser
+from ml_framework_snapshots.utils import extract_tablegen_traits
 
 SPEC_URL = "https://raw.githubusercontent.com/openxla/stablehlo/main/docs/spec.md"
 TABLEGEN_URL = "https://raw.githubusercontent.com/openxla/stablehlo/main/stablehlo/dialect/StablehloOps.td"
@@ -218,24 +219,11 @@ def parse_stablehlo_tablegen(content: str) -> List[Dict[str, Any]]:
         )
 
         traits: List[str] = []
-        traits_match = re.search(r"\[(.*?)\]", targs_raw)
-        if traits_match:
-            traits.extend(
-                [
-                    t.strip()
-                    for t in traits_match.group(1).split(",")
-                    if t.strip() and not t.strip().startswith("//")
-                ]
-            )
+        if "[" in targs_raw:
+            traits.extend(extract_tablegen_traits(targs_raw))
         traits_in_body = re.search(r"let\s+traits\s*=\s*\[(.*?)\];", body, re.DOTALL)
         if traits_in_body:
-            traits.extend(
-                [
-                    t.strip()
-                    for t in traits_in_body.group(1).split(",")
-                    if t.strip() and not t.strip().startswith("//")
-                ]
-            )
+            traits.extend(extract_tablegen_traits(traits_in_body.group(0)))
 
         args_match = re.search(
             r"let\s+arguments\s*=\s*\(\s*ins(.*?)\);", body, re.DOTALL
@@ -679,6 +667,9 @@ def parse_stablehlo_llvm_tblgen_json(
         )
 
     return ghost_refs
+
+
+parse_tblgen_json_dump = parse_stablehlo_llvm_tblgen_json
 
 
 def extract_ops(

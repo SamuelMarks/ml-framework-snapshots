@@ -301,3 +301,120 @@ def test_cmd_check_rdna_no_encoding(mocker: Any, capsys: Any) -> None:
     out, _ = capsys.readouterr()
     assert "RDNA Instruction 's_nop' is valid." in out
     assert "Encoding:" not in out
+
+
+def test_cmd_check_non_python_auto_detect(mocker: Any, capsys: Any) -> None:
+    """Test cmd_check auto-detecting .sass, .s, and .mlir file extensions."""
+    import pytest
+    from ml_framework_snapshots.cli import cmd_check
+
+    # 1. SASS file compliant
+    mocker.patch(
+        "ml_framework_snapshots.compliance.check_sass_assembly_compliance",
+        return_value={
+            "is_compliant": True,
+            "total_instructions": 2,
+            "verified_instructions": 2,
+            "errors": [],
+        },
+    )
+    mocker.patch(
+        "builtins.open",
+        mock_open(read_data='{"target": "nvidia_sass"}'),
+    )
+    args_sass = argparse.Namespace(
+        snapshot_json="nvidia_sass.json",
+        target_path="kernel.sass",
+        target_prefix="",
+        reference_prefix="",
+    )
+    cmd_check(args_sass)
+    out, _ = capsys.readouterr()
+    assert "NVIDIA SASS snippet compliance: 2/2 instructions valid." in out
+
+    # 2. SASS file non-compliant (exits 1)
+    mocker.patch(
+        "ml_framework_snapshots.compliance.check_sass_assembly_compliance",
+        return_value={
+            "is_compliant": False,
+            "total_instructions": 2,
+            "verified_instructions": 1,
+            "errors": ["Bad opcode"],
+        },
+    )
+    with pytest.raises(SystemExit):
+        cmd_check(args_sass)
+
+    # 3. RDNA .s file compliant
+    mocker.patch(
+        "ml_framework_snapshots.compliance.check_rdna_assembly_compliance",
+        return_value={
+            "is_compliant": True,
+            "total_instructions": 3,
+            "verified_instructions": 3,
+            "errors": [],
+        },
+    )
+    mocker.patch(
+        "builtins.open",
+        mock_open(read_data='{"target": "amd_rdna"}'),
+    )
+    args_rdna = argparse.Namespace(
+        snapshot_json="amd_rdna.json",
+        target_path="kernel.s",
+        target_prefix="",
+        reference_prefix="",
+    )
+    cmd_check(args_rdna)
+    out, _ = capsys.readouterr()
+    assert "AMD RDNA snippet compliance: 3/3 instructions valid." in out
+
+    # 4. RDNA .s file non-compliant (exits 1)
+    mocker.patch(
+        "ml_framework_snapshots.compliance.check_rdna_assembly_compliance",
+        return_value={
+            "is_compliant": False,
+            "total_instructions": 3,
+            "verified_instructions": 2,
+            "errors": ["Bad reg"],
+        },
+    )
+    with pytest.raises(SystemExit):
+        cmd_check(args_rdna)
+
+    # 5. MLIR file compliant
+    mocker.patch(
+        "ml_framework_snapshots.compliance.check_mlir_text_compliance",
+        return_value={
+            "is_compliant": True,
+            "total_ops": 4,
+            "verified_ops": 4,
+            "errors": [],
+        },
+    )
+    mocker.patch(
+        "builtins.open",
+        mock_open(read_data='{"target": "mlir"}'),
+    )
+    args_mlir = argparse.Namespace(
+        snapshot_json="mlir.json",
+        target_path="module.mlir",
+        target_prefix="",
+        reference_prefix="",
+    )
+    cmd_check(args_mlir)
+    out, _ = capsys.readouterr()
+    assert "MLIR snippet compliance: 4/4 operations valid." in out
+
+    # 6. MLIR file non-compliant (exits 1)
+    mocker.patch(
+        "ml_framework_snapshots.compliance.check_mlir_text_compliance",
+        return_value={
+            "is_compliant": False,
+            "total_ops": 4,
+            "verified_ops": 2,
+            "errors": ["Unknown dialect op"],
+        },
+    )
+    with pytest.raises(SystemExit):
+        cmd_check(args_mlir)

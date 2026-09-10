@@ -5,7 +5,7 @@ from various machine learning frameworks.
 """
 
 import os
-
+import datetime
 import concurrent.futures
 import importlib.metadata
 import json
@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Tuple
 
 from ml_switcheroo_ir.schema.ghost import SemanticTier
+from ml_framework_snapshots.models import SnapshotEnvelope
 from ml_framework_snapshots.frameworks.torch import collect_api as torch_collect
 from ml_framework_snapshots.frameworks.jax import collect_api as jax_collect
 from ml_framework_snapshots.frameworks.keras import collect_api as keras_collect
@@ -170,14 +171,51 @@ def get_pkg_version(package_name: str) -> str:
                 except Exception:
                     return importlib.metadata.version("tensorflow-cpu")
         elif package_name == "mlir":
-            package_name = "jaxlib"
+            try:
+                return importlib.metadata.version("jaxlib")
+            except Exception:
+                json_file = os.path.join(
+                    os.path.dirname(__file__), "frameworks", "mlir_exhaustive.json"
+                )
+                if os.path.exists(json_file):
+                    try:
+                        with open(json_file, "r", encoding="utf-8") as f:
+                            h = json.load(f)
+                            if h.get("version"):
+                                return str(h["version"])
+                    except Exception:
+                        pass
+                return "llvm-19"
+        elif package_name in [
+            "nvidia_sass",
+            "amd_rdna",
+            "nvidia_ptx",
+            "stablehlo",
+        ]:
+            json_file = os.path.join(
+                os.path.dirname(__file__),
+                "frameworks",
+                f"{package_name}_exhaustive.json",
+            )
+            if os.path.exists(json_file):
+                try:
+                    with open(json_file, "r", encoding="utf-8") as f:
+                        h = json.load(f)
+                        if h.get("version"):
+                            return str(h["version"])
+                except Exception:
+                    pass
+            defaults = {
+                "nvidia_sass": "12.6.0",
+                "amd_rdna": "llvm-19",
+                "nvidia_ptx": "8.5.0",
+                "stablehlo": "1.0.0",
+            }
+            return defaults.get(package_name, "1.0.0")
         elif package_name in [
             "html_dsl",
             "latex_dsl",
             "tikz",
-            "nvidia_sass",
-            "amd_rdna",
-            "stablehlo",
         ]:
             return "1.0.0"
 
@@ -203,6 +241,24 @@ def get_pkg_version(package_name: str) -> str:
         return "unknown"
 
 
+def _domain_meta_to_key(meta: Any) -> Any:
+    """Convert domain metadata into a deterministic, hashable key.
+
+    Args:
+        meta: Any domain metadata value (dict, list, primitive, etc.).
+
+    Returns:
+        A hashable representation of the metadata.
+    """
+    if meta is None:
+        return None
+    if isinstance(meta, dict):
+        return tuple(sorted((str(k), _domain_meta_to_key(v)) for k, v in meta.items()))
+    if isinstance(meta, (list, tuple, set)):
+        return tuple(_domain_meta_to_key(x) for x in meta)
+    return str(meta)
+
+
 def _consolidate_aliases(refs: List[GhostRef]) -> List[GhostRef]:
     """Consolidates identical GhostRefs into a single reference with aliases.
 
@@ -216,20 +272,36 @@ def _consolidate_aliases(refs: List[GhostRef]) -> List[GhostRef]:
     consolidated = {}
     for ref in refs:
         # Use name, kind, params, and docstring to identify identical references.
-        # Convert params to a comparable tuple.
+        # Convert params to a comparable tuple including direction, role, dtypes, and rank.
         param_sigs = tuple(
             (
                 p.name,
                 p.kind,
                 p.default,
                 p.annotation,
+                getattr(p, "direction", None),
+                getattr(p, "role", None),
+                tuple(getattr(p, "dtypes", None) or ()),
+                getattr(p, "rank", None),
             )
             for p in ref.params
         )
+        returns = getattr(ref, "returns", None)
+        returns_sig = (
+            tuple((getattr(r, "name", None), getattr(r, "type", None)) for r in returns)
+            if returns
+            else None
+        )
+        domain_type = getattr(ref, "domain_type", None)
+        domain_metadata_key = _domain_meta_to_key(getattr(ref, "domain_metadata", None))
+
         key = (
             ref.name,
             ref.kind,
+            domain_type,
             param_sigs,
+            returns_sig,
+            domain_metadata_key,
             ref.docstring,
         )
 
@@ -277,7 +349,36 @@ def extract_snapshot(
         return {}
 
     collect_func = FRAMEWORK_COLLECTORS[framework_name]
-    snapshot_data: Dict[str, Any] = {"version": version, "categories": {}}
+    snapshot_data: Dict[str, Any] = {
+        "schema_version": "1.0.0",
+        "target": framework_name,
+        "version": version,
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "categories": {},
+    }
+    if framework_name == "nvidia_sass":
+        snapshot_data["supported_microarchitectures"] = [
+            "sm_70",
+            "sm_75",
+            "sm_80",
+            "sm_86",
+            "sm_89",
+            "sm_90",
+            "sm_100",
+        ]
+        snapshot_data["source_type"] = "binary_disassembly"
+        snapshot_data["upstream_commit"] = "cuda-12.6-toolkit"
+    elif framework_name == "amd_rdna":
+        snapshot_data["supported_microarchitectures"] = [
+            "GFX9/CDNA",
+            "GFX10/RDNA1",
+            "GFX10.3/RDNA2",
+            "GFX11/RDNA3",
+            "GFX11.5",
+            "GFX12/RDNA4",
+        ]
+        snapshot_data["source_type"] = "tablegen"
+        snapshot_data["upstream_commit"] = "llvm-project-19.1.0"
     found_any = False
 
     def _process_category(cat: SemanticTier) -> Tuple[str, List[Dict[str, Any]]]:
@@ -370,3 +471,28 @@ def write_snapshot(
         f.write("\n")
 
     return str(file_path)
+
+
+def validate_snapshot_envelope(snapshot_dict: Dict[str, Any]) -> SnapshotEnvelope:
+    """Validate and normalize a snapshot dictionary into a SnapshotEnvelope.
+
+    Args:
+        snapshot_dict: Raw snapshot dictionary.
+
+    Returns:
+        Validated SnapshotEnvelope instance.
+
+    Raises:
+        ValueError: If required fields are missing or invalid.
+    """
+    if not isinstance(snapshot_dict, dict):
+        raise ValueError("Snapshot must be a dictionary.")
+    target = snapshot_dict.get("target") or "unknown"
+    envelope_data = dict(snapshot_dict)
+    envelope_data.setdefault("target", target)
+    envelope_data.setdefault("schema_version", "1.0.0")
+    if "generated_at" not in envelope_data or not envelope_data["generated_at"]:
+        envelope_data["generated_at"] = datetime.datetime.now(
+            datetime.timezone.utc
+        ).isoformat()
+    return SnapshotEnvelope.model_validate(envelope_data)

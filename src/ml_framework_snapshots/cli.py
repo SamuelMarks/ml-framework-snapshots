@@ -14,8 +14,10 @@ from ml_framework_snapshots.api import (
     write_snapshot,
 )
 from ml_framework_snapshots.diff import diff_snapshots, generate_changelog
+from ml_framework_snapshots.index import get_cache_dir
 from ml_framework_snapshots.models import GhostInspector
 from ml_framework_snapshots.stubs import generate_stubs
+from ml_framework_snapshots.utils import get_custom_snapshots_paths, is_offline_mode
 from ml_switcheroo_ir.schema.ghost import GhostRef
 
 
@@ -39,7 +41,8 @@ def resolve_snapshot_path(path: str) -> str:
     pkg_dir = os.path.dirname(__file__)
     repo_root = os.path.dirname(os.path.dirname(pkg_dir))
 
-    search_dirs: List[str] = [
+    search_dirs: List[str] = get_custom_snapshots_paths() + [
+        os.path.join(get_cache_dir(), "snapshots"),
         os.path.join(repo_root, "snapshots"),
         os.path.join(pkg_dir, "snapshots"),
         os.path.join(pkg_dir, "frameworks"),
@@ -266,6 +269,49 @@ def cmd_check(args: argparse.Namespace) -> None:
     with open(path, "r", encoding="utf-8") as f:
         reference_snapshot = json.load(f)
 
+    target_path = getattr(args, "target_path", "")
+    target_ext = os.path.splitext(target_path)[1].lower() if target_path else ""
+
+    if target_ext in (".sass", ".s"):
+        from ml_framework_snapshots.compliance import (
+            check_sass_assembly_compliance,
+            check_rdna_assembly_compliance,
+        )
+
+        with open(target_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        target = reference_snapshot.get("target", "").lower()
+        if "rdna" in target or "amd" in target:
+            res = check_rdna_assembly_compliance(content)
+            print(
+                f"AMD RDNA snippet compliance: {res.get('verified_instructions')}/{res.get('total_instructions')} instructions valid."
+            )
+        else:
+            res = check_sass_assembly_compliance(content)
+            print(
+                f"NVIDIA SASS snippet compliance: {res.get('verified_instructions')}/{res.get('total_instructions')} instructions valid."
+            )
+        if not res.get("is_compliant"):
+            for err in res.get("errors", []):
+                print(f"  - {err}")
+            sys.exit(1)
+        return
+
+    if target_ext == ".mlir":
+        from ml_framework_snapshots.compliance import check_mlir_text_compliance
+
+        with open(target_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        res = check_mlir_text_compliance(content)
+        print(
+            f"MLIR snippet compliance: {res.get('verified_ops')}/{res.get('total_ops')} operations valid."
+        )
+        if not res.get("is_compliant"):
+            for err in res.get("errors", []):
+                print(f"  - {err}")
+            sys.exit(1)
+        return
+
     print(f"Extracting target APIs from {args.target_path}...")
     target_refs = extract_target_refs(
         args.target_path, args.target_prefix, args.reference_prefix
@@ -374,9 +420,7 @@ def cmd_list_snapshots(args: argparse.Namespace) -> None:
     Args:
         args: Parsed command line arguments.
     """
-    from .index import get_cache_dir
-
-    snapshots_dirs = [
+    snapshots_dirs = get_custom_snapshots_paths() + [
         os.path.join(get_cache_dir(), "snapshots"),
         os.path.join(os.path.dirname(__file__), "snapshots"),
         os.path.join(os.path.dirname(__file__), "frameworks"),
@@ -411,6 +455,12 @@ def cmd_pull(args: argparse.Namespace) -> None:
     Args:
         args: Parsed command line arguments containing target and optional out_dir.
     """
+    if getattr(args, "offline", False) or is_offline_mode():
+        print(
+            "Network access disabled: pull command cannot be executed in offline mode."
+        )
+        sys.exit(1)
+
     import urllib.request
     from .index import get_cache_dir
 
@@ -729,6 +779,11 @@ def cmd_check_stablehlo(args: argparse.Namespace) -> None:
 def main() -> None:
     """Parse arguments and route to subcommands."""
     parser = argparse.ArgumentParser(description="ML Framework Snapshots CLI")
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Enforce offline mode (disables network operations and live framework imports)",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # capture
@@ -1041,6 +1096,8 @@ def main() -> None:
     parser_check_stablehlo.set_defaults(func=cmd_check_stablehlo)
 
     args = parser.parse_args()
+    if getattr(args, "offline", False):
+        os.environ["ML_SNAPSHOTS_OFFLINE"] = "1"
 
     args.func(args)
 

@@ -214,6 +214,11 @@ jobs:
             cd -
             gh release upload "$TARGET_TAG" src/ml_framework_snapshots/snapshots/*.json --clobber
           fi
+          for extra_json in src/ml_framework_snapshots/frameworks/*_exhaustive.json src/ml_framework_snapshots/concept_map.json; do
+            if [ -f "$extra_json" ]; then
+              gh release upload "$TARGET_TAG" "$extra_json" --clobber || true
+            fi
+          done
 
       - name: Build Wheel and Sdist
         run: |
@@ -226,7 +231,7 @@ jobs:
           for whl in glob.glob('dist/*.whl'):
               with zipfile.ZipFile(whl, 'r') as zf:
                   for name in zf.namelist():
-                      if name.endswith(('.db', '.sqlite', '.sqlite3', '.db-wal', '.db-journal')):
+                      if name.endswith(('.db', '.sqlite', '.sqlite3', '.db-wal', '.db-journal', '.db-shm', '.sqlite-journal')):
                           sys.exit(f'Found prohibited database file in {whl}: {name}')
           print('Verified dist artifacts contain 0 database files.')
           "

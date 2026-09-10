@@ -76,3 +76,94 @@ def test_optax_shim_collect_api() -> None:
 
     # default returns []
     assert collect_api(SemanticTier.UTIL, False) == []
+
+
+def test_consolidate_aliases_extended_params_and_metadata() -> None:
+    """Test that _consolidate_aliases preserves distinct instructions with different directionality or metadata."""
+    from ml_framework_snapshots.models import (
+        ExtendedGhostParam,
+        ExtendedGhostRef,
+        GhostResult,
+        OperandDirection,
+        IRParameterRole,
+    )
+
+    # Two instructions with identical name/kind/params except operand direction (WRITE vs READ)
+    inst_write = ExtendedGhostRef(
+        name="MOV",
+        api_path="isa.inst.MOV_w",
+        kind="instruction",
+        params=[
+            ExtendedGhostParam(
+                name="op0",
+                kind="POSITIONAL_ONLY",
+                direction=OperandDirection.WRITE,
+                role=IRParameterRole.OPERAND,
+                dtypes=["float32"],
+                rank=1,
+            )
+        ],
+        docstring="Move instruction write",
+    )
+    inst_read = ExtendedGhostRef(
+        name="MOV",
+        api_path="isa.inst.MOV_r",
+        kind="instruction",
+        params=[
+            ExtendedGhostParam(
+                name="op0",
+                kind="POSITIONAL_ONLY",
+                direction=OperandDirection.READ,
+                role=IRParameterRole.OPERAND,
+                dtypes=["float32"],
+                rank=1,
+            )
+        ],
+        docstring="Move instruction write",
+    )
+    res = _consolidate_aliases([inst_write, inst_read])
+    assert len(res) == 2
+
+    # Two instructions differing only in domain_metadata (e.g. sm_80 vs sm_90)
+    inst_sm80 = ExtendedGhostRef(
+        name="MMA",
+        api_path="isa.inst.MMA_sm80",
+        kind="instruction",
+        params=[GhostParam(name="op0", kind="POSITIONAL_ONLY")],
+        domain_metadata={
+            "arch": "sm_80",
+            "features": ["tensor_core"],
+            "tags": {"fast"},
+        },
+        docstring="MMA",
+    )
+    inst_sm90 = ExtendedGhostRef(
+        name="MMA",
+        api_path="isa.inst.MMA_sm90",
+        kind="instruction",
+        params=[GhostParam(name="op0", kind="POSITIONAL_ONLY")],
+        domain_metadata={"arch": "sm_90", "features": ["wgmma"], "tags": {"fast"}},
+        docstring="MMA",
+    )
+    res_arch = _consolidate_aliases([inst_sm80, inst_sm90])
+    assert len(res_arch) == 2
+
+    # Operations differing only in returns
+    op_res1 = ExtendedGhostRef(
+        name="add",
+        api_path="mlir.add1",
+        kind="operation",
+        params=[GhostParam(name="lhs", kind="POSITIONAL_ONLY")],
+        returns=[GhostResult(name="res1", type="tensor<f32>")],
+        docstring="add op",
+    )
+    op_res2 = ExtendedGhostRef(
+        name="add",
+        api_path="mlir.add2",
+        kind="operation",
+        params=[GhostParam(name="lhs", kind="POSITIONAL_ONLY")],
+        returns=[GhostResult(name="res2", type="tensor<f64>")],
+        docstring="add op",
+    )
+    res_ops = _consolidate_aliases([op_res1, op_res2])
+    assert len(res_ops) == 2

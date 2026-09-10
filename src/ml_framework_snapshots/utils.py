@@ -1,8 +1,9 @@
 """Utility functions for inspecting and extracting information from Python modules."""
 
-from typing import Any, List, Tuple, Optional, Dict
 import ast
+import os
 import re
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def get_all_members(module: Any) -> List[Tuple[str, Any]]:
@@ -578,3 +579,180 @@ def extract_griffe_docstring_metadata(
             raises.append(exc)
 
     return {"params": params, "returns": returns, "raises": raises}
+
+
+def is_offline_mode() -> bool:
+    """Check if offline mode is explicitly enabled via environment variable.
+
+    Returns:
+        True if ML_SNAPSHOTS_OFFLINE or ML_FRAMEWORK_SNAPSHOTS_OFFLINE is set to a truthy value.
+    """
+    for var in ("ML_SNAPSHOTS_OFFLINE", "ML_FRAMEWORK_SNAPSHOTS_OFFLINE"):
+        val = os.environ.get(var, "").strip().lower()
+        if val in ("1", "true", "yes", "on", "enable", "enabled"):
+            return True
+    return False
+
+
+def get_custom_snapshots_paths() -> List[str]:
+    """Retrieve custom snapshot directory paths configured via environment variables.
+
+    Returns:
+        List of directory paths specified in ML_SNAPSHOTS_PATH or ML_FRAMEWORK_SNAPSHOTS_PATH.
+    """
+    paths: List[str] = []
+    for var in ("ML_SNAPSHOTS_PATH", "ML_FRAMEWORK_SNAPSHOTS_PATH"):
+        raw = os.environ.get(var)
+        if raw:
+            for p in raw.split(os.pathsep):
+                p_clean = p.strip()
+                if p_clean and os.path.isdir(p_clean) and p_clean not in paths:
+                    paths.append(p_clean)
+    return paths
+
+
+def split_tablegen_list(raw_list_str: str) -> List[str]:
+    """Split a comma-separated TableGen list while respecting nested brackets, angles, parens, and quotes.
+
+    Args:
+        raw_list_str: Content inside outer brackets [ ... ].
+
+    Returns:
+        List of trimmed TableGen element strings.
+    """
+    elements: List[str] = []
+    current: List[str] = []
+    depth_bracket = 0
+    depth_angle = 0
+    depth_paren = 0
+    in_quote = False
+    escape = False
+
+    cleaned_str = re.sub(r"/\*.*?\*/", "", raw_list_str, flags=re.DOTALL)
+    cleaned_str = re.sub(r"//[^\r\n]*", "", cleaned_str)
+
+    for char in cleaned_str:
+        if escape:
+            current.append(char)
+            escape = False
+            continue
+        if char == "\\":
+            current.append(char)
+            escape = True
+            continue
+        if char == '"':
+            in_quote = not in_quote
+            current.append(char)
+            continue
+        if in_quote:
+            current.append(char)
+            continue
+
+        if char == "[":
+            depth_bracket += 1
+            current.append(char)
+        elif char == "]":
+            depth_bracket -= 1
+            current.append(char)
+        elif char == "<":
+            depth_angle += 1
+            current.append(char)
+        elif char == ">":
+            depth_angle -= 1
+            current.append(char)
+        elif char == "(":
+            depth_paren += 1
+            current.append(char)
+        elif char == ")":
+            depth_paren -= 1
+            current.append(char)
+        elif (
+            char == "," and depth_bracket == 0 and depth_angle == 0 and depth_paren == 0
+        ):
+            elem = "".join(current).strip()
+            if elem and not elem.startswith("//"):
+                elements.append(elem)
+            current = []
+        else:
+            current.append(char)
+
+    if current:
+        elem = "".join(current).strip()
+        if elem and not elem.startswith("//"):
+            elements.append(elem)
+    return elements
+
+
+def extract_tablegen_traits(text: str) -> List[str]:
+    """Extract and parse TableGen traits from a definition or arguments string.
+
+    Args:
+        text: TableGen source text containing trait definitions (e.g. '[Trait1, Trait2]').
+
+    Returns:
+        List of parsed trait names with nested parameters preserved.
+    """
+    start = -1
+    in_str = False
+    esc = False
+    for i, ch in enumerate(text):
+        if esc:
+            esc = False
+            continue
+        if ch == "\\":
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if not in_str and ch == "[":
+            start = i
+            break
+
+    if start == -1:
+        return []
+    depth = 0
+    in_quote = False
+    escape = False
+    end = -1
+    for i in range(start, len(text)):
+        char = text[i]
+        if escape:
+            escape = False
+            continue
+        if char == "\\":
+            escape = True
+            continue
+        if char == '"':
+            in_quote = not in_quote
+            continue
+        if in_quote:
+            continue
+        if char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end != -1:
+        inner = text[start + 1 : end]
+        raw_elems = split_tablegen_list(inner)
+        traits: List[str] = []
+        for elem in raw_elems:
+            cleaned = elem.strip()
+            if cleaned.startswith("//"):
+                continue
+            if cleaned in ('"getAsmResultNames"', '["getAsmResultNames"]'):
+                traits.append("OpAsmOpInterface::getAsmResultNames")
+            elif cleaned in (
+                '"inferReturnTypeComponents"',
+                '["inferReturnTypeComponents"',
+            ):
+                traits.append("InferTypeOpInterface::inferReturnTypeComponents")
+            elif cleaned in ('"inferResultRanges"', '["inferResultRanges"'):
+                traits.append("InferIntRangeInterface::inferResultRanges")
+            elif cleaned:
+                traits.append(cleaned)
+        return traits
+    return []
