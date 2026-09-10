@@ -61,9 +61,9 @@ def test_nvidia_sass_specific_instruction() -> None:
 def test_build_structured_sass_operands() -> None:
     """Test building structured operand records with roles, register classes, and immediates."""
     structured = nvidia_sass.build_structured_sass_operands(
-        ["R0", "1.5", "0x20", "UR4", "P1", "c[0][4]"], "FADD"
+        ["R0", "1.5", "0x20", "UR4", "P1", "c[0][4]", "UP0", "B1"], "FADD"
     )
-    assert len(structured) == 6
+    assert len(structured) == 8
     assert structured[0]["role"] == "dest"
     assert "R" in structured[0]["register_classes"]
 
@@ -73,6 +73,8 @@ def test_build_structured_sass_operands() -> None:
     assert "UR" in structured[3]["register_classes"]
     assert "P" in structured[4]["register_classes"]
     assert "CBANK" in structured[5]["register_classes"]
+    assert "UP" in structured[6]["register_classes"]
+    assert "B" in structured[7]["register_classes"]
 
     # Store, branch, barrier instruction roles
     st_ops = nvidia_sass.build_structured_sass_operands(["[R1]", "R2"], "STG")
@@ -651,30 +653,31 @@ def test_load_exhaustive_sass_variants() -> None:
             "non_list": "invalid",
         },
     }
-    with mock.patch(
-        "builtins.open", mock.mock_open(read_data=json.dumps(mock_envelope))
-    ):
-        ops = nvidia_sass._load_exhaustive_sass()
-        assert len(ops) == 1
-        assert ops[0]["mnemonic"] == "FADD"
+    with mock.patch("os.path.exists", return_value=True):
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_envelope))
+        ):
+            ops = nvidia_sass._load_exhaustive_sass()
+            assert len(ops) == 1
+            assert ops[0]["mnemonic"] == "FADD"
 
-    mock_inst_dict = {
-        "instructions": [{"mnemonic": "FMUL"}],
-    }
-    with mock.patch(
-        "builtins.open", mock.mock_open(read_data=json.dumps(mock_inst_dict))
-    ):
-        ops = nvidia_sass._load_exhaustive_sass()
-        assert len(ops) == 1
-        assert ops[0]["mnemonic"] == "FMUL"
+        mock_inst_dict = {
+            "instructions": [{"mnemonic": "FMUL"}],
+        }
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_inst_dict))
+        ):
+            ops = nvidia_sass._load_exhaustive_sass()
+            assert len(ops) == 1
+            assert ops[0]["mnemonic"] == "FMUL"
 
-    mock_raw_list = [{"mnemonic": "FFMA"}]
-    with mock.patch(
-        "builtins.open", mock.mock_open(read_data=json.dumps(mock_raw_list))
-    ):
-        ops = nvidia_sass._load_exhaustive_sass()
-        assert len(ops) == 1
-        assert ops[0]["mnemonic"] == "FFMA"
+        mock_raw_list = [{"mnemonic": "FFMA"}]
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_raw_list))
+        ):
+            ops = nvidia_sass._load_exhaustive_sass()
+            assert len(ops) == 1
+            assert ops[0]["mnemonic"] == "FFMA"
 
     assert nvidia_sass.validate_sass_control_code("FADD", {"dual_issue": True}) == []
     assert nvidia_sass.validate_sass_control_code("WGMMA", {}) == []

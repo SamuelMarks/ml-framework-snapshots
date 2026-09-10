@@ -383,152 +383,336 @@ def validate_mlir_successors(
     return errors
 
 
+def _get_canonical_mlir_records() -> List[Dict[str, Any]]:
+    """Return canonical baseline MLIR operations for offline operation when unbuilt.
+
+    Returns:
+        List of MLIR operation dictionaries.
+    """
+    return [
+        {
+            "class_name": "AddFOp",
+            "api_path": "arith.addf",
+            "dialect": "arith",
+            "operands": [
+                {"name": "lhs", "type": "AnyFloat"},
+                {"name": "rhs", "type": "AnyFloat"},
+            ],
+            "results": [{"name": "result", "type": "AnyFloat"}],
+            "attributes": [{"name": "fastmath", "type": "FastMathFlagsAttr"}],
+            "traits": ["SameOperandsAndResultType", "Commutative"],
+            "summary": "Floating-point addition operation",
+        },
+        {
+            "class_name": "SubFOp",
+            "api_path": "arith.subf",
+            "dialect": "arith",
+            "operands": [
+                {"name": "lhs", "type": "AnyFloat"},
+                {"name": "rhs", "type": "AnyFloat"},
+            ],
+            "results": [{"name": "result", "type": "AnyFloat"}],
+            "attributes": [{"name": "fastmath", "type": "FastMathFlagsAttr"}],
+            "traits": ["SameOperandsAndResultType"],
+            "summary": "Floating-point subtraction operation",
+        },
+        {
+            "class_name": "MulFOp",
+            "api_path": "arith.mulf",
+            "dialect": "arith",
+            "operands": [
+                {"name": "lhs", "type": "AnyFloat"},
+                {"name": "rhs", "type": "AnyFloat"},
+            ],
+            "results": [{"name": "result", "type": "AnyFloat"}],
+            "attributes": [{"name": "fastmath", "type": "FastMathFlagsAttr"}],
+            "traits": ["SameOperandsAndResultType", "Commutative"],
+            "summary": "Floating-point multiplication operation",
+        },
+        {
+            "class_name": "DivFOp",
+            "api_path": "arith.divf",
+            "dialect": "arith",
+            "operands": [
+                {"name": "lhs", "type": "AnyFloat"},
+                {"name": "rhs", "type": "AnyFloat"},
+            ],
+            "results": [{"name": "result", "type": "AnyFloat"}],
+            "attributes": [{"name": "fastmath", "type": "FastMathFlagsAttr"}],
+            "traits": ["SameOperandsAndResultType"],
+            "summary": "Floating-point division operation",
+        },
+        {
+            "class_name": "AddIOp",
+            "api_path": "arith.addi",
+            "dialect": "arith",
+            "operands": [
+                {"name": "lhs", "type": "AnyInteger"},
+                {"name": "rhs", "type": "AnyInteger"},
+            ],
+            "results": [{"name": "result", "type": "AnyInteger"}],
+            "attributes": [
+                {"name": "overflowFlags", "type": "IntegerOverflowFlagsAttr"}
+            ],
+            "traits": ["SameOperandsAndResultType", "Commutative"],
+            "summary": "Integer addition operation",
+        },
+        {
+            "class_name": "SubIOp",
+            "api_path": "arith.subi",
+            "dialect": "arith",
+            "operands": [
+                {"name": "lhs", "type": "AnyInteger"},
+                {"name": "rhs", "type": "AnyInteger"},
+            ],
+            "results": [{"name": "result", "type": "AnyInteger"}],
+            "attributes": [
+                {"name": "overflowFlags", "type": "IntegerOverflowFlagsAttr"}
+            ],
+            "traits": ["SameOperandsAndResultType"],
+            "summary": "Integer subtraction operation",
+        },
+        {
+            "class_name": "MulIOp",
+            "api_path": "arith.muli",
+            "dialect": "arith",
+            "operands": [
+                {"name": "lhs", "type": "AnyInteger"},
+                {"name": "rhs", "type": "AnyInteger"},
+            ],
+            "results": [{"name": "result", "type": "AnyInteger"}],
+            "attributes": [
+                {"name": "overflowFlags", "type": "IntegerOverflowFlagsAttr"}
+            ],
+            "traits": ["SameOperandsAndResultType", "Commutative"],
+            "summary": "Integer multiplication operation",
+        },
+        {
+            "class_name": "ExpOp",
+            "api_path": "math.exp",
+            "dialect": "math",
+            "operands": [{"name": "operand", "type": "AnyFloat"}],
+            "results": [{"name": "result", "type": "AnyFloat"}],
+            "attributes": [],
+            "traits": ["SameOperandsAndResultType"],
+            "summary": "Exponential operation",
+        },
+        {
+            "class_name": "FuncOp",
+            "api_path": "func.func",
+            "dialect": "func",
+            "operands": [],
+            "results": [],
+            "attributes": [
+                {"name": "sym_name", "type": "StringAttr"},
+                {"name": "function_type", "type": "TypeAttr"},
+            ],
+            "traits": ["IsolatedFromAbove"],
+            "summary": "Function definition",
+        },
+        {
+            "class_name": "ReturnOp",
+            "api_path": "func.return",
+            "dialect": "func",
+            "operands": [{"name": "operands", "type": "Variadic<AnyType>"}],
+            "results": [],
+            "attributes": [],
+            "traits": ["Terminator"],
+            "summary": "Function return operation",
+        },
+        {
+            "class_name": "ForOp",
+            "api_path": "scf.for",
+            "dialect": "scf",
+            "operands": [
+                {"name": "lowerBound", "type": "Index"},
+                {"name": "upperBound", "type": "Index"},
+                {"name": "step", "type": "Index"},
+            ],
+            "results": [{"name": "results", "type": "Variadic<AnyType>"}],
+            "attributes": [],
+            "traits": ["RecursiveMemoryEffects"],
+            "summary": "Structured control flow for loop",
+        },
+        {
+            "class_name": "YieldOp",
+            "api_path": "scf.yield",
+            "dialect": "scf",
+            "operands": [{"name": "results", "type": "Variadic<AnyType>"}],
+            "results": [],
+            "attributes": [],
+            "traits": ["Terminator"],
+            "summary": "SCF loop yield",
+        },
+        {
+            "class_name": "EmptyOp",
+            "api_path": "tensor.empty",
+            "dialect": "tensor",
+            "operands": [{"name": "dynamicSizes", "type": "Variadic<Index>"}],
+            "results": [{"name": "result", "type": "AnyTensor"}],
+            "attributes": [{"name": "staticSizes", "type": "DenseI64ArrayAttr"}],
+            "traits": [],
+            "summary": "Create empty uninitialized tensor",
+        },
+        {
+            "class_name": "MatmulOp",
+            "api_path": "linalg.matmul",
+            "dialect": "linalg",
+            "operands": [
+                {"name": "inputs", "type": "Variadic<AnyShaped>"},
+                {"name": "outputs", "type": "Variadic<AnyShaped>"},
+            ],
+            "results": [{"name": "results", "type": "Variadic<AnyRankedTensor>"}],
+            "attributes": [],
+            "traits": ["StructuredOpTrait"],
+            "summary": "Linalg matrix multiplication",
+        },
+    ]
+
+
 def _load_mlir_exhaustive() -> List[GhostRef]:
-    """Load the MLIR exhaustive JSON dump and map it to GhostRefs.
+    """Load the MLIR exhaustive JSON dump or canonical fallback and map it to GhostRefs.
 
     Returns:
         A list of GhostRef items representing MLIR operations.
     """
     json_path = os.path.join(os.path.dirname(__file__), "mlir_exhaustive.json")
-    if not os.path.exists(json_path):
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                if "categories" in data:
+                    all_ops: List[Dict[str, Any]] = []
+                    for cat_ops in data["categories"].values():
+                        if isinstance(cat_ops, list):
+                            all_ops.extend(cat_ops)
+                    ops_list = all_ops
+                else:
+                    ops_list = data.get("operations", [])
+            else:
+                ops_list = data
+        except (json.JSONDecodeError, OSError):
+            return []
+    elif os.environ.get("MLIR_DISABLE_FALLBACK") == "1":
         return []
+    else:
+        ops_list = _get_canonical_mlir_records()
 
     refs: List[GhostRef] = []
-    try:
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    for op in ops_list:
+        params: List[ExtendedGhostParam] = []
 
-        if isinstance(data, dict):
-            if "categories" in data:
-                all_ops: List[Dict[str, Any]] = []
-                for cat_ops in data["categories"].values():
-                    if isinstance(cat_ops, list):
-                        all_ops.extend(cat_ops)
-                ops_list = all_ops
-            else:
-                ops_list = data.get("operations", [])
-        else:
-            ops_list = data
-
-        for op in ops_list:
-            params: List[ExtendedGhostParam] = []
-
-            # 1. SSA Operands
-            for operand in op.get("operands", []):
-                op_name = operand["name"] if isinstance(operand, dict) else str(operand)
-                op_type = (
-                    operand.get("type", "Value")
-                    if isinstance(operand, dict)
-                    else "Value"
-                )
-                params.append(
-                    ExtendedGhostParam(
-                        name=op_name,
-                        kind="POSITIONAL_OR_KEYWORD",
-                        annotation=op_type,
-                        standardized_name="operand",
-                        description=f"SSA operand {op_name} of type {op_type}",
-                        direction=OperandDirection.READ,
-                        role=IRParameterRole.OPERAND,
-                    )
-                )
-
-            # 2. Attributes
-            for attribute in op.get("attributes", []):
-                attr_name = (
-                    attribute["name"] if isinstance(attribute, dict) else str(attribute)
-                )
-                attr_type = (
-                    attribute.get("type", "Attribute")
-                    if isinstance(attribute, dict)
-                    else "Attribute"
-                )
-                params.append(
-                    ExtendedGhostParam(
-                        name=attr_name,
-                        kind="KEYWORD_ONLY",
-                        annotation=attr_type,
-                        standardized_name="attribute",
-                        description=f"Buildable attribute {attr_name} of type {attr_type}",
-                        role=IRParameterRole.ATTRIBUTE,
-                    )
-                )
-
-            # 3. Regions
-            for region in op.get("regions", []):
-                reg_name = region["name"] if isinstance(region, dict) else str(region)
-                params.append(
-                    ExtendedGhostParam(
-                        name=reg_name,
-                        kind="KEYWORD_ONLY",
-                        annotation="Region",
-                        standardized_name="region",
-                        description=f"Op region {reg_name}",
-                        role=IRParameterRole.REGION,
-                    )
-                )
-
-            returns_type: Optional[str] = None
-            ghost_results: List[GhostResult] = []
-            results = op.get("results", [])
-            if results:
-                res_types: List[str] = []
-                for r in results:
-                    r_name = (
-                        r.get("name", "result") if isinstance(r, dict) else "result"
-                    )
-                    r_type = r.get("type", "Value") if isinstance(r, dict) else str(r)
-                    res_types.append(r_type)
-                    ghost_results.append(GhostResult(name=r_name, type=r_type))
-                returns_type = (
-                    res_types[0]
-                    if len(res_types) == 1
-                    else f"tuple[{', '.join(res_types)}]"
-                )
-
-            docstring_parts = [
-                op.get("description") or f"MLIR {op.get('class_name', 'Op')} operation."
-            ]
-            traits = op.get("traits", [])
-            if traits:
-                docstring_parts.append(f"Traits: {', '.join(traits)}")
-
-            domain_metadata = {
-                "dialect": op.get("dialect"),
-                "traits": traits,
-                "regions": op.get("regions", []),
-            }
-
-            ssa_operands = [
-                p for p in params if getattr(p, "role", None) == IRParameterRole.OPERAND
-            ]
-
-            refs.append(
-                GhostMlirRef(
-                    name=op.get("class_name", "UnknownOp"),
-                    api_path=op.get("api_path", ""),
-                    kind="function",
-                    params=params,
-                    operands=ssa_operands,
-                    docstring="\n".join(docstring_parts),
-                    returns_type=returns_type,
-                    returns=ghost_results,
-                    environment_tags=["cpu", "cuda", "rocm", "tpu"],
-                    domain_metadata=domain_metadata,
-                    traits=traits,
-                    attributes=op.get("attributes")
-                    if isinstance(op.get("attributes"), dict)
-                    else None,
-                    regions=op.get("regions")
-                    if isinstance(op.get("regions"), dict)
-                    else None,
-                    successors=op.get("successors")
-                    if isinstance(op.get("successors"), list)
-                    else None,
+        # 1. SSA Operands
+        for operand in op.get("operands", []):
+            op_name = operand["name"] if isinstance(operand, dict) else str(operand)
+            op_type = (
+                operand.get("type", "Value") if isinstance(operand, dict) else "Value"
+            )
+            params.append(
+                ExtendedGhostParam(
+                    name=op_name,
+                    kind="POSITIONAL_OR_KEYWORD",
+                    annotation=op_type,
+                    standardized_name="operand",
+                    description=f"SSA operand {op_name} of type {op_type}",
+                    direction=OperandDirection.READ,
+                    role=IRParameterRole.OPERAND,
                 )
             )
-    except (json.JSONDecodeError, OSError):  # pragma: no cover
-        pass
+
+        # 2. Attributes
+        for attribute in op.get("attributes", []):
+            attr_name = (
+                attribute["name"] if isinstance(attribute, dict) else str(attribute)
+            )
+            attr_type = (
+                attribute.get("type", "Attribute")
+                if isinstance(attribute, dict)
+                else "Attribute"
+            )
+            params.append(
+                ExtendedGhostParam(
+                    name=attr_name,
+                    kind="KEYWORD_ONLY",
+                    annotation=attr_type,
+                    standardized_name="attribute",
+                    description=f"Buildable attribute {attr_name} of type {attr_type}",
+                    role=IRParameterRole.ATTRIBUTE,
+                )
+            )
+
+        # 3. Regions
+        for region in op.get("regions", []):
+            reg_name = region["name"] if isinstance(region, dict) else str(region)
+            params.append(
+                ExtendedGhostParam(
+                    name=reg_name,
+                    kind="KEYWORD_ONLY",
+                    annotation="Region",
+                    standardized_name="region",
+                    description=f"Op region {reg_name}",
+                    role=IRParameterRole.REGION,
+                )
+            )
+
+        returns_type: Optional[str] = None
+        ghost_results: List[GhostResult] = []
+        results = op.get("results", [])
+        if results:
+            res_types: List[str] = []
+            for r in results:
+                r_name = r.get("name", "result") if isinstance(r, dict) else "result"
+                r_type = r.get("type", "Value") if isinstance(r, dict) else str(r)
+                res_types.append(r_type)
+                ghost_results.append(GhostResult(name=r_name, type=r_type))
+            returns_type = (
+                res_types[0]
+                if len(res_types) == 1
+                else f"tuple[{', '.join(res_types)}]"
+            )
+
+        docstring_parts = [
+            op.get("description") or f"MLIR {op.get('class_name', 'Op')} operation."
+        ]
+        traits = op.get("traits", [])
+        if traits:
+            docstring_parts.append(f"Traits: {', '.join(traits)}")
+
+        domain_metadata = {
+            "dialect": op.get("dialect"),
+            "traits": traits,
+            "regions": op.get("regions", []),
+        }
+
+        ssa_operands = [
+            p for p in params if getattr(p, "role", None) == IRParameterRole.OPERAND
+        ]
+
+        refs.append(
+            GhostMlirRef(
+                name=op.get("class_name", "UnknownOp"),
+                api_path=op.get("api_path", ""),
+                kind="function",
+                params=params,
+                operands=ssa_operands,
+                docstring="\n".join(docstring_parts),
+                returns_type=returns_type,
+                returns=ghost_results,
+                environment_tags=["cpu", "cuda", "rocm", "tpu"],
+                domain_metadata=domain_metadata,
+                traits=traits,
+                attributes=op.get("attributes")
+                if isinstance(op.get("attributes"), dict)
+                else None,
+                regions=op.get("regions")
+                if isinstance(op.get("regions"), dict)
+                else None,
+                successors=op.get("successors")
+                if isinstance(op.get("successors"), list)
+                else None,
+            )
+        )
 
     return refs
 

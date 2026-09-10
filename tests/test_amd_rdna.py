@@ -495,30 +495,31 @@ def test_load_exhaustive_rdna_variants() -> None:
             "non_list": "invalid",
         },
     }
-    with mock.patch(
-        "builtins.open", mock.mock_open(read_data=json.dumps(mock_envelope))
-    ):
-        ops = amd_rdna._load_exhaustive_rdna()
-        assert len(ops) == 1
-        assert ops[0]["mnemonic"] == "v_test_env"
+    with mock.patch("os.path.exists", return_value=True):
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_envelope))
+        ):
+            ops = amd_rdna._load_exhaustive_rdna()
+            assert len(ops) == 1
+            assert ops[0]["mnemonic"] == "v_test_env"
 
-    mock_inst_dict = {
-        "instructions": [{"mnemonic": "v_test_dict"}],
-    }
-    with mock.patch(
-        "builtins.open", mock.mock_open(read_data=json.dumps(mock_inst_dict))
-    ):
-        ops = amd_rdna._load_exhaustive_rdna()
-        assert len(ops) == 1
-        assert ops[0]["mnemonic"] == "v_test_dict"
+        mock_inst_dict = {
+            "instructions": [{"mnemonic": "v_test_dict"}],
+        }
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_inst_dict))
+        ):
+            ops = amd_rdna._load_exhaustive_rdna()
+            assert len(ops) == 1
+            assert ops[0]["mnemonic"] == "v_test_dict"
 
-    mock_raw_list = [{"mnemonic": "v_test_list"}]
-    with mock.patch(
-        "builtins.open", mock.mock_open(read_data=json.dumps(mock_raw_list))
-    ):
-        ops = amd_rdna._load_exhaustive_rdna()
-        assert len(ops) == 1
-        assert ops[0]["mnemonic"] == "v_test_list"
+        mock_raw_list = [{"mnemonic": "v_test_list"}]
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_raw_list))
+        ):
+            ops = amd_rdna._load_exhaustive_rdna()
+            assert len(ops) == 1
+            assert ops[0]["mnemonic"] == "v_test_list"
 
 
 def test_tokenize_rdna_line_and_code_block() -> None:

@@ -584,166 +584,341 @@ def validate_stablehlo_op(
     return errors
 
 
+def _get_canonical_stablehlo_records() -> List[Dict[str, Any]]:
+    """Return canonical baseline StableHLO operations for offline operation when unbuilt.
+
+    Returns:
+        List of StableHLO operation dictionaries.
+    """
+    return [
+        {
+            "class_name": "DotGeneralOp",
+            "api_path": "stablehlo.dot_general",
+            "operands": [
+                {"name": "lhs", "type": "tensor"},
+                {"name": "rhs", "type": "tensor"},
+            ],
+            "results": [{"name": "result", "type": "tensor"}],
+            "attributes": [
+                {"name": "dot_dimension_numbers", "type": "DotDimensionNumbersAttr"},
+                {"name": "precision_config", "type": "PrecisionConfigAttr"},
+            ],
+            "traits": [],
+            "summary": "General dot product of two tensors.",
+        },
+        {
+            "class_name": "ConvolutionOp",
+            "api_path": "stablehlo.convolution",
+            "operands": [
+                {"name": "lhs", "type": "tensor"},
+                {"name": "rhs", "type": "tensor"},
+            ],
+            "results": [{"name": "result", "type": "tensor"}],
+            "attributes": [
+                {"name": "dimension_numbers", "type": "ConvDimensionNumbersAttr"},
+                {"name": "window_strides", "type": "DenseIntElementsAttr"},
+                {"name": "padding", "type": "DenseIntElementsAttr"},
+            ],
+            "traits": [],
+            "summary": "Convolution operation.",
+        },
+        {
+            "class_name": "AddOp",
+            "api_path": "stablehlo.add",
+            "operands": [
+                {"name": "lhs", "type": "tensor"},
+                {"name": "rhs", "type": "tensor"},
+            ],
+            "results": [{"name": "result", "type": "tensor"}],
+            "attributes": [],
+            "traits": ["SameOperandsAndResultType", "Commutative"],
+            "summary": "Elementwise addition.",
+        },
+        {
+            "class_name": "SubtractOp",
+            "api_path": "stablehlo.subtract",
+            "operands": [
+                {"name": "lhs", "type": "tensor"},
+                {"name": "rhs", "type": "tensor"},
+            ],
+            "results": [{"name": "result", "type": "tensor"}],
+            "attributes": [],
+            "traits": ["SameOperandsAndResultType"],
+            "summary": "Elementwise subtraction.",
+        },
+        {
+            "class_name": "MultiplyOp",
+            "api_path": "stablehlo.multiply",
+            "operands": [
+                {"name": "lhs", "type": "tensor"},
+                {"name": "rhs", "type": "tensor"},
+            ],
+            "results": [{"name": "result", "type": "tensor"}],
+            "attributes": [],
+            "traits": ["SameOperandsAndResultType", "Commutative"],
+            "summary": "Elementwise multiplication.",
+        },
+        {
+            "class_name": "DivideOp",
+            "api_path": "stablehlo.divide",
+            "operands": [
+                {"name": "lhs", "type": "tensor"},
+                {"name": "rhs", "type": "tensor"},
+            ],
+            "results": [{"name": "result", "type": "tensor"}],
+            "attributes": [],
+            "traits": ["SameOperandsAndResultType"],
+            "summary": "Elementwise division.",
+        },
+        {
+            "class_name": "BroadcastInDimOp",
+            "api_path": "stablehlo.broadcast_in_dim",
+            "operands": [{"name": "operand", "type": "tensor"}],
+            "results": [{"name": "result", "type": "tensor"}],
+            "attributes": [
+                {"name": "broadcast_dimensions", "type": "DenseIntElementsAttr"}
+            ],
+            "traits": [],
+            "summary": "Broadcast an array into a higher-ranked shape.",
+        },
+        {
+            "class_name": "ReduceOp",
+            "api_path": "stablehlo.reduce",
+            "operands": [
+                {"name": "inputs", "type": "tensor"},
+                {"name": "init_values", "type": "tensor"},
+            ],
+            "results": [{"name": "results", "type": "tensor"}],
+            "attributes": [{"name": "dimensions", "type": "DenseIntElementsAttr"}],
+            "traits": [],
+            "summary": "Apply a reduction to multidimensional inputs.",
+        },
+        {
+            "class_name": "AbsOp",
+            "api_path": "stablehlo.abs",
+            "operands": [{"name": "operand", "type": "tensor"}],
+            "results": [{"name": "result", "type": "tensor"}],
+            "attributes": [],
+            "traits": ["SameOperandsAndResultType"],
+            "summary": "Elementwise absolute value operation.",
+        },
+        {
+            "class_name": "WhileOp",
+            "api_path": "stablehlo.while",
+            "operands": [{"name": "operand", "type": "Variadic<tensor>"}],
+            "results": [{"name": "results", "type": "Variadic<tensor>"}],
+            "attributes": [],
+            "regions": ["cond", "body"],
+            "traits": [],
+            "summary": "While loop operation with condition and body regions.",
+        },
+        {
+            "class_name": "SortOp",
+            "api_path": "stablehlo.sort",
+            "operands": [{"name": "inputs", "type": "Variadic<tensor>"}],
+            "results": [{"name": "results", "type": "Variadic<tensor>"}],
+            "attributes": [{"name": "dimension", "type": "I64Attr"}],
+            "regions": ["comparator"],
+            "traits": [],
+            "summary": "Sort operation with comparator region.",
+        },
+        {
+            "class_name": "ScatterOp",
+            "api_path": "stablehlo.scatter",
+            "operands": [
+                {"name": "inputs", "type": "Variadic<tensor>"},
+                {"name": "scatter_indices", "type": "tensor"},
+                {"name": "updates", "type": "Variadic<tensor>"},
+            ],
+            "results": [{"name": "results", "type": "Variadic<tensor>"}],
+            "attributes": [
+                {
+                    "name": "scatter_dimension_numbers",
+                    "type": "ScatterDimensionNumbersAttr",
+                },
+                {"name": "indices_are_sorted", "type": "BoolAttr"},
+                {"name": "unique_indices", "type": "BoolAttr"},
+            ],
+            "regions": ["update_computation"],
+            "traits": [],
+            "summary": "Scatter operation.",
+        },
+        {
+            "class_name": "GatherOp",
+            "api_path": "stablehlo.gather",
+            "operands": [
+                {"name": "operand", "type": "tensor"},
+                {"name": "start_indices", "type": "tensor"},
+            ],
+            "results": [{"name": "result", "type": "tensor"}],
+            "attributes": [
+                {"name": "dimension_numbers", "type": "GatherDimensionNumbersAttr"},
+                {"name": "slice_sizes", "type": "DenseIntElementsAttr"},
+                {"name": "indices_are_sorted", "type": "BoolAttr"},
+            ],
+            "traits": [],
+            "summary": "Gather operation.",
+        },
+    ]
+
+
 def _load_stablehlo_exhaustive() -> List[GhostRef]:
-    """Load the StableHLO exhaustive JSON dump and map it to GhostRefs.
+    """Load the StableHLO exhaustive JSON dump or canonical fallback and map it to GhostRefs.
 
     Returns:
         A list of GhostRef items representing StableHLO operations.
     """
     json_path = os.path.join(os.path.dirname(__file__), "stablehlo_exhaustive.json")
-    if not os.path.exists(json_path):
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                if "categories" in data:
+                    all_ops: List[Dict[str, Any]] = []
+                    for cat_ops in data["categories"].values():
+                        if isinstance(cat_ops, list):
+                            all_ops.extend(cat_ops)
+                    ops_list = all_ops
+                else:
+                    ops_list = data.get("operations", [])
+            else:
+                ops_list = data
+        except (json.JSONDecodeError, OSError):
+            return []
+    elif os.environ.get("STABLEHLO_DISABLE_FALLBACK") == "1":
         return []
+    else:
+        ops_list = _get_canonical_stablehlo_records()
 
     refs: List[GhostRef] = []
-    try:
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    for op in ops_list:
+        params: List[ExtendedGhostParam] = []
 
-        if isinstance(data, dict):
-            if "categories" in data:
-                all_ops: List[Dict[str, Any]] = []
-                for cat_ops in data["categories"].values():
-                    if isinstance(cat_ops, list):
-                        all_ops.extend(cat_ops)
-                ops_list = all_ops
+        # 1. SSA Operands
+        for operand in op.get("operands", []):
+            op_name = operand["name"] if isinstance(operand, dict) else str(operand)
+            op_type = (
+                operand.get("type", "tensor") if isinstance(operand, dict) else "tensor"
+            )
+            params.append(
+                ExtendedGhostParam(
+                    name=op_name,
+                    kind="POSITIONAL_OR_KEYWORD",
+                    annotation=op_type,
+                    standardized_name="operand",
+                    description=f"SSA operand {op_name} of type {op_type}",
+                    direction=OperandDirection.READ,
+                    role=IRParameterRole.OPERAND,
+                )
+            )
+
+        # 2. Attributes
+        op_attributes: Dict[str, Any] = {}
+        for attribute in op.get("attributes", []):
+            attr_name = (
+                attribute["name"] if isinstance(attribute, dict) else str(attribute)
+            )
+            attr_type = (
+                attribute.get("type", "attribute")
+                if isinstance(attribute, dict)
+                else "attribute"
+            )
+            params.append(
+                ExtendedGhostParam(
+                    name=attr_name,
+                    kind="KEYWORD_ONLY",
+                    annotation=attr_type,
+                    standardized_name="attribute",
+                    description=f"Attribute {attr_name} of type {attr_type}",
+                    role=IRParameterRole.ATTRIBUTE,
+                )
+            )
+            matched_schema = None
+            for schema_key, schema_val in STRUCTURED_STABLEHLO_SCHEMAS.items():
+                clean_key = schema_key.lower().replace("attr", "")
+                if clean_key in attr_name.lower().replace(
+                    "_", ""
+                ) or clean_key in attr_type.lower().replace("_", ""):
+                    matched_schema = schema_val
+                    break
+            if matched_schema is not None:
+                op_attributes[attr_name] = matched_schema
             else:
-                ops_list = data.get("operations", [])
-        else:
-            ops_list = data
+                op_attributes[attr_name] = {"type": attr_type}
 
-        for op in ops_list:
-            params: List[ExtendedGhostParam] = []
-
-            # 1. SSA Operands
-            for operand in op.get("operands", []):
-                op_name = operand["name"] if isinstance(operand, dict) else str(operand)
-                op_type = (
-                    operand.get("type", "tensor")
-                    if isinstance(operand, dict)
-                    else "tensor"
-                )
-                params.append(
-                    ExtendedGhostParam(
-                        name=op_name,
-                        kind="POSITIONAL_OR_KEYWORD",
-                        annotation=op_type,
-                        standardized_name="operand",
-                        description=f"SSA operand {op_name} of type {op_type}",
-                        direction=OperandDirection.READ,
-                        role=IRParameterRole.OPERAND,
-                    )
-                )
-
-            # 2. Attributes
-            op_attributes: Dict[str, Any] = {}
-            for attribute in op.get("attributes", []):
-                attr_name = (
-                    attribute["name"] if isinstance(attribute, dict) else str(attribute)
-                )
-                attr_type = (
-                    attribute.get("type", "attribute")
-                    if isinstance(attribute, dict)
-                    else "attribute"
-                )
-                params.append(
-                    ExtendedGhostParam(
-                        name=attr_name,
-                        kind="KEYWORD_ONLY",
-                        annotation=attr_type,
-                        standardized_name="attribute",
-                        description=f"Attribute {attr_name} of type {attr_type}",
-                        role=IRParameterRole.ATTRIBUTE,
-                    )
-                )
-                matched_schema = None
-                for schema_key, schema_val in STRUCTURED_STABLEHLO_SCHEMAS.items():
-                    clean_key = schema_key.lower().replace("attr", "")
-                    if clean_key in attr_name.lower().replace(
-                        "_", ""
-                    ) or clean_key in attr_type.lower().replace("_", ""):
-                        matched_schema = schema_val
-                        break
-                if matched_schema is not None:
-                    op_attributes[attr_name] = matched_schema
-                else:
-                    op_attributes[attr_name] = {"type": attr_type}
-
-            # 3. Op Regions
-            for region in op.get("regions", []):
-                reg_name = region["name"] if isinstance(region, dict) else str(region)
-                params.append(
-                    ExtendedGhostParam(
-                        name=reg_name,
-                        kind="KEYWORD_ONLY",
-                        annotation="Region",
-                        standardized_name="region",
-                        description=f"Op region block {reg_name}",
-                        role=IRParameterRole.REGION,
-                    )
-                )
-
-            traits = op.get("traits", [])
-            base_desc = (
-                op.get("description")
-                or f"StableHLO {op.get('class_name', 'Op')} operation."
-            )
-            docstring_parts = [base_desc]
-            if traits:
-                docstring_parts.append(f"Traits: {', '.join(traits)}")
-            regions = op.get("regions", [])
-            if regions:
-                docstring_parts.append(f"Regions: {', '.join(str(r) for r in regions)}")
-
-            returns_type: Optional[str] = None
-            ghost_results: List[GhostResult] = []
-            results = op.get("results", [])
-            if results:
-                res_types: List[str] = []
-                for r in results:
-                    r_name = (
-                        r.get("name", "result") if isinstance(r, dict) else "result"
-                    )
-                    r_type = r.get("type", "tensor") if isinstance(r, dict) else str(r)
-                    res_types.append(r_type)
-                    ghost_results.append(GhostResult(name=r_name, type=r_type))
-                returns_type = (
-                    res_types[0]
-                    if len(res_types) == 1
-                    else f"tuple[{', '.join(res_types)}]"
-                )
-
-            api_path = op.get("api_path", "")
-            domain_metadata = {
-                "traits": traits,
-                "regions": STRUCTURED_REGION_SIGNATURES.get(api_path, regions),
-                "structured_attribute_schemas": STRUCTURED_STABLEHLO_SCHEMAS,
-            }
-
-            ssa_operands = [
-                p for p in params if getattr(p, "role", None) == IRParameterRole.OPERAND
-            ]
-
-            refs.append(
-                GhostMlirRef(
-                    name=op.get("class_name", "UnknownOp"),
-                    api_path=op.get("api_path", ""),
-                    kind="function",
-                    params=params,
-                    operands=ssa_operands,
-                    docstring="\n".join(docstring_parts),
-                    returns_type=returns_type,
-                    returns=ghost_results,
-                    environment_tags=["cpu", "cuda", "rocm", "tpu"],
-                    domain_metadata=domain_metadata,
-                    traits=traits,
-                    attributes=op_attributes if op_attributes else None,
-                    regions=STRUCTURED_REGION_SIGNATURES.get(api_path)
-                    if isinstance(STRUCTURED_REGION_SIGNATURES.get(api_path), dict)
-                    else None,
+        # 3. Op Regions
+        for region in op.get("regions", []):
+            reg_name = region["name"] if isinstance(region, dict) else str(region)
+            params.append(
+                ExtendedGhostParam(
+                    name=reg_name,
+                    kind="KEYWORD_ONLY",
+                    annotation="Region",
+                    standardized_name="region",
+                    description=f"Op region block {reg_name}",
+                    role=IRParameterRole.REGION,
                 )
             )
-    except (json.JSONDecodeError, OSError):
-        pass
+
+        traits = op.get("traits", [])
+        base_desc = (
+            op.get("description")
+            or f"StableHLO {op.get('class_name', 'Op')} operation."
+        )
+        docstring_parts = [base_desc]
+        if traits:
+            docstring_parts.append(f"Traits: {', '.join(traits)}")
+        regions = op.get("regions", [])
+        if regions:
+            docstring_parts.append(f"Regions: {', '.join(str(r) for r in regions)}")
+
+        returns_type: Optional[str] = None
+        ghost_results: List[GhostResult] = []
+        results = op.get("results", [])
+        if results:
+            res_types: List[str] = []
+            for r in results:
+                r_name = r.get("name", "result") if isinstance(r, dict) else "result"
+                r_type = r.get("type", "tensor") if isinstance(r, dict) else str(r)
+                res_types.append(r_type)
+                ghost_results.append(GhostResult(name=r_name, type=r_type))
+            returns_type = (
+                res_types[0]
+                if len(res_types) == 1
+                else f"tuple[{', '.join(res_types)}]"
+            )
+
+        api_path = op.get("api_path", "")
+        domain_metadata = {
+            "traits": traits,
+            "regions": STRUCTURED_REGION_SIGNATURES.get(api_path, regions),
+            "structured_attribute_schemas": STRUCTURED_STABLEHLO_SCHEMAS,
+        }
+
+        ssa_operands = [
+            p for p in params if getattr(p, "role", None) == IRParameterRole.OPERAND
+        ]
+
+        refs.append(
+            GhostMlirRef(
+                name=op.get("class_name", "UnknownOp"),
+                api_path=op.get("api_path", ""),
+                kind="function",
+                params=params,
+                operands=ssa_operands,
+                docstring="\n".join(docstring_parts),
+                returns_type=returns_type,
+                returns=ghost_results,
+                environment_tags=["cpu", "cuda", "rocm", "tpu"],
+                domain_metadata=domain_metadata,
+                traits=traits,
+                attributes=op_attributes if op_attributes else None,
+                regions=STRUCTURED_REGION_SIGNATURES.get(api_path)
+                if isinstance(STRUCTURED_REGION_SIGNATURES.get(api_path), dict)
+                else None,
+            )
+        )
 
     return refs
 

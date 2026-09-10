@@ -1,6 +1,6 @@
 """Module docstring."""
 
-from typing import Any
+from typing import Any, Dict
 
 
 from ml_framework_snapshots.models import (
@@ -866,3 +866,120 @@ def test_ghost_inspector_literal_param() -> None:
     ref = GhostInspector.inspect(dummy_lit, "tests.dummy_lit")
     assert len(ref.params) == 1
     assert ref.params[0].allowed_values == ["train", "eval"]
+
+
+def test_extract_accepted_kwargs_from_ast() -> None:
+    """Test extracting accepted kwargs via static AST analysis."""
+    from ml_framework_snapshots.models import extract_accepted_kwargs_from_ast
+
+    def sample_kwargs_fn(**kwargs: Any) -> None:
+        """Sample function querying kwargs in various ways."""
+        var_key = "test"
+        _ = kwargs.get("alpha", 1.0)
+        _ = kwargs.get(var_key)
+        _ = kwargs.pop("beta", None)
+        _ = kwargs["gamma"]
+        other_dict: Dict[str, Any] = {}
+        other_val = None
+        if "delta" in kwargs:
+            pass
+        if "delta" not in kwargs:
+            pass
+        if other_val == kwargs:
+            pass
+        if "delta" in other_dict:
+            pass
+        if var_key in kwargs:
+            pass
+
+    extracted = extract_accepted_kwargs_from_ast(sample_kwargs_fn)
+    assert extracted == ["alpha", "beta", "delta", "gamma"]
+
+    # Test function without kwargs
+    def no_kwargs_fn(a: int, b: int) -> None:
+        """Function with positional arguments and no variable kwargs.
+
+        Args:
+            a: First argument.
+            b: Second argument.
+        """
+        pass
+
+    assert extract_accepted_kwargs_from_ast(no_kwargs_fn) is None
+
+    # Test inspection populating accepted_kwargs
+    ref = GhostInspector.inspect(sample_kwargs_fn, "tests.sample_kwargs_fn")
+    assert getattr(ref, "accepted_kwargs", None) == ["alpha", "beta", "delta", "gamma"]
+
+
+def test_ghost_instruction_and_operation_refs() -> None:
+    """Test first-class GhostInstructionRef and GhostOperationRef schemas and hydration."""
+    from ml_framework_snapshots.models import (
+        GhostInstructionRef,
+        GhostOperationRef,
+        GhostResult,
+        ExtendedGhostParam,
+        IRParameterRole,
+    )
+
+    # 1. GhostInstructionRef
+    inst = GhostInstructionRef(
+        name="FADD",
+        api_path="FADD",
+        kind="instruction",
+        condition_codes=["CC.EQ", "CC.LT"],
+        supported_architectures=["sm_80", "sm_90"],
+    )
+    assert inst.domain_type == "isa"
+    assert inst.condition_codes == ["CC.EQ", "CC.LT"]
+    assert inst.supported_architectures == ["sm_80", "sm_90"]
+
+    # 2. GhostOperationRef
+    op = GhostOperationRef(
+        name="AddFOp",
+        api_path="arith.addf",
+        kind="operation",
+        traits=["SameOperandsAndResultType", "Commutative"],
+        operands=[
+            ExtendedGhostParam(
+                name="lhs",
+                kind="POSITIONAL_ONLY",
+                annotation="AnyFloat",
+                role=IRParameterRole.OPERAND,
+            ),
+            ExtendedGhostParam(
+                name="rhs",
+                kind="POSITIONAL_ONLY",
+                annotation="AnyFloat",
+                role=IRParameterRole.OPERAND,
+            ),
+        ],
+        returns=[GhostResult(name="result", type="AnyFloat")],
+    )
+    assert op.domain_type == "mlir"
+    assert op.traits == ["SameOperandsAndResultType", "Commutative"]
+    assert len(op.operands or []) == 2
+    assert len(op.returns or []) == 1
+
+    # 3. Hydrate with domain_type="instruction" and "operation"
+    hydrated_inst = GhostInspector.hydrate(
+        {
+            "name": "v_add_f32",
+            "api_path": "v_add_f32",
+            "kind": "instruction",
+            "domain_type": "instruction",
+            "supported_architectures": ["GFX10+"],
+        }
+    )
+    assert isinstance(hydrated_inst, GhostInstructionRef)
+
+    hydrated_op = GhostInspector.hydrate(
+        {
+            "name": "DotGeneralOp",
+            "api_path": "stablehlo.dot_general",
+            "kind": "operation",
+            "domain_type": "operation",
+            "traits": [],
+        }
+    )
+    assert isinstance(hydrated_op, GhostOperationRef)

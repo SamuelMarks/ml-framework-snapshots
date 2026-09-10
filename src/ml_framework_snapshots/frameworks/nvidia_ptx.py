@@ -362,15 +362,205 @@ def validate_ptx_instruction(
     return errors
 
 
+def _get_canonical_fallback_ptx() -> List[Dict[str, Any]]:
+    """Return canonical baseline PTX instructions for offline operation when unbuilt.
+
+    Returns:
+        List of PTX instruction metadata dictionaries.
+    """
+    return [
+        {
+            "mnemonic": "add",
+            "description": "Add two values.",
+            "min_sm": "sm_50",
+            "vector_widths": [".v2", ".v4"],
+            "operands": [
+                {"name": "d", "role": "dst", "description": "Destination"},
+                {"name": "a", "role": "src", "description": "First operand"},
+                {"name": "b", "role": "src", "description": "Second operand"},
+            ],
+        },
+        {
+            "mnemonic": "sub",
+            "description": "Subtract two values.",
+            "min_sm": "sm_50",
+            "operands": [
+                {"name": "d", "role": "dst", "description": "Destination"},
+                {"name": "a", "role": "src", "description": "First operand"},
+                {"name": "b", "role": "src", "description": "Second operand"},
+            ],
+        },
+        {
+            "mnemonic": "mul",
+            "description": "Multiply two values.",
+            "min_sm": "sm_50",
+            "operands": [
+                {"name": "d", "role": "dst", "description": "Destination"},
+                {"name": "a", "role": "src", "description": "First operand"},
+                {"name": "b", "role": "src", "description": "Second operand"},
+            ],
+        },
+        {
+            "mnemonic": "div",
+            "description": "Divide two values.",
+            "min_sm": "sm_50",
+            "operands": [
+                {"name": "d", "role": "dst", "description": "Destination"},
+                {"name": "a", "role": "src", "description": "First operand"},
+                {"name": "b", "role": "src", "description": "Second operand"},
+            ],
+        },
+        {
+            "mnemonic": "fma",
+            "description": "Fused multiply-add.",
+            "min_sm": "sm_50",
+            "supported_types": [".f16", ".f16x2", ".f32", ".f64"],
+            "operands": [
+                {"name": "d", "role": "dst", "description": "Destination"},
+                {"name": "a", "role": "src", "description": "First operand"},
+                {"name": "b", "role": "src", "description": "Second operand"},
+                {"name": "c", "role": "src", "description": "Third operand"},
+            ],
+        },
+        {
+            "mnemonic": "wgmma.mma_async",
+            "description": "Asynchronous warp-group matrix multiply and accumulate.",
+            "min_sm": "sm_90",
+            "operands": [
+                {"name": "d", "role": "dst", "description": "Destination"},
+                {"name": "a", "role": "src", "description": "First operand"},
+                {"name": "b", "role": "src", "description": "Second operand"},
+            ],
+        },
+        {
+            "mnemonic": "cp.async",
+            "description": "Asynchronous copy from global memory to shared memory.",
+            "min_sm": "sm_80",
+            "operands": [
+                {
+                    "name": "dst",
+                    "role": "dst",
+                    "description": "Shared memory destination",
+                },
+                {
+                    "name": "src",
+                    "role": "src",
+                    "description": "Global memory source",
+                },
+                {
+                    "name": "size",
+                    "role": "imm",
+                    "description": "Copy size in bytes",
+                },
+            ],
+        },
+        {
+            "mnemonic": "mbarrier.init",
+            "description": "Initialize a memory barrier.",
+            "category": "barrier",
+            "min_sm": "sm_80",
+            "state_spaces": [".shared"],
+            "supported_types": [".b64"],
+            "operands": [
+                {
+                    "name": "addr",
+                    "role": "dst",
+                    "description": "Barrier address",
+                },
+                {
+                    "name": "count",
+                    "role": "imm",
+                    "description": "Thread count",
+                },
+            ],
+        },
+        {
+            "mnemonic": "ldmatrix",
+            "description": "Load matrix from shared memory into registers.",
+            "category": "memory",
+            "min_sm": "sm_75",
+            "vector_widths": [".v1", ".v2", ".v4"],
+            "supported_types": [".b16"],
+            "operands": [
+                {
+                    "name": "r",
+                    "role": "dst",
+                    "description": "Destination register",
+                },
+                {
+                    "name": "p",
+                    "role": "src",
+                    "description": "Source address",
+                },
+            ],
+        },
+        {
+            "mnemonic": "tanh",
+            "description": "Hyperbolic tangent.",
+            "min_sm": "sm_75",
+            "supported_types": [".f32"],
+            "operands": [
+                {"name": "d", "role": "dst", "description": "Destination"},
+                {"name": "a", "role": "src", "description": "Source operand"},
+            ],
+        },
+        {
+            "mnemonic": "ld",
+            "description": "Load from memory.",
+            "category": "memory",
+            "min_sm": "sm_50",
+            "state_spaces": [".global", ".shared", ".local", ".const", ".param"],
+            "operands": [
+                {"name": "d", "role": "dst", "description": "Destination register"},
+                {"name": "a", "role": "src", "description": "Source address"},
+            ],
+        },
+        {
+            "mnemonic": "st",
+            "description": "Store to memory.",
+            "category": "memory",
+            "min_sm": "sm_50",
+            "state_spaces": [".global", ".shared", ".local", ".param"],
+            "operands": [
+                {"name": "a", "role": "dst", "description": "Destination address"},
+                {"name": "b", "role": "src", "description": "Source value"},
+            ],
+        },
+        {
+            "mnemonic": "atom",
+            "description": "Atomic reduction operation.",
+            "category": "memory",
+            "min_sm": "sm_50",
+            "state_spaces": [".global", ".shared"],
+            "scopes": [".cta", ".gpu", ".sys"],
+            "operands": [
+                {"name": "d", "role": "dst", "description": "Destination"},
+                {"name": "a", "role": "src", "description": "Address"},
+                {"name": "b", "role": "src", "description": "Value"},
+            ],
+        },
+        {
+            "mnemonic": "bar.sync",
+            "description": "Barrier synchronization.",
+            "min_sm": "sm_50",
+            "operands": [
+                {"name": "a", "role": "src", "description": "Barrier identifier"},
+            ],
+        },
+    ]
+
+
 def _load_exhaustive_ptx() -> List[Dict[str, Any]]:
-    """Load the exhaustive NVIDIA PTX JSON database.
+    """Load the exhaustive NVIDIA PTX JSON database or fallback to canonical records.
 
     Returns:
         List of PTX instruction metadata dictionaries.
     """
     json_path = os.path.join(os.path.dirname(__file__), "nvidia_ptx_exhaustive.json")
     if not os.path.exists(json_path):
-        return []
+        if os.environ.get("PTX_DISABLE_FALLBACK") == "1":
+            return []
+        return _get_canonical_fallback_ptx()
     with open(json_path, "r", encoding="utf-8") as f:
         data: Any = json.load(f)
         if isinstance(data, dict):

@@ -102,7 +102,20 @@ def get_framework_snapshot(
         if loaded_data:
             loaded_data["_snapshot_source"] = source_kind
             _SNAPSHOT_CACHE[cache_key] = loaded_data
-        elif not is_offline_mode() and clean_fw in FRAMEWORK_COLLECTORS:
+        elif clean_fw in FRAMEWORK_COLLECTORS and (
+            not is_offline_mode()
+            or clean_fw
+            in (
+                "nvidia_sass",
+                "amd_rdna",
+                "mlir",
+                "stablehlo",
+                "nvidia_ptx",
+                "html_dsl",
+                "latex_dsl",
+                "tikz",
+            )
+        ):
             try:
                 data = extract_snapshot(clean_fw)
                 data["_snapshot_source"] = "runtime_introspection"
@@ -150,10 +163,301 @@ def get_api_signature(
     return None
 
 
+DEFAULT_CONCEPT_MAP: Dict[str, Any] = {
+    "normalization": {
+        "torch": ["torch.nn.LayerNorm", "torch.nn.functional.layer_norm"],
+        "jax": ["jax.nn.standardize"],
+        "tensorflow": ["tf.keras.layers.LayerNormalization"],
+    },
+    "layer_norm": {
+        "torch": ["torch.nn.LayerNorm", "torch.nn.functional.layer_norm"],
+        "jax": ["jax.nn.standardize"],
+        "tensorflow": ["tf.keras.layers.LayerNormalization"],
+    },
+    "rms_norm": {
+        "torch": ["torch.nn.RMSNorm"],
+        "jax": ["jax.nn.standardize"],
+        "tensorflow": ["tf.keras.layers.RMSNormalization"],
+    },
+    "batch_norm": {
+        "torch": [
+            "torch.nn.BatchNorm2d",
+            "torch.nn.functional.batch_norm",
+        ],
+        "jax": ["jax.nn.standardize"],
+        "tensorflow": ["tf.keras.layers.BatchNormalization"],
+    },
+    "group_norm": {
+        "torch": [
+            "torch.nn.GroupNorm",
+            "torch.nn.functional.group_norm",
+        ],
+        "jax": ["jax.nn.standardize"],
+        "tensorflow": ["tf.keras.layers.GroupNormalization"],
+    },
+    "attention": {
+        "torch": [
+            "torch.nn.functional.scaled_dot_product_attention",
+            "torch.nn.MultiheadAttention",
+        ],
+        "jax": ["jax.nn.dot_product_attention"],
+        "tensorflow": ["tf.keras.layers.MultiHeadAttention"],
+    },
+    "scaled_dot_product_attention": {
+        "torch": ["torch.nn.functional.scaled_dot_product_attention"],
+        "jax": ["jax.nn.dot_product_attention"],
+        "tensorflow": ["tf.keras.layers.MultiHeadAttention"],
+    },
+    "flash_attention": {
+        "torch": ["torch.nn.functional.scaled_dot_product_attention"],
+        "jax": ["jax.nn.dot_product_attention"],
+    },
+    "paged_attention": {
+        "torch": ["torch.nn.functional.scaled_dot_product_attention"],
+        "jax": ["jax.nn.dot_product_attention"],
+    },
+    "sliding_window_attention": {
+        "torch": ["torch.nn.functional.scaled_dot_product_attention"],
+        "jax": ["jax.nn.dot_product_attention"],
+    },
+    "wgmma_mma_async": {
+        "torch": ["torch.cuda.wgmma"],
+        "nvidia_sass": ["WGMMA"],
+    },
+    "activations": {
+        "torch": [
+            "torch.nn.functional.relu",
+            "torch.nn.functional.gelu",
+        ],
+        "jax": ["jax.nn.relu", "jax.nn.gelu"],
+        "tensorflow": ["tf.nn.relu", "tf.nn.gelu"],
+    },
+    "gelu": {
+        "torch": ["torch.nn.functional.gelu"],
+        "jax": ["jax.nn.gelu"],
+        "tensorflow": ["tf.nn.gelu"],
+    },
+    "silu": {
+        "torch": ["torch.nn.functional.silu"],
+        "jax": ["jax.nn.silu"],
+        "tensorflow": ["tf.nn.silu"],
+    },
+    "swiglu": {
+        "torch": ["torch.nn.functional.silu"],
+        "jax": ["jax.nn.silu"],
+    },
+    "relu": {
+        "torch": ["torch.nn.functional.relu"],
+        "jax": ["jax.nn.relu"],
+        "tensorflow": ["tf.nn.relu"],
+    },
+    "quick_gelu": {
+        "torch": ["torch.nn.functional.gelu"],
+        "jax": ["jax.nn.gelu"],
+    },
+    "quantization": {
+        "torch": [
+            "torch.ao.quantization.quantize",
+            "torch.quantize_per_tensor",
+        ],
+        "jax": ["jax.experimental.quantization"],
+    },
+    "quantize": {
+        "torch": ["torch.quantize_per_tensor"],
+        "jax": ["jax.experimental.quantization"],
+    },
+    "dequantize": {
+        "torch": ["torch.dequantize"],
+        "jax": ["jax.experimental.quantization"],
+    },
+    "fp8_e4m3": {
+        "torch": ["torch.float8_e4m3fn"],
+        "nvidia_sass": ["WGMMA_MMA_ASYNC_E4M3"],
+    },
+    "fp8_e5m2": {
+        "torch": ["torch.float8_e5m2"],
+        "nvidia_sass": ["WGMMA_MMA_ASYNC_E5M2"],
+    },
+    "scaled_fp8_quant": {
+        "torch": ["torch.quantize_per_tensor"],
+    },
+    "mx_fp4": {
+        "torch": ["torch.float8_e4m3fn"],
+        "nvidia_sass": ["MMA_SCALE_FP4"],
+    },
+    "mxfp8": {
+        "torch": ["torch.float8_e4m3fn"],
+        "nvidia_sass": ["MMA_SCALE_FP8"],
+    },
+    "collective": {
+        "torch": [
+            "torch.distributed.all_reduce",
+            "torch.distributed.all_gather",
+        ],
+        "jax": ["jax.lax.all_gather"],
+    },
+    "all_reduce": {
+        "torch": ["torch.distributed.all_reduce"],
+        "jax": ["jax.lax.psum"],
+    },
+    "all_gather": {
+        "torch": ["torch.distributed.all_gather"],
+        "jax": ["jax.lax.all_gather"],
+    },
+    "reduce_scatter": {
+        "torch": ["torch.distributed.reduce_scatter"],
+        "jax": ["jax.lax.reduce_scatter"],
+    },
+    "memcpy": {
+        "torch": ["torch.Tensor.copy_"],
+        "nvidia_sass": ["LDG", "STG"],
+    },
+    "gather": {
+        "torch": ["torch.gather"],
+        "jax": ["jax.lax.gather"],
+        "tensorflow": ["tf.gather"],
+    },
+    "scatter": {
+        "torch": ["torch.scatter"],
+        "jax": ["jax.lax.scatter"],
+        "tensorflow": ["tf.scatter_nd"],
+    },
+    "matmul": {
+        "torch": ["torch.matmul", "torch.mm", "torch.bmm"],
+        "jax": ["jax.numpy.matmul"],
+        "tensorflow": ["tf.linalg.matmul", "tf.matmul"],
+        "numpy": ["numpy.matmul"],
+    },
+    "convolution": {
+        "torch": ["torch.nn.functional.conv2d"],
+        "jax": ["jax.lax.conv_general_dilated"],
+        "tensorflow": ["tf.nn.conv2d"],
+        "stablehlo": ["stablehlo.convolution"],
+        "amd_rdna": ["v_dot4c_i32_i8"],
+    },
+    "add": {
+        "torch": ["torch.add"],
+        "jax": ["jax.numpy.add"],
+        "tensorflow": ["tf.add"],
+        "numpy": ["numpy.add"],
+    },
+    "softmax": {
+        "torch": ["torch.nn.functional.softmax"],
+        "jax": ["jax.nn.softmax"],
+        "tensorflow": ["tf.nn.softmax"],
+    },
+    "_parameter_translations": {
+        "matmul": {
+            "roles": {
+                "lhs": {
+                    "torch": ["input", "mat1"],
+                    "jax": ["a", "lhs"],
+                    "tensorflow": ["a"],
+                    "tf": ["a"],
+                    "stablehlo": ["lhs"],
+                    "numpy": ["a"],
+                },
+                "rhs": {
+                    "torch": ["other", "mat2"],
+                    "jax": ["b", "rhs"],
+                    "tensorflow": ["b"],
+                    "tf": ["b"],
+                    "stablehlo": ["rhs"],
+                    "numpy": ["b"],
+                },
+            },
+            "defaults": {
+                "stablehlo": {
+                    "dot_dimension_numbers": {
+                        "lhs_contracting_dimensions": [1],
+                        "rhs_contracting_dimensions": [0],
+                    }
+                }
+            },
+        },
+        "reduction": {
+            "roles": {
+                "dimension": {
+                    "torch": ["dim"],
+                    "jax": ["axis"],
+                    "tensorflow": ["axis"],
+                    "tf": ["axis"],
+                    "numpy": ["axis"],
+                },
+                "keepdims": {
+                    "torch": ["keepdim"],
+                    "jax": ["keepdims"],
+                    "tensorflow": ["keepdims"],
+                    "tf": ["keepdims"],
+                    "numpy": ["keepdims"],
+                },
+            },
+        },
+        "convolution": {
+            "roles": {
+                "input": {
+                    "torch": ["input"],
+                    "jax": ["lhs"],
+                    "tensorflow": ["input"],
+                    "tf": ["input"],
+                    "stablehlo": ["lhs"],
+                },
+                "kernel": {
+                    "torch": ["weight"],
+                    "jax": ["rhs"],
+                    "tensorflow": ["filters"],
+                    "tf": ["filters"],
+                    "stablehlo": ["rhs"],
+                },
+                "stride": {
+                    "torch": ["stride"],
+                    "jax": ["window_strides"],
+                    "tensorflow": ["strides"],
+                    "tf": ["strides"],
+                    "stablehlo": ["window_strides"],
+                },
+                "padding": {
+                    "torch": ["padding"],
+                    "jax": ["padding"],
+                    "tensorflow": ["padding"],
+                    "tf": ["padding"],
+                    "stablehlo": ["padding"],
+                },
+            },
+        },
+        "normalization": {
+            "roles": {
+                "scale": {
+                    "torch": ["weight"],
+                    "jax": ["scale"],
+                    "tensorflow": ["gamma"],
+                    "tf": ["gamma"],
+                    "stablehlo": ["scale"],
+                },
+                "offset": {
+                    "torch": ["bias"],
+                    "jax": ["bias"],
+                    "tensorflow": ["beta"],
+                    "tf": ["beta"],
+                    "stablehlo": ["offset"],
+                },
+                "epsilon": {
+                    "torch": ["eps"],
+                    "jax": ["epsilon"],
+                    "tensorflow": ["epsilon"],
+                    "tf": ["epsilon"],
+                    "stablehlo": ["epsilon"],
+                },
+            },
+        },
+    },
+}
+
+
 def load_concept_map(
     custom_path: Optional[str] = None,
-) -> Dict[str, Dict[str, List[str]]]:
-    """Load concept ontology mapping from bundled JSON or custom external file.
+) -> Dict[str, Any]:
+    """Load concept ontology mapping from bundled JSON or custom external file with fallback.
 
     Args:
         custom_path: Optional custom file path to concept map JSON.
@@ -161,23 +465,32 @@ def load_concept_map(
     Returns:
         Mapping from concept string to framework-specific API paths.
     """
-    path = (
-        custom_path
-        or os.environ.get("ML_SNAPSHOTS_CONCEPT_MAP")
-        or os.path.join(os.path.dirname(__file__), "concept_map.json")
+    if custom_path is not None:
+        if os.path.exists(custom_path):
+            try:
+                with open(custom_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        return cast(Dict[str, Any], data)
+            except Exception as e:
+                print(f"Warning: Failed to load concept map from {custom_path}: {e}")
+        return {}
+
+    path = os.environ.get("ML_SNAPSHOTS_CONCEPT_MAP") or os.path.join(
+        os.path.dirname(__file__), "concept_map.json"
     )
     if os.path.exists(path):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
-                    return cast(Dict[str, Dict[str, List[str]]], data)
+                    return cast(Dict[str, Any], data)
         except Exception as e:
             print(f"Warning: Failed to load concept map from {path}: {e}")
-    return {}
+    return DEFAULT_CONCEPT_MAP
 
 
-CONCEPT_ALIAS_MAP: Dict[str, Dict[str, List[str]]] = load_concept_map()
+CONCEPT_ALIAS_MAP: Dict[str, Any] = load_concept_map()
 
 
 def search_apis(
@@ -1287,7 +1600,7 @@ def check_mlir_op(
         ]
     exp_attrs = [
         a.get("name") if isinstance(a, dict) else str(a)
-        for a in inst.get("attributes", [])
+        for a in (inst.get("attributes") or [])
     ]
     if not exp_attrs:
         exp_attrs = [
@@ -1730,26 +2043,46 @@ def check_code_block(
     is_python = False
     try:
         tree = ast.parse(code)
+        imports: Dict[str, str] = {}
         calls: List[Tuple[int, str, List[str], int, Dict[str, Any]]] = []
 
         class CallVisitor(ast.NodeVisitor):
-            """Visitor for collecting function calls."""
+            """Visitor for tracking imports and collecting function calls."""
+
+            def visit_Import(self, node: ast.Import) -> None:
+                """Track 'import foo' and 'import foo as bar' statements."""
+                for alias in node.names:
+                    name = alias.name
+                    asname = alias.asname or name
+                    imports[asname] = name
+                self.generic_visit(node)
+
+            def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+                """Track 'from foo.bar import baz' statements."""
+                mod = node.module or ""
+                for alias in node.names:
+                    name = alias.name
+                    asname = alias.asname or name
+                    full = f"{mod}.{name}" if mod else name
+                    imports[asname] = full
+                self.generic_visit(node)
 
             def visit_Call(self, node: ast.Call) -> None:
-                """Inspect Call AST nodes.
-
-                Args:
-                    node: Call AST node to inspect.
-                """
+                """Inspect Call AST nodes."""
                 curr: Any = node.func
-                parts = []
+                attr_parts: List[str] = []
                 while isinstance(curr, ast.Attribute):
-                    parts.append(curr.attr)
+                    attr_parts.append(curr.attr)
                     curr = curr.value
-                if isinstance(curr, ast.Name):
-                    parts.append(curr.id)
-                if parts:
-                    full_path = ".".join(reversed(parts))
+
+                root_id = curr.id if isinstance(curr, ast.Name) else None
+                if root_id is not None:
+                    resolved_base = imports.get(root_id, root_id)
+                    if attr_parts:
+                        full_path = f"{resolved_base}.{'.'.join(reversed(attr_parts))}"
+                    else:
+                        full_path = resolved_base
+
                     kw_names = [kw.arg for kw in node.keywords if kw.arg]
                     kw_vals = {}
                     for kw in node.keywords:
@@ -1768,13 +2101,21 @@ def check_code_block(
             for lineno, api_name, kw_list, arg_cnt, kw_vals in calls:
                 fw = framework
                 if not fw:
-                    if api_name.startswith("torch"):
+                    if api_name.startswith("torch.") or api_name.startswith("torch"):
                         fw = "torch"
-                    elif api_name.startswith("jax"):
+                    elif api_name.startswith("jax.") or api_name.startswith("jax"):
                         fw = "jax"
-                    elif api_name.startswith("tf") or api_name.startswith("tensorflow"):
+                    elif (
+                        api_name.startswith("tf.")
+                        or api_name.startswith("tensorflow.")
+                        or api_name.startswith("tensorflow")
+                    ):
                         fw = "tensorflow"
-                    elif api_name.startswith("np") or api_name.startswith("numpy"):
+                    elif (
+                        api_name.startswith("np.")
+                        or api_name.startswith("numpy.")
+                        or api_name.startswith("numpy")
+                    ):
                         fw = "numpy"
                     elif api_name.startswith("nn.") or api_name.startswith("F."):
                         fw = "torch"

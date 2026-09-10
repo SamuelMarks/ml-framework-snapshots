@@ -628,3 +628,16 @@ def test_torch_collect_api_array_api_aten(mocker: Any) -> None:
     if tensor_in_place:
         assert tensor_in_place[0].domain_metadata.get("is_in_place") is True
         assert "in_place_mutation" in tensor_in_place[0].environment_tags
+
+
+def test_get_jit_schemas_for_op(monkeypatch: Any) -> None:
+    """Test get_jit_schemas_for_op including when torch._C lacks _jit_get_all_schemas.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    import torch
+    from ml_framework_snapshots.frameworks.torch import get_jit_schemas_for_op
+
+    monkeypatch.delattr(torch._C, "_jit_get_all_schemas", raising=False)
+    assert get_jit_schemas_for_op("add") == []

@@ -20,7 +20,7 @@ import inspect
 import io
 import logging
 import re
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Field, ConfigDict
 from ml_switcheroo_ir.schema.ghost import GhostParam as GhostParam, GhostRef as GhostRef
@@ -314,7 +314,7 @@ class GhostIsaRef(ExtendedGhostRef):
     """GhostRef specialized for GPU assembly ISAs (NVIDIA SASS, AMD RDNA/CDNA)."""
 
     model_config = ConfigDict(extra="allow")
-    domain_type: Literal["isa"] = "isa"
+    domain_type: Literal["isa", "instruction"] = "isa"
     predicate_guards: Optional[List[str]] = Field(
         default=None,
         description="Allowed predicate guard registers (e.g. ['@P0', '@!P1', '@PT']).",
@@ -343,6 +343,10 @@ class GhostIsaRef(ExtendedGhostRef):
         default=None,
         description="VOPD dual-issue profile and pairing rules for RDNA3/GFX11.",
     )
+    condition_codes: Optional[List[str]] = Field(
+        default=None,
+        description="Allowed condition codes or flags (e.g. ['CC.EQ', 'CC.LT', 'vcc']).",
+    )
     supported_architectures: Optional[List[str]] = Field(
         default=None,
         description="Microarchitectures supporting this instruction.",
@@ -353,7 +357,7 @@ class GhostMlirRef(ExtendedGhostRef):
     """GhostRef specialized for compiler IR dialects (Core MLIR and StableHLO)."""
 
     model_config = ConfigDict(extra="allow")
-    domain_type: Literal["mlir"] = "mlir"
+    domain_type: Literal["mlir", "operation"] = "mlir"
     traits: Optional[List[str]] = Field(
         default=None,
         description="Dialect verification traits (e.g. ['SameOperandsAndResultType', 'Commutative']).",
@@ -378,6 +382,11 @@ class GhostMlirRef(ExtendedGhostRef):
         default=None,
         description="Type constraints for operands and results (e.g. RankedTensorOf, AnyFloat).",
     )
+
+
+# First-class domain IR and ISA schema aliases
+GhostInstructionRef = GhostIsaRef
+GhostOperationRef = GhostMlirRef
 
 
 _GRIFFE_CACHE: Dict[str, Any] = {}
@@ -520,6 +529,94 @@ def sanitize_type_str(typ_str: Optional[str]) -> Optional[str]:
         return ast.unparse(node)
     except Exception:  # pragma: no cover
         return typ_str
+
+
+def extract_accepted_kwargs_from_ast(func: Any) -> Optional[List[str]]:
+    """Statically analyze a function AST to extract keyword arguments accessed via kwargs.
+
+    Detects patterns like:
+        kwargs.get("foo")
+        kwargs.pop("bar", default)
+        kwargs["baz"]
+        "qux" in kwargs
+
+    Args:
+        func: Live function or method object.
+
+    Returns:
+        Sorted list of discovered keyword argument names, or None.
+    """
+    try:
+        import textwrap
+
+        src = inspect.getsource(func)
+        src = textwrap.dedent(src)
+        tree = ast.parse(src)
+    except Exception:
+        return None
+
+    kwarg_name = None
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.args.kwarg:
+                kwarg_name = node.args.kwarg.arg
+                break
+
+    if not kwarg_name:
+        return None
+
+    discovered: Set[str] = set()
+
+    class KwargAccessVisitor(ast.NodeVisitor):
+        """AST visitor collecting string keys queried on the var_keyword dictionary."""
+
+        def visit_Call(self, node: ast.Call) -> None:
+            """Inspect method calls on the kwargs dict."""
+            if (
+                isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == kwarg_name
+                and node.func.attr in ("get", "pop", "setdefault")
+            ):
+                if (
+                    node.args
+                    and isinstance(node.args[0], ast.Constant)
+                    and isinstance(node.args[0].value, str)
+                ):
+                    discovered.add(node.args[0].value)
+            self.generic_visit(node)
+
+        def visit_Subscript(self, node: ast.Subscript) -> None:
+            """Inspect subscript accesses like kwargs['key']."""
+            if isinstance(node.value, ast.Name) and node.value.id == kwarg_name:
+                slice_node = node.slice
+                if isinstance(slice_node, ast.Constant) and isinstance(
+                    slice_node.value, str
+                ):
+                    discovered.add(slice_node.value)
+                elif hasattr(ast, "Index") and isinstance(
+                    slice_node, getattr(ast, "Index")
+                ):  # pragma: no cover
+                    idx_val = getattr(slice_node, "value", None)
+                    if isinstance(idx_val, ast.Constant) and isinstance(
+                        idx_val.value, str
+                    ):
+                        discovered.add(idx_val.value)
+            self.generic_visit(node)
+
+        def visit_Compare(self, node: ast.Compare) -> None:
+            """Inspect membership checks like 'key' in kwargs."""
+            for op, comparator in zip(node.ops, node.comparators):
+                if isinstance(op, (ast.In, ast.NotIn)):
+                    if isinstance(comparator, ast.Name) and comparator.id == kwarg_name:
+                        if isinstance(node.left, ast.Constant) and isinstance(
+                            node.left.value, str
+                        ):
+                            discovered.add(node.left.value)
+            self.generic_visit(node)
+
+    KwargAccessVisitor().visit(tree)
+    return sorted(list(discovered)) if discovered else None
 
 
 class GhostInspector:
@@ -1323,6 +1420,13 @@ class GhostInspector:
                     )
                 )
 
+        has_var_kwargs = any(
+            "VAR_KEYWORD" in str(getattr(p, "kind", "")) for p in params
+        )
+        discovered_kwargs = (
+            extract_accepted_kwargs_from_ast(target) if has_var_kwargs else None
+        )
+
         return GhostPythonRef(
             name=name,
             api_path=api_path,
@@ -1339,6 +1443,7 @@ class GhostInspector:
             overloads=overloads_refs,
             signature_completeness=sig_completeness,
             is_c_extension=is_c_ext,
+            accepted_kwargs=discovered_kwargs,
         )
 
     @staticmethod
@@ -1490,10 +1595,10 @@ class GhostInspector:
         ref_cls: Any = ExtendedGhostRef
         if domain_type == "python":
             ref_cls = GhostPythonRef
-        elif domain_type == "isa":
-            ref_cls = GhostIsaRef
-        elif domain_type == "mlir":
-            ref_cls = GhostMlirRef
+        elif domain_type in ("isa", "instruction"):
+            ref_cls = GhostInstructionRef
+        elif domain_type in ("mlir", "operation"):
+            ref_cls = GhostOperationRef
 
         res = ref_cls.model_validate(data)
         assert isinstance(res, ExtendedGhostRef)

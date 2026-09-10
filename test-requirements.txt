@@ -5,3 +5,5 @@ pydantic
 scikit-learn
 build
 interrogate
+hatchling
+hatch-requirements-txt

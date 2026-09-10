@@ -648,6 +648,23 @@ def test_get_pkg_version_hardware_and_mlir_fallbacks(mocker: Any) -> None:
     with mock.patch("builtins.open", side_effect=OSError("read err")):
         assert get_pkg_version("mlir") == "llvm-19"
 
+    # mlir with json file present and valid version
+    with mock.patch("os.path.exists", return_value=True):
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data='{"version": "llvm-20"}')
+        ):
+            assert get_pkg_version("mlir") == "llvm-20"
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data='{"version": "13.0.0"}')
+        ):
+            assert get_pkg_version("nvidia_sass") == "13.0.0"
+        with mock.patch("builtins.open", mock.mock_open(read_data="{corrupted_json")):
+            assert get_pkg_version("mlir") == "llvm-19"
+            assert get_pkg_version("nvidia_sass") == "12.6.0"
+        with mock.patch("builtins.open", mock.mock_open(read_data='{"other": 123}')):
+            assert get_pkg_version("mlir") == "llvm-19"
+            assert get_pkg_version("nvidia_sass") == "12.6.0"
+
     # json file has None/empty version
     with mock.patch("builtins.open", mock.mock_open(read_data='{"version": null}')):
         assert get_pkg_version("mlir") == "llvm-19"
@@ -663,3 +680,43 @@ def test_get_pkg_version_hardware_and_mlir_fallbacks(mocker: Any) -> None:
     # hardware target with corrupt json file
     with mock.patch("builtins.open", side_effect=OSError("read err")):
         assert get_pkg_version("nvidia_sass") == "12.6.0"
+
+
+def test_extract_snapshot_isolated() -> None:
+    """Test extracting a snapshot in an isolated subprocess."""
+    from ml_framework_snapshots.api import extract_snapshot_isolated
+
+    # Extract lightweight target in child subprocess
+    snap = extract_snapshot_isolated("html_dsl", timeout=30)
+    assert isinstance(snap, dict)
+    assert snap.get("target") == "html_dsl"
+    assert "categories" in snap
+
+    # Test error handling when subprocess fails
+    bad_snap = extract_snapshot_isolated("nonexistent_framework_xyz", timeout=10)
+    assert bad_snap == {}
+
+    # Test when subprocess returns non-zero code
+    import unittest.mock as mock
+
+    with mock.patch(
+        "subprocess.run",
+        return_value=mock.MagicMock(returncode=1, stdout=""),
+    ):
+        assert extract_snapshot_isolated("html_dsl") == {}
+
+    # Test when subprocess raises an exception
+    with mock.patch("subprocess.run", side_effect=OSError("Process failed")):
+        assert extract_snapshot_isolated("html_dsl") == {}
+
+    # Test extract_all_snapshots with isolated=True
+    with mock.patch(
+        "ml_framework_snapshots.api.FRAMEWORK_COLLECTORS",
+        {"html_dsl": None},
+    ):
+        with mock.patch(
+            "ml_framework_snapshots.api.extract_snapshot_isolated",
+            return_value={"target": "html_dsl"},
+        ):
+            res_all = extract_all_snapshots(isolated=True)
+            assert "html_dsl" in res_all

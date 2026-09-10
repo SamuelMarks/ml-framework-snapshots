@@ -559,3 +559,32 @@ def test_get_readonly_connection_and_clean_cache(tmp_path: Any) -> None:
     with patch("sqlite3.connect", return_value=MockConn()):
         conn_pragma = init_db(str(tmp_path / "pragma_test.db"))
         assert conn_pragma is not None
+
+
+def test_index_snapshot_file_with_target_and_version(tmp_path: Any) -> None:
+    """Test index_snapshot_file extracts framework and version from top-level metadata.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+    """
+    db_file = str(tmp_path / "metadata.db")
+    conn = init_db(db_file)
+    snap = {
+        "target": "custom_ml",
+        "version": "3.2.1",
+        "categories": {
+            "core": [{"name": "custom_op", "api_path": "custom_ml.custom_op"}]
+        },
+    }
+    json_path = str(tmp_path / "unknown_name.json")
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(snap, f)
+
+    count = index_snapshot_file(json_path, conn)
+    assert count == 1
+
+    res = lookup_symbol(
+        "custom_ml", "custom_ml.custom_op", version="3.2.1", db_path=db_file
+    )
+    assert res is not None
+    assert res["name"] == "custom_op"

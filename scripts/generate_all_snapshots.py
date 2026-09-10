@@ -2,7 +2,11 @@
 
 import os
 import sys
-from ml_framework_snapshots.api import extract_snapshot, write_snapshot
+from ml_framework_snapshots.api import (
+    extract_snapshot,
+    extract_snapshot_isolated,
+    write_snapshot,
+)
 
 
 def main() -> None:
@@ -40,11 +44,18 @@ def main() -> None:
         "amd_rdna",
     ]
     frameworks = sys.argv[1:] if len(sys.argv) > 1 else all_frameworks
+    use_isolated = os.environ.get("ISOLATE_EXTRACTION", "0") == "1"
     has_error = False
     for fw in frameworks:
         print(f"Building snapshot for {fw}...")
         try:
-            snapshot = extract_snapshot(fw)
+            if use_isolated:
+                snapshot = extract_snapshot_isolated(fw)
+                if not snapshot:
+                    # Fallback to in-process extraction if subprocess failed
+                    snapshot = extract_snapshot(fw)
+            else:
+                snapshot = extract_snapshot(fw)
             write_snapshot(
                 fw, snapshot, os.path.join("src", "ml_framework_snapshots", "snapshots")
             )

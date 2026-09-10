@@ -1,8 +1,11 @@
 """Tests for scripts/update_shields.py."""
 
+import os
+import sys
 from typing import Any
 import pytest
-import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.update_shields import get_test_coverage, get_doc_coverage, get_color, main
 

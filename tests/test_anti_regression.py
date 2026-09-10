@@ -25,8 +25,34 @@ def get_bundled_json(filename: str) -> Any:
     fpath = os.path.join(
         pkg_dir, "src", "ml_framework_snapshots", "frameworks", filename
     )
-    with open(fpath, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    if os.path.isfile(fpath):
+        with open(fpath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        if "sass" in filename:
+            from ml_framework_snapshots.frameworks.nvidia_sass import (
+                _load_exhaustive_sass,
+            )
+
+            data = _load_exhaustive_sass()
+        elif "rdna" in filename:
+            from ml_framework_snapshots.frameworks.amd_rdna import _load_exhaustive_rdna
+
+            data = _load_exhaustive_rdna()
+        elif "mlir" in filename:
+            from ml_framework_snapshots.frameworks.mlir import (
+                _get_canonical_mlir_records,
+            )
+
+            data = _get_canonical_mlir_records()
+        elif "stablehlo" in filename:
+            from ml_framework_snapshots.frameworks.stablehlo import (
+                _get_canonical_stablehlo_records,
+            )
+
+            data = _get_canonical_stablehlo_records()
+        else:
+            data = []
         if isinstance(data, dict) and "categories" in data:
             items: List[Any] = []
             for cat_items in data["categories"].values():

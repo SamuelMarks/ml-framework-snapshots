@@ -633,37 +633,61 @@ def parse_native_functions_yaml(
     return ops
 
 
-def get_aten_op_schema(op_name: str) -> Optional[List[Dict[str, Any]]]:
-    """Retrieve structured schema and overloads for an ATen operator from torch.ops.aten.
+_JIT_SCHEMAS_CACHE: Optional[Dict[str, List[Any]]] = None
+
+
+def get_jit_schemas_for_op(op_name: str) -> List[Dict[str, Any]]:
+    """Retrieve structured schemas from torch._C._jit_get_all_schemas() for an operator.
 
     Args:
-        op_name: Operator name (e.g. 'add', 'relu', 'matmul', 'add_').
+        op_name: Operator name (e.g. 'add', 'relu', 'matmul', 'aten::add').
 
     Returns:
-        List of overload dictionaries if found, otherwise None.
+        List of overload schema dictionaries.
     """
+    global _JIT_SCHEMAS_CACHE
     try:
         import torch
-    except ImportError:  # pragma: no cover
-        return None
+
+        if not hasattr(torch, "_C") or not hasattr(torch._C, "_jit_get_all_schemas"):
+            return []
+    except Exception:  # pragma: no cover
+        return []
 
     clean_op = op_name.split(".")[-1]
-    aten_op = getattr(torch.ops.aten, clean_op, None)
-    if not aten_op or not hasattr(aten_op, "overloads"):
-        return None
+
+    if _JIT_SCHEMAS_CACHE is None:
+        cache: Dict[str, List[Any]] = {}
+        for s in torch._C._jit_get_all_schemas():
+            s_name = s.name
+            s_short = s_name.split("::")[-1]
+            cache.setdefault(s_name, []).append(s)
+            cache.setdefault(s_short, []).append(s)
+        _JIT_SCHEMAS_CACHE = cache
+
+    schemas = (
+        _JIT_SCHEMAS_CACHE.get(clean_op)
+        or _JIT_SCHEMAS_CACHE.get(f"aten::{clean_op}")
+        or []
+    )
+    if not schemas:
+        return []
 
     results: List[Dict[str, Any]] = []
-    for ov_name in aten_op.overloads():
-        ov = getattr(aten_op, ov_name)
-        schema = getattr(ov, "_schema", None)
-        if not schema:
-            continue
-
+    for schema in schemas:
         params: List[Dict[str, Any]] = []
         for arg in schema.arguments:
             p_kind = "KEYWORD_ONLY" if arg.kwarg_only else "POSITIONAL_OR_KEYWORD"
             p_name = "input" if arg.name == "self" else arg.name
-            p_default = str(arg.default_value) if arg.has_default_value() else None
+            p_default = (
+                str(arg.default_value)
+                if hasattr(arg, "has_default_value") and arg.has_default_value()
+                else (
+                    str(arg.default_value)
+                    if getattr(arg, "default_value", None) is not None
+                    else None
+                )
+            )
             p_anno = str(arg.type)
             is_out = getattr(arg, "is_out", False)
 
@@ -682,6 +706,7 @@ def get_aten_op_schema(op_name: str) -> Optional[List[Dict[str, Any]]]:
             )
 
         ret_type = str(schema.returns[0].type) if schema.returns else "Tensor"
+        ov_name = getattr(schema, "overload_name", "default") or "default"
         results.append(
             {
                 "overload_name": ov_name,
@@ -692,7 +717,72 @@ def get_aten_op_schema(op_name: str) -> Optional[List[Dict[str, Any]]]:
             }
         )
 
-    return results if results else None
+    return results
+
+
+def get_aten_op_schema(op_name: str) -> Optional[List[Dict[str, Any]]]:
+    """Retrieve structured schema and overloads for an ATen operator from torch.ops.aten or JIT registry.
+
+    Args:
+        op_name: Operator name (e.g. 'add', 'relu', 'matmul', 'add_').
+
+    Returns:
+        List of overload dictionaries if found, otherwise None.
+    """
+    try:
+        import torch
+    except ImportError:  # pragma: no cover
+        return None
+
+    clean_op = op_name.split(".")[-1]
+    aten_op = getattr(torch.ops.aten, clean_op, None)
+    results: List[Dict[str, Any]] = []
+
+    if aten_op and hasattr(aten_op, "overloads"):
+        for ov_name in aten_op.overloads():
+            ov = getattr(aten_op, ov_name)
+            schema = getattr(ov, "_schema", None)
+            if not schema:
+                continue
+
+            params: List[Dict[str, Any]] = []
+            for arg in schema.arguments:
+                p_kind = "KEYWORD_ONLY" if arg.kwarg_only else "POSITIONAL_OR_KEYWORD"
+                p_name = "input" if arg.name == "self" else arg.name
+                p_default = str(arg.default_value) if arg.has_default_value() else None
+                p_anno = str(arg.type)
+                is_out = getattr(arg, "is_out", False)
+
+                dtypes, rank = infer_torch_dtype_and_rank(clean_op, p_name, p_anno)
+
+                params.append(
+                    {
+                        "name": p_name,
+                        "kind": p_kind,
+                        "default": p_default,
+                        "annotation": p_anno,
+                        "is_out": is_out,
+                        "dtypes": dtypes,
+                        "rank": rank,
+                    }
+                )
+
+            ret_type = str(schema.returns[0].type) if schema.returns else "Tensor"
+            results.append(
+                {
+                    "overload_name": ov_name,
+                    "params": params,
+                    "returns_type": ret_type,
+                    "is_inplace": clean_op.endswith("_"),
+                    "is_out": any(p.get("is_out") for p in params),
+                }
+            )
+
+    if results:
+        return results
+
+    jit_results = get_jit_schemas_for_op(clean_op)
+    return jit_results if jit_results else None
 
 
 def extract_aten_c_extension_signature(

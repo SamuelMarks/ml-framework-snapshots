@@ -45,7 +45,7 @@ jobs:
     - name: Set up virtual environment
       run: |
         uv pip install --system -e /Users/samuel/repos/ml-switcheroo-ir
-        uv pip install --system -e ".[test,generate]" build pytest pytest-cov
+        uv pip install --system -e ".[test,generate]" build pytest pytest-cov hatchling hatch-requirements-txt
 
     - name: Run pre-commit
       run: pre-commit run --all-files

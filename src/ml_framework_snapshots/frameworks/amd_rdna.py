@@ -506,13 +506,176 @@ def tokenize_rdna_line(
     return base_mnemonic, operands, encoding_suffix, modifiers
 
 
+def _get_canonical_fallback_rdna() -> List[Dict[str, Any]]:
+    """Generate canonical baseline AMD RDNA instructions for offline operation when unbuilt.
+
+    Returns:
+        List of AMD RDNA instruction dictionaries.
+    """
+    return [
+        {
+            "mnemonic": "v_add_f32",
+            "architecture": "GFX10+",
+            "encoding": "VOP2",
+            "modifiers": ["_e32", "_e64", "clamp"],
+            "operands": [
+                ["VGPR", "VGPR", "VGPR"],
+                ["VGPR", "SGPR", "VGPR"],
+                ["VGPR", "imm32", "VGPR"],
+            ],
+            "description": "Vector floating point 32-bit addition.",
+        },
+        {
+            "mnemonic": "v_sub_f32",
+            "architecture": "GFX10+",
+            "encoding": "VOP2",
+            "modifiers": ["_e32", "_e64", "clamp"],
+            "operands": [
+                ["VGPR", "VGPR", "VGPR"],
+                ["VGPR", "SGPR", "VGPR"],
+                ["VGPR", "imm32", "VGPR"],
+            ],
+            "description": "Vector floating point 32-bit subtraction.",
+        },
+        {
+            "mnemonic": "v_mul_f32",
+            "architecture": "GFX10+",
+            "encoding": "VOP2",
+            "modifiers": ["_e32", "_e64", "clamp"],
+            "operands": [
+                ["VGPR", "VGPR", "VGPR"],
+                ["VGPR", "SGPR", "VGPR"],
+                ["VGPR", "imm32", "VGPR"],
+            ],
+            "description": "Vector floating point 32-bit multiplication.",
+        },
+        {
+            "mnemonic": "v_fma_f32",
+            "architecture": "GFX10+",
+            "encoding": "VOP3",
+            "modifiers": ["_e64", "clamp", "neg_lo", "neg_hi"],
+            "operands": [
+                ["VGPR", "VGPR", "VGPR", "VGPR"],
+                ["VGPR", "SGPR", "VGPR", "VGPR"],
+            ],
+            "description": "Vector floating point 32-bit fused multiply-add.",
+        },
+        {
+            "mnemonic": "v_fmac_f32",
+            "architecture": "GFX10+",
+            "encoding": "VOP2",
+            "modifiers": ["_e32", "_e64"],
+            "operands": [
+                ["VGPR", "VGPR", "VGPR"],
+            ],
+            "description": "Vector floating point 32-bit multiply-accumulate.",
+        },
+        {
+            "mnemonic": "v_dual_fmac_f32",
+            "architecture": "GFX11/RDNA3",
+            "encoding": "VOPD",
+            "modifiers": ["dual"],
+            "operands": [
+                ["VGPR", "VGPR", "VGPR"],
+            ],
+            "description": "RDNA3 dual-issue fused multiply-accumulate.",
+        },
+        {
+            "mnemonic": "v_dual_add_f32",
+            "architecture": "GFX11/RDNA3",
+            "encoding": "VOPD",
+            "modifiers": ["dual"],
+            "operands": [
+                ["VGPR", "VGPR", "VGPR"],
+            ],
+            "description": "RDNA3 dual-issue addition.",
+        },
+        {
+            "mnemonic": "v_dot4c_i32_i8",
+            "architecture": "GFX10+",
+            "encoding": "VOP3",
+            "modifiers": ["clamp"],
+            "operands": [
+                ["VGPR", "VGPR", "VGPR", "VGPR"],
+            ],
+            "description": "Vector dot product 4 8-bit integers with 32-bit integer accumulation.",
+        },
+        {
+            "mnemonic": "v_mov_b32",
+            "architecture": "GFX10+",
+            "encoding": "VOP1",
+            "modifiers": ["_e32", "_e64"],
+            "operands": [
+                ["VGPR", "VGPR"],
+                ["VGPR", "SGPR"],
+                ["VGPR", "imm32"],
+            ],
+            "description": "Vector 32-bit move.",
+        },
+        {
+            "mnemonic": "s_add_u32",
+            "architecture": "GFX10+",
+            "encoding": "SOP2",
+            "modifiers": [],
+            "operands": [
+                ["SGPR", "SGPR", "SGPR"],
+                ["SGPR", "SGPR", "imm32"],
+            ],
+            "description": "Scalar 32-bit unsigned integer addition.",
+        },
+        {
+            "mnemonic": "s_mov_b32",
+            "architecture": "GFX10+",
+            "encoding": "SOP1",
+            "modifiers": [],
+            "operands": [
+                ["SGPR", "SGPR"],
+                ["SGPR", "imm32"],
+            ],
+            "description": "Scalar 32-bit move.",
+        },
+        {
+            "mnemonic": "s_waitcnt",
+            "architecture": "GFX10+",
+            "encoding": "SOPP",
+            "modifiers": [],
+            "operands": [
+                ["imm16"],
+            ],
+            "description": "Wait for memory counts.",
+        },
+        {
+            "mnemonic": "global_load_dword",
+            "architecture": "GFX10+",
+            "encoding": "GLOBAL",
+            "modifiers": ["glc", "slc"],
+            "operands": [
+                ["VGPR", "ADDR"],
+            ],
+            "description": "Global memory load 32-bit dword.",
+        },
+        {
+            "mnemonic": "global_store_dword",
+            "architecture": "GFX10+",
+            "encoding": "GLOBAL",
+            "modifiers": ["glc", "slc"],
+            "operands": [
+                ["ADDR", "VGPR"],
+            ],
+            "description": "Global memory store 32-bit dword.",
+        },
+    ]
+
+
 def _load_exhaustive_rdna() -> List[Dict[str, Any]]:
-    """Load the exhaustive AMD RDNA JSON instructions file.
+    """Load the exhaustive AMD RDNA JSON instructions file or fallback to canonical records.
 
     Returns:
         The loaded JSON list of AMD RDNA instruction dictionaries.
     """
     json_path = os.path.join(os.path.dirname(__file__), "amd_rdna_exhaustive.json")
+    if not os.path.exists(json_path):
+        return _get_canonical_fallback_rdna()
     with open(json_path, "r", encoding="utf-8") as f:
         data: Any = json.load(f)
         if isinstance(data, dict):

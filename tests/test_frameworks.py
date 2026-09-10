@@ -2146,7 +2146,10 @@ def test_mlir_collect(mocker: Any) -> None:
     assert mlir_fw.collect_api(SemanticTier.UTIL) == []
 
     # Test file missing
+    import os
+
     mocker.patch("os.path.exists", return_value=False)
+    mocker.patch.dict(os.environ, {"MLIR_DISABLE_FALLBACK": "1"})
     assert mlir_fw.collect_api(SemanticTier.UTIL) == []
 
 

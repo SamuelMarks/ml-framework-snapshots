@@ -1,6 +1,7 @@
 """Tests for the StableHLO framework extractor."""
 
 import json
+import os
 from typing import Any
 from unittest import mock
 
@@ -95,6 +96,7 @@ def test_stablehlo_collect_mocked(mocker: Any) -> None:
 
     # Test file missing
     mocker.patch("os.path.exists", return_value=False)
+    mocker.patch.dict(os.environ, {"STABLEHLO_DISABLE_FALLBACK": "1"})
     assert stablehlo_fw.collect_api(SemanticTier.UTIL) == []
 
 
@@ -524,28 +526,33 @@ def test_stablehlo_collect_api_variants() -> None:
             "metadata": "non_list_val",
         },
     }
-    with mock.patch(
-        "builtins.open", mock.mock_open(read_data=json.dumps(mock_envelope))
-    ):
-        refs = stablehlo_fw.collect_api(SemanticTier.UTIL)
-        assert len(refs) == 1
-        assert refs[0].api_path == "stablehlo.test_op1"
+    with mock.patch("os.path.exists", return_value=True):
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_envelope))
+        ):
+            refs = stablehlo_fw.collect_api(SemanticTier.UTIL)
+            assert len(refs) == 1
+            assert refs[0].api_path == "stablehlo.test_op1"
 
-    # 2. Dict with operations
-    mock_dict = {
-        "operations": [{"api_path": "stablehlo.test_op2", "name": "TestOp2"}],
-    }
-    with mock.patch("builtins.open", mock.mock_open(read_data=json.dumps(mock_dict))):
-        refs = stablehlo_fw.collect_api(SemanticTier.UTIL)
-        assert len(refs) == 1
-        assert refs[0].api_path == "stablehlo.test_op2"
+        # 2. Dict with operations
+        mock_dict = {
+            "operations": [{"api_path": "stablehlo.test_op2", "name": "TestOp2"}],
+        }
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_dict))
+        ):
+            refs = stablehlo_fw.collect_api(SemanticTier.UTIL)
+            assert len(refs) == 1
+            assert refs[0].api_path == "stablehlo.test_op2"
 
-    # 3. Raw list
-    mock_list = [{"api_path": "stablehlo.test_op3", "name": "TestOp3"}]
-    with mock.patch("builtins.open", mock.mock_open(read_data=json.dumps(mock_list))):
-        refs = stablehlo_fw.collect_api(SemanticTier.UTIL)
-        assert len(refs) == 1
-        assert refs[0].api_path == "stablehlo.test_op3"
+        # 3. Raw list
+        mock_list = [{"api_path": "stablehlo.test_op3", "name": "TestOp3"}]
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_list))
+        ):
+            refs = stablehlo_fw.collect_api(SemanticTier.UTIL)
+            assert len(refs) == 1
+            assert refs[0].api_path == "stablehlo.test_op3"
 
 
 def test_validate_scf_for_region() -> None:

@@ -2592,3 +2592,51 @@ def test_check_hallucination_parameter_allowed_values_error(mocker: Any) -> None
         kwarg_values={"mode": "fast"},
     )
     assert res_valid["is_hallucinated"] is False
+
+
+def test_hallucination_accepted_kwargs_bounded_vs_unconstrained(
+    mocker: Any,
+) -> None:
+    """Verify that bounded accepted_kwargs prevent false-positive hallucination errors and reject illegal kwargs.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mock_entry = {
+        "name": "CustomLayer",
+        "api_path": "custom.CustomLayer",
+        "kind": "class",
+        "params": [
+            {"name": "x", "kind": "POSITIONAL_OR_KEYWORD"},
+            {"name": "kwargs", "kind": "VAR_KEYWORD"},
+        ],
+        "accepted_kwargs": ["dropout_rate", "activation", "use_bias"],
+    }
+    mock_snap = {"categories": {"layers": [mock_entry]}}
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        return_value=mock_snap,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_api_signature",
+        return_value=mock_entry,
+    )
+
+    # 1. Valid accepted kwarg should NOT be flagged as hallucinated
+    valid_res = check_hallucination(
+        "custom",
+        "custom.CustomLayer",
+        kwargs=["dropout_rate", "activation"],
+    )
+    assert valid_res["is_hallucinated"] is False
+    assert len(valid_res["invalid_kwargs"]) == 0
+    assert valid_res["has_unconstrained_kwargs"] is False
+
+    # 2. Illegal kwarg not in accepted_kwargs SHOULD be flagged
+    invalid_res = check_hallucination(
+        "custom",
+        "custom.CustomLayer",
+        kwargs=["dropout_rate", "hallucinated_param"],
+    )
+    assert invalid_res["is_hallucinated"] is True
+    assert invalid_res["invalid_kwargs"] == ["hallucinated_param"]

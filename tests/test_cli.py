@@ -603,19 +603,26 @@ def test_cmd_capture_missing(capsys: Any) -> None:
     assert "Skipping mock_fw" in captured.out
 
 
-def test_cmd_list_snapshots(capsys: Any) -> None:
+def test_cmd_list_snapshots(capsys: Any, monkeypatch: Any, tmp_path: Any) -> None:
     """Test cmd_list_snapshots prints available snapshots.
 
     Args:
         capsys: Parameter.
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Pytest temporary directory fixture.
     """
     from ml_framework_snapshots.cli import cmd_list_snapshots
     import argparse
+
+    snap_file = tmp_path / "test_framework_v1.0.0.json"
+    snap_file.write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("ML_FRAMEWORK_SNAPSHOTS_PATH", str(tmp_path))
 
     args = argparse.Namespace()
     cmd_list_snapshots(args)
     captured = capsys.readouterr()
     assert "Available Snapshots:" in captured.out
+    assert "test_framework_v1.0.0.json" in captured.out
 
 
 def test_cmd_list_snapshots_empty(capsys: Any, mocker: Any) -> None:

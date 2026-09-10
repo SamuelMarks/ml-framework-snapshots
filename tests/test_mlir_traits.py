@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from typing import Any
 from unittest import mock
 import pytest
@@ -287,6 +288,7 @@ def test_mlir_collect_api(mocker: Any) -> None:
 
     # 3. Missing file
     mocker.patch("os.path.exists", return_value=False)
+    mocker.patch.dict(os.environ, {"MLIR_DISABLE_FALLBACK": "1"})
     assert mlir.collect_api(SemanticTier.UTIL) == []
 
     # 4. OSError
@@ -401,25 +403,30 @@ def test_mlir_collect_api_variants() -> None:
             "metadata": "non_list_val",
         },
     }
-    with mock.patch(
-        "builtins.open", mock.mock_open(read_data=json.dumps(mock_envelope))
-    ):
-        refs = mlir.collect_api(SemanticTier.UTIL)
-        assert len(refs) == 1
-        assert refs[0].api_path == "test.op1"
+    with mock.patch("os.path.exists", return_value=True):
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_envelope))
+        ):
+            refs = mlir.collect_api(SemanticTier.UTIL)
+            assert len(refs) == 1
+            assert refs[0].api_path == "test.op1"
 
-    # 2. Dict with operations
-    mock_dict = {
-        "operations": [{"api_path": "test.op2", "summary": "op2"}],
-    }
-    with mock.patch("builtins.open", mock.mock_open(read_data=json.dumps(mock_dict))):
-        refs = mlir.collect_api(SemanticTier.UTIL)
-        assert len(refs) == 1
-        assert refs[0].api_path == "test.op2"
+        # 2. Dict with operations
+        mock_dict = {
+            "operations": [{"api_path": "test.op2", "summary": "op2"}],
+        }
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_dict))
+        ):
+            refs = mlir.collect_api(SemanticTier.UTIL)
+            assert len(refs) == 1
+            assert refs[0].api_path == "test.op2"
 
-    # 3. Raw list
-    mock_list = [{"api_path": "test.op3", "summary": "op3"}]
-    with mock.patch("builtins.open", mock.mock_open(read_data=json.dumps(mock_list))):
-        refs = mlir.collect_api(SemanticTier.UTIL)
-        assert len(refs) == 1
-        assert refs[0].api_path == "test.op3"
+        # 3. Raw list
+        mock_list = [{"api_path": "test.op3", "summary": "op3"}]
+        with mock.patch(
+            "builtins.open", mock.mock_open(read_data=json.dumps(mock_list))
+        ):
+            refs = mlir.collect_api(SemanticTier.UTIL)
+            assert len(refs) == 1
+            assert refs[0].api_path == "test.op3"

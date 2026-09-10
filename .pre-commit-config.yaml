@@ -50,7 +50,7 @@ repos:
         always_run: true
       - id: pytest
         name: Test (Pytest)
-        entry: python3 -m pytest --cov=src/ml_framework_snapshots --cov-branch
+        entry: python3 -m pytest -n auto --cov=src/ml_framework_snapshots --cov-branch
         language: system
         types: [python]
         pass_filenames: false

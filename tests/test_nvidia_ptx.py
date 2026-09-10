@@ -1,6 +1,7 @@
 """Tests for the NVIDIA PTX ISA framework extractor and validator."""
 
 import json
+import os
 from unittest import mock
 from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, SemanticTier
 from ml_framework_snapshots.frameworks import nvidia_ptx
@@ -136,11 +137,19 @@ def test_validate_ptx_instruction() -> None:
     err_sm = nvidia_ptx.validate_ptx_instruction("wgmma.mma_async", sm_arch="sm_80")
     assert any("requires at least sm_90" in e for e in err_sm)
 
+    # Vector width mismatch where vector_widths is present but vector_width not in allowed
+    err_vw = nvidia_ptx.validate_ptx_instruction("add", vector_width=".v8")
+    assert any(
+        "Vector width '.v8' is not supported for PTX instruction 'add' (supported:" in e
+        for e in err_vw
+    )
+
 
 def test_load_exhaustive_ptx_missing_file() -> None:
     """Test graceful handling when ptx JSON dump file does not exist."""
     with mock.patch("os.path.exists", return_value=False):
-        assert nvidia_ptx._load_exhaustive_ptx() == []
+        with mock.patch.dict(os.environ, {"PTX_DISABLE_FALLBACK": "1"}):
+            assert nvidia_ptx._load_exhaustive_ptx() == []
 
 
 def test_load_exhaustive_ptx_dict_envelope() -> None:

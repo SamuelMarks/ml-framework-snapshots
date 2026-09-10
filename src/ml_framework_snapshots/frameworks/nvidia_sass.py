@@ -703,13 +703,302 @@ def build_structured_sass_operands(
     return structured
 
 
+def _get_canonical_fallback_sass() -> List[Dict[str, Any]]:
+    """Generate canonical baseline SASS instructions for offline operation when unbuilt.
+
+    Returns:
+        List of SASS instruction dictionaries.
+    """
+    from ..tools.scrape_nvidia_sass import build_expanded_sass_catalog
+
+    base: List[Dict[str, Any]] = [
+        {
+            "mnemonic": "MOV",
+            "modifiers": [],
+            "operands": [
+                ["R", "R"],
+                ["R", "CBANK"],
+                ["R", "IMM"],
+                ["R", "c[bank][offset]"],
+            ],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Move register, constant, or immediate.",
+        },
+        {
+            "mnemonic": "FADD",
+            "modifiers": [".FTZ", ".SAT", ".RN", ".RZ", ".RM", ".RP"],
+            "operands": [["R", "R", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Floating point addition.",
+        },
+        {
+            "mnemonic": "FSUB",
+            "modifiers": [".FTZ", ".SAT", ".RN", ".RZ", ".RM", ".RP"],
+            "operands": [["R", "R", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Floating point subtraction.",
+        },
+        {
+            "mnemonic": "FMUL",
+            "modifiers": [".FTZ", ".SAT", ".RN", ".RZ", ".RM", ".RP"],
+            "operands": [["R", "R", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Floating point multiplication.",
+        },
+        {
+            "mnemonic": "FFMA",
+            "modifiers": [".FTZ", ".SAT", ".RN", ".RZ", ".RM", ".RP"],
+            "operands": [["R", "R", "R", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Floating point fused multiply-add.",
+        },
+        {
+            "mnemonic": "IADD",
+            "modifiers": [".X", ".PO"],
+            "operands": [["R", "R", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Integer addition.",
+        },
+        {
+            "mnemonic": "IADD3",
+            "modifiers": [".X"],
+            "operands": [["R", "R", "R", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "3-input integer addition.",
+        },
+        {
+            "mnemonic": "IMAD",
+            "modifiers": [".WIDE", ".U32", ".S32"],
+            "operands": [["R", "R", "R", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Integer multiply-add.",
+        },
+        {
+            "mnemonic": "LDG",
+            "modifiers": [".E", ".STRONG", ".LU", ".CV", ".CONSTANT"],
+            "operands": [["R", "ADDR"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Load from global memory.",
+        },
+        {
+            "mnemonic": "LDS",
+            "modifiers": [".U8", ".S8", ".16", ".32", ".64", ".128"],
+            "operands": [["R", "ADDR"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Load from shared memory.",
+        },
+        {
+            "mnemonic": "STG",
+            "modifiers": [".E", ".STRONG", ".LU", ".CV"],
+            "operands": [["ADDR", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Store to global memory.",
+        },
+        {
+            "mnemonic": "STS",
+            "modifiers": [".U8", ".S8", ".16", ".32", ".64", ".128"],
+            "operands": [["ADDR", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Store to shared memory.",
+        },
+        {
+            "mnemonic": "BRA",
+            "modifiers": [".U", ".DIV"],
+            "operands": [["ADDR"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Branch relative.",
+        },
+        {
+            "mnemonic": "EXIT",
+            "modifiers": [],
+            "operands": [],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Thread execution exit.",
+        },
+        {
+            "mnemonic": "S2R",
+            "modifiers": [],
+            "operands": [["R", "SR"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Special register to general register.",
+        },
+        {
+            "mnemonic": "WGMMA",
+            "modifiers": [".F16", ".BF16", ".TF32"],
+            "operands": [["R", "R", "R", "R"]],
+            "architecture": ["sm_90", "sm_100"],
+            "description": "Hopper Warpgroup MMA.",
+        },
+        {
+            "mnemonic": "BMMA",
+            "modifiers": [".F16", ".BF16"],
+            "operands": [["R", "R", "R", "R"]],
+            "architecture": ["sm_75", "sm_80", "sm_86", "sm_89", "sm_90", "sm_100"],
+            "description": "Bit Matrix Multiply and Accumulate.",
+        },
+        {
+            "mnemonic": "HMMA",
+            "modifiers": [".F16", ".F32"],
+            "operands": [["R", "R", "R", "R"]],
+            "architecture": [
+                "sm_70",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Half precision Matrix Multiply and Accumulate.",
+        },
+        {
+            "mnemonic": "IMMA",
+            "modifiers": [".S8", ".U8"],
+            "operands": [["R", "R", "R", "R"]],
+            "architecture": [
+                "sm_72",
+                "sm_75",
+                "sm_80",
+                "sm_86",
+                "sm_89",
+                "sm_90",
+                "sm_100",
+            ],
+            "description": "Integer Matrix Multiply and Accumulate.",
+        },
+    ]
+    return build_expanded_sass_catalog(base)
+
+
 def _load_exhaustive_sass() -> List[Dict[str, Any]]:
-    """Loads the exhaustive NVIDIA SASS json dump.
+    """Loads the exhaustive NVIDIA SASS json dump or falls back to canonical offline catalog.
 
     Returns:
         The loaded JSON list of SASS instruction dictionaries.
     """
     json_path = os.path.join(os.path.dirname(__file__), "nvidia_sass_exhaustive.json")
+    if not os.path.exists(json_path):
+        return _get_canonical_fallback_sass()
     with open(json_path, "r", encoding="utf-8") as f:
         data: Any = json.load(f)
         if isinstance(data, dict):

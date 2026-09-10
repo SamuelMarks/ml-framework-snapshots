@@ -5,12 +5,13 @@ from various machine learning frameworks.
 """
 
 import os
+import sys
 import datetime
 import concurrent.futures
 import importlib.metadata
 import json
 from pathlib import Path
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, cast
 
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 from ml_framework_snapshots.models import SnapshotEnvelope
@@ -426,11 +427,59 @@ def extract_snapshot(
     return snapshot_data
 
 
-def extract_all_snapshots(include_nonpublic: bool = False) -> Dict[str, Dict[str, Any]]:
+def extract_snapshot_isolated(
+    framework: str, include_nonpublic: bool = False, timeout: int = 300
+) -> Dict[str, Any]:
+    """Extract a framework snapshot within an isolated child subprocess.
+
+    Prevents CUDA/Metal memory pre-allocation locks, framework-level C-extension
+    conflicts, and memory leaks from polluting the parent process.
+
+    Args:
+        framework: Name of the framework to extract.
+        include_nonpublic: Whether to include non-public APIs.
+        timeout: Subprocess timeout in seconds.
+
+    Returns:
+        The extracted snapshot dictionary, or empty dict on failure.
+    """
+    import subprocess
+
+    cmd = [
+        sys.executable,
+        "-c",
+        (
+            "import json, sys; "
+            "from ml_framework_snapshots.api import extract_snapshot; "
+            f"snap = extract_snapshot({repr(framework)}, include_nonpublic={include_nonpublic}); "
+            "sys.stdout.write(json.dumps(snap))"
+        ),
+    ]
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            return cast(Dict[str, Any], json.loads(proc.stdout))
+    except Exception as e:
+        print(f"Subprocess extraction failed for {framework}: {e}")
+
+    return {}
+
+
+def extract_all_snapshots(
+    include_nonpublic: bool = False, isolated: bool = False
+) -> Dict[str, Dict[str, Any]]:
     """Extract snapshots for all supported and installed frameworks.
 
     Args:
         include_nonpublic: Whether to include non-public APIs.
+        isolated: Whether to execute each framework extraction in an isolated child subprocess.
 
     Returns:
         A dictionary mapping framework identifiers to their snapshot data.
@@ -438,7 +487,10 @@ def extract_all_snapshots(include_nonpublic: bool = False) -> Dict[str, Dict[str
     """
     results = {}
     for fw in FRAMEWORK_COLLECTORS:
-        data = extract_snapshot(fw, include_nonpublic)
+        if isolated:
+            data = extract_snapshot_isolated(fw, include_nonpublic)
+        else:
+            data = extract_snapshot(fw, include_nonpublic)
         if data:
             results[fw] = data
     return results

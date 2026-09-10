@@ -214,6 +214,21 @@ def test_expanded_semantic_concept_maps() -> None:
             )
             assert "torch.my_custom_op" in res_str
 
+    # Test load_concept_map with ML_SNAPSHOTS_CONCEPT_MAP
+    import os
+    from ml_framework_snapshots.mcp_server import DEFAULT_CONCEPT_MAP
+
+    with mock.patch.dict(os.environ, {"ML_SNAPSHOTS_CONCEPT_MAP": "/env_map.json"}):
+        with mock.patch("os.path.exists", return_value=True):
+            with mock.patch(
+                "builtins.open", mock.mock_open(read_data=json.dumps(custom_map))
+            ):
+                assert load_concept_map() == custom_map
+            with mock.patch("builtins.open", mock.mock_open(read_data="[1, 2, 3]")):
+                assert load_concept_map() == DEFAULT_CONCEPT_MAP
+            with mock.patch("builtins.open", mock.mock_open(read_data="{bad_json")):
+                assert load_concept_map() == DEFAULT_CONCEPT_MAP
+
 
 def test_check_code_block_python(mocker: Any) -> None:
     """Test check_code_block batch verifying Python code with valid and hallucinated calls.
@@ -1239,3 +1254,66 @@ def test_translate_concept_arguments_direct_schema_key() -> None:
     assert res_dot["concept"] == "dot"
     assert res_dot["source_framework"] == "torch"
     assert res_dot["target_framework"] == "numpy"
+
+
+def test_check_code_block_import_tracking(mocker: Any) -> None:
+    """Test check_code_block tracks import and from...import statements to resolve canonical API paths."""
+    mock_torch = {
+        "categories": {
+            "math": [
+                {
+                    "name": "add",
+                    "api_path": "torch.add",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "other", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "alpha", "kind": "KEYWORD_ONLY"},
+                    ],
+                },
+                {
+                    "name": "cross_entropy",
+                    "api_path": "torch.nn.functional.cross_entropy",
+                    "params": [
+                        {"name": "input", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "target", "kind": "POSITIONAL_OR_KEYWORD"},
+                        {"name": "reduction", "kind": "KEYWORD_ONLY"},
+                    ],
+                },
+            ]
+        }
+    }
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        return_value=mock_torch,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        return_value=None,
+    )
+
+    code = """
+from torch import add
+from torch.nn import functional as F
+import torch as th
+
+# 1. Direct call from import: valid
+res1 = add(x, y, alpha=1)
+
+# 2. Direct call from import: hallucinated kwarg 'axis' instead of dim
+res2 = add(x, y, axis=0)
+
+# 3. Aliased module call: valid
+res3 = F.cross_entropy(logits, targets, reduction='mean')
+
+# 4. Aliased module call: hallucinated kwarg 'axis'
+res4 = F.cross_entropy(logits, targets, axis=1)
+
+# 5. Aliased package call
+res5 = th.add(x, y, invalid_kw=123)
+"""
+    rep = check_code_block(code)
+    assert rep["total_analyzed"] == 5
+    assert rep["hallucinations_detected"] == 3
+    assert rep["is_valid"] is False
+    hallucinated_lines = [f["line"] for f in rep["findings"]]
+    assert len(hallucinated_lines) == 3
