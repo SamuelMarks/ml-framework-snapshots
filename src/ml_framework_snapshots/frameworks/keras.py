@@ -12,7 +12,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 
 try:
     import griffe
-except ImportError:  # pragma: no cover
+except ImportError:
     griffe = None  # type: ignore[assignment]
 
 

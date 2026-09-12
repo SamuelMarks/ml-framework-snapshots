@@ -197,7 +197,7 @@ def test_ghost_inspector_sphinx_docstring() -> None:
         :raises ValueError: If dimension mismatch.
         :raises TypeError: If non-tensor passed.
         """
-        pass  # pragma: no cover
+        pass
 
     ref = GhostInspector.inspect(dummy_op, "torch.ops.dummy_op")
 
@@ -226,7 +226,7 @@ def test_ghost_inspector_merge_branches(mocker: Any) -> None:
         :return: Only return description without rtype.
         :raises ValueError: If bad.
         """
-        pass  # pragma: no cover
+        pass
 
     # Mock cdd to have an existing param without doc, and another without typ, and an exception in params
     mocker.patch(
@@ -367,7 +367,7 @@ def test_ghost_inspector_custom_fault_and_doc_return() -> None:
         :return: Return doc only.
         :raises CustomFault: When faulted.
         """
-        pass  # pragma: no cover
+        pass
 
     ref = GhostInspector.inspect(fn, "torch.fn")
     assert ref.returns_description == "Return doc only."
@@ -389,7 +389,7 @@ def test_ghost_inspector_griffe_return_type_fallback(mocker: Any) -> None:
         :return: Output.
         :rtype: torch.Tensor
         """
-        pass  # pragma: no cover
+        pass
 
     mocker.patch(
         "cdd.docstring.parse.docstring",

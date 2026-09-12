@@ -16,7 +16,7 @@ from typing import List
 
 try:
     import optax
-except Exception:  # pragma: no cover
+except Exception:
     optax = None
 
 from ml_framework_snapshots.models import GhostInspector
@@ -70,7 +70,7 @@ class OptaxScanner:
                     try:
                         ref = GhostInspector.inspect(obj, f"optax.{name}")
                         results.append(ref)
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
         return results
@@ -105,7 +105,7 @@ class OptaxScanner:
                     try:
                         ref = GhostInspector.inspect(obj, f"optax.losses.{name}")
                         results.append(ref)
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
         return results
@@ -133,7 +133,7 @@ class OptaxScanner:
                 try:
                     ref = GhostInspector.inspect(obj, f"optax.schedules.{name}")
                     results.append(ref)
-                except Exception:  # pragma: no cover
+                except Exception:
                     pass
 
         return results

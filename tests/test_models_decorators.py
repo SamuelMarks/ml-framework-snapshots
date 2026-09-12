@@ -28,7 +28,7 @@ def dummy_decorator(func: Any) -> None:
         Returns:
             Return value.
         """
-        return func(*args, **kwargs)  # pragma: no cover
+        return func(*args, **kwargs)
 
     wrapper.__wrapped__ = func  # type: ignore
     return wrapper  # type: ignore
@@ -70,7 +70,7 @@ def test_unwrap_standard_decorator() -> None:
             a: description
             b: description
         """
-        pass  # pragma: no cover
+        pass
 
     ref = GhostInspector.inspect(my_func, "my_func")
     assert ref.has_arg("a")
@@ -89,7 +89,7 @@ def test_unwrap_tf_decorator() -> None:
             tensor: description
             training: description
         """
-        pass  # pragma: no cover
+        pass
 
     ref = GhostInspector.inspect(my_tf_func, "my_tf_func")
     assert ref.has_arg("tensor")
@@ -126,7 +126,7 @@ def test_unwrap_generic_decorator() -> None:
         Args:
             a: description
         """
-        pass  # pragma: no cover
+        pass
 
     ref = GhostInspector.inspect(fn1, "fn1")
     assert ref.has_arg("a")
@@ -162,7 +162,7 @@ def test_unwrap_variant_decorator() -> None:
         Args:
             b: description
         """
-        pass  # pragma: no cover
+        pass
 
     ref = GhostInspector.inspect(fn2, "fn2")
     assert ref.has_arg("b")

@@ -38,7 +38,7 @@ def collect_api(
             continue
 
         obj = getattr(mod, name, None)
-        if obj is None:  # pragma: no cover
+        if obj is None:
             continue
 
         obj_cat = (
@@ -50,11 +50,11 @@ def collect_api(
         if obj_cat == category:
             try:
                 ref = inspector.inspect(obj, f"deepspeed.{name}")
-                if ref:  # pragma: no branch
-                    if name == "initialize":  # pragma: no branch
+                if ref:
+                    if name == "initialize":
                         # Map distributed configuration dictionaries into structured elements.
                         has_config = any(p.name == "config_params" for p in ref.params)
-                        if not has_config:  # pragma: no branch
+                        if not has_config:
                             from ml_switcheroo_ir.schema.ghost import GhostParam
 
                             ref.params.append(
@@ -66,7 +66,7 @@ def collect_api(
                                 )
                             )
                     results.append(ref)
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
     return results

@@ -72,7 +72,7 @@ def get_module_info_from_path(
                 parts.pop()
         mod_name = ".".join(parts)
 
-    if not mod_name:  # pragma: no branch
+    if not mod_name:
         if target_prefix:
             mod_name = target_prefix.split(".")[0]
             if Path(os.path.join(Path(search_path), "src")).is_dir():
@@ -135,7 +135,7 @@ def align_namespace(api_path: str, target_prefix: str, reference_prefix: str) ->
         return api_path.replace(f"{target_prefix}.optax.", "optax.", 1)
 
     for z_pref, r_pref in mapping.items():
-        if api_path.startswith(z_pref + "."):  # pragma: no cover
+        if api_path.startswith(z_pref + "."):
             return api_path.replace(z_pref + ".", r_pref + ".", 1)
         if api_path == z_pref:
             return r_pref
@@ -192,35 +192,36 @@ def extract_target_refs_single(
                 parts = current_path.split(".")
                 mod_p = parts[0]
                 live_mod = importlib.import_module(mod_p)
-                for i in range(1, len(parts)):  # pragma: no branch
+                i = 1
+                while i < len(parts):
                     try:
                         mod_p = f"{mod_p}.{parts[i]}"
                         live_mod = importlib.import_module(mod_p)
+                        i += 1
                     except ImportError:
-                        # Part is an attribute of the last successfully imported module
-                        obj = live_mod
-                        for p in parts[i:]:
-                            obj = getattr(obj, p)
-
-                        if getattr(node, "path", "").startswith(
-                            "zero_jax."
-                        ):  # pragma: no cover
-                            current_path = (
-                                getattr(node, "path")
-                                .replace("zero_jax.", f"{target_prefix}.jax.", 1)
-                                .replace(".activation", "")
-                                .replace(".nn.nn", ".nn")
-                                .replace(".initializers.initializers", ".initializers")
-                            )
-                        elif "zero_jax" in current_path:  # pragma: no cover
-                            current_path = current_path.replace(
-                                "zero_jax.", f"{target_prefix}.jax.", 1
-                            )
-                        aligned_path = align_namespace(
-                            current_path, target_prefix, reference_prefix
-                        )
-                        refs.append(GhostInspector.inspect(obj, aligned_path))
                         break
+
+                # Retrieve remaining attributes from the imported module
+                obj = live_mod
+                for p in parts[i:]:
+                    obj = getattr(obj, p)
+
+                if getattr(node, "path", "").startswith("zero_jax."):
+                    current_path = (
+                        getattr(node, "path")
+                        .replace("zero_jax.", f"{target_prefix}.jax.", 1)
+                        .replace(".activation", "")
+                        .replace(".nn.nn", ".nn")
+                        .replace(".initializers.initializers", ".initializers")
+                    )
+                elif "zero_jax" in current_path:
+                    current_path = current_path.replace(
+                        "zero_jax.", f"{target_prefix}.jax.", 1
+                    )
+                aligned_path = align_namespace(
+                    current_path, target_prefix, reference_prefix
+                )
+                refs.append(GhostInspector.inspect(obj, aligned_path))
             except Exception as e:
                 print(f"Exception in walk for {current_path}: {e}")
                 # Silently skip items that cannot be imported or inspected

@@ -34,7 +34,7 @@ jobs:
       run: mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.0.1
+      uses: astral-sh/setup-uv@v10.1.0
       with:
         version: "latest"
 
@@ -45,7 +45,7 @@ jobs:
     - name: Set up virtual environment
       run: |
         uv pip install --system -e /Users/samuel/repos/ml-switcheroo-ir
-        uv pip install --system -e ".[test,generate]" build pytest pytest-cov hatchling hatch-requirements-txt
+        uv pip install --system -e ".[test,generate]" build pytest pytest-cov pytest-xdist hatchling hatch-requirements-txt
 
     - name: Run pre-commit
       run: pre-commit run --all-files

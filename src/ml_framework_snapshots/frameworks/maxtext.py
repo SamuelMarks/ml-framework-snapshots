@@ -16,10 +16,10 @@ from ml_switcheroo_ir.schema.ghost import GhostParam
 import typing
 
 try:
-    import maxtext as _maxtext  # pragma: no cover
+    import maxtext as _maxtext
 
-    maxtext: typing.Any = _maxtext  # pragma: no cover
-except ImportError:  # pragma: no cover
+    maxtext: typing.Any = _maxtext
+except ImportError:
     maxtext = None
 
 
@@ -71,7 +71,7 @@ def _parse_maxtext_classes(dir_path: str, module_prefix: str) -> List[GhostRef]:
                             docstring=docstring,
                         )
                     )
-        except Exception:  # pragma: no cover
+        except Exception:
             pass
     return refs
 

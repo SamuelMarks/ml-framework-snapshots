@@ -44,6 +44,8 @@ def test_upload_to_s3_success(mocker: Any, tmp_path: Path) -> None:
     # Create dummy files
     f1 = tmp_path / "test1.json"
     f1.write_text("{}")
+    f_non_json = tmp_path / "ignored.txt"
+    f_non_json.write_text("not json")
 
     d1 = tmp_path / "sub"
     d1.mkdir()
@@ -161,3 +163,26 @@ def test_main_with_matrix_and_s3(mocker: Any, tmp_path: Path) -> None:
 
     mock_build.assert_called_once_with("test_fw", "1.0", tmp_path)
     mock_upload.assert_called_once_with(tmp_path, "test-bucket")
+
+
+def test_matrix_runner_main_entrypoint(mocker: Any, tmp_path: Path) -> None:
+    """Test running matrix_runner as __main__."""
+    import runpy
+    import sys
+    from ml_framework_snapshots.tools import matrix_runner
+
+    mocker.patch("subprocess.run")
+    matrix_file = tmp_path / "empty_matrix.json"
+    matrix_file.write_text("{}", encoding="utf-8")
+    mocker.patch.object(
+        sys,
+        "argv",
+        [
+            "matrix_runner.py",
+            "--output-dir",
+            str(tmp_path),
+            "--matrix",
+            str(matrix_file),
+        ],
+    )
+    runpy.run_path(matrix_runner.__file__, run_name="__main__")

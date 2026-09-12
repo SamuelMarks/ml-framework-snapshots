@@ -8,12 +8,12 @@ from ml_framework_snapshots.utils import get_all_members
 
 try:
     import paxml
-    import praxis  # pragma: no cover
-    from praxis import layers  # pragma: no cover
-except Exception:  # pragma: no cover
-    paxml = None  # pragma: no cover
-    praxis = None  # pragma: no cover
-    layers = None  # pragma: no cover
+    import praxis
+    from praxis import layers
+except Exception:
+    paxml = None
+    praxis = None
+    layers = None
 
 
 def collect_api(

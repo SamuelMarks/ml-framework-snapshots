@@ -94,7 +94,7 @@ def get_framework_snapshot(
                                         loaded_data = {"categories": {"UTIL": data}}
                                     source_kind = source_label
                                     break
-                            except Exception:  # pragma: no cover
+                            except Exception:
                                 pass
                     if loaded_data:
                         break
@@ -1076,7 +1076,7 @@ def check_hallucination(
             fewest_errors = err_count
             best_result = res
 
-    return best_result or {  # pragma: no cover
+    return best_result or {
         "api_exists": True,
         "is_hallucinated": True,
         "invalid_kwargs": kwargs or [],
@@ -1399,6 +1399,15 @@ def check_rdna_instruction(
                 break
         if inst:
             break
+
+    if not inst:
+        from .frameworks.amd_rdna import _get_canonical_fallback_rdna
+
+        for item in _get_canonical_fallback_rdna():
+            name = (item.get("mnemonic") or item.get("name") or "").lower()
+            if name in (target_name, base_target):
+                inst = item
+                break
 
     if not inst:
         return {
@@ -2876,7 +2885,7 @@ def run_mcp_server(
             resp = handle_mcp_message(req)
             out_s.write(json.dumps(resp) + "\n")
             out_s.flush()
-        except Exception as e:  # pragma: no cover
+        except Exception as e:
             err_resp = {
                 "jsonrpc": "2.0",
                 "id": None,

@@ -26,7 +26,7 @@ def get_all_members(module: Any) -> List[Tuple[str, Any]]:
     for name in dir(module):
         try:
             members[name] = getattr(module, name)
-        except Exception:  # pragma: no cover
+        except Exception:
             pass
 
     # 2. Aggressive __all__ resolution for lazy loaded modules
@@ -196,11 +196,9 @@ def _parse_c_extension_sig_str(
             return ast.unparse(node)
 
     num_defaults = len(args.defaults)
-    posonly_count = len(getattr(args, "posonlyargs", []))
-    if hasattr(args, "posonlyargs"):
-        combined_args = getattr(args, "posonlyargs", []) + args.args
-    else:  # pragma: no cover
-        combined_args = args.args
+    posonly_args = getattr(args, "posonlyargs", [])
+    posonly_count = len(posonly_args)
+    combined_args = posonly_args + args.args
 
     num_combined = len(combined_args)
     default_offset = num_combined - num_defaults
@@ -260,12 +258,10 @@ def extract_c_extension_signature(
         with .returns_type and .overloads populated, or None if parsing fails.
     """
     docstring = getattr(target, "__doc__", None)
-    if not docstring or not isinstance(docstring, str):
+    if not docstring or not isinstance(docstring, str) or not docstring.strip():
         return None
 
     lines = docstring.strip().split("\n")
-    if not lines:  # pragma: no cover
-        return None
 
     parsed_sigs: List[
         Tuple[
@@ -400,7 +396,7 @@ def resolve_griffe_parser(parser_name: str) -> Any:
     try:
         import griffe
 
-        if not hasattr(griffe.Parser, "rest"):  # pragma: no branch
+        if not hasattr(griffe.Parser, "rest"):
             try:
                 # Provide transparent fallback hook for Parser('rest')
                 setattr(
@@ -408,7 +404,7 @@ def resolve_griffe_parser(parser_name: str) -> Any:
                     "_missing_",
                     classmethod(lambda cls, val: cls.sphinx if val == "rest" else None),
                 )
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
         if parser_name == "rest":
@@ -437,7 +433,7 @@ def parse_docstring_with_griffe(
     """
     try:
         import griffe
-    except ImportError:  # pragma: no cover
+    except ImportError:
         return []
 
     initial_parser = parser_name or "rest"
@@ -464,7 +460,7 @@ def parse_docstring_with_griffe(
                 return sections
             if not best_sections and sections:
                 best_sections = sections
-        except Exception:  # pragma: no cover
+        except Exception:
             pass
 
     return best_sections

@@ -43,28 +43,28 @@ def test_extract_c_ext_coverage() -> None:
 
     def empty_doc() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     empty_doc.__doc__ = ""
     assert extract_c_extension_signature(empty_doc, "empty_doc") is None
 
     def bad_syntax() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     bad_syntax.__doc__ = "func(a b c) -> int"
     assert extract_c_extension_signature(bad_syntax, "bad_syntax") is None
 
     def no_match() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     no_match.__doc__ = "This is just a description without signature."
     assert extract_c_extension_signature(no_match, "no_match") is None
 
     def string_def() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     string_def.__doc__ = "func(a='hello', b=None, *args: int, c=1, **kwargs: float) -> str\n\nDescription text."
     sig = extract_c_extension_signature(string_def, "func")
@@ -79,7 +79,7 @@ def test_extract_c_ext_coverage() -> None:
 
     def func_with_self() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     func_with_self.__doc__ = "func(self, x=torch.float32)"
     sig2 = extract_c_extension_signature(func_with_self, "func")
@@ -89,7 +89,7 @@ def test_extract_c_ext_coverage() -> None:
 
     def leading_empty() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     leading_empty.__doc__ = (
         "\n\nOverloaded function.\n\n1. func(x: int) -> int\n2. func(y: str) -> str"
@@ -100,7 +100,7 @@ def test_extract_c_ext_coverage() -> None:
 
     def numbered_with_empty() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     numbered_with_empty.__doc__ = (
         "func(x: int) -> int\n\n1. func(x: int) -> int\n2. func(y: str) -> str"
@@ -111,7 +111,7 @@ def test_extract_c_ext_coverage() -> None:
 
     def sig_then_overload_header() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     sig_then_overload_header.__doc__ = "func(x: int) -> int\nOverloaded function.\n1. func(x: int) -> int\n2. func(y: str) -> str"
     sig_so = extract_c_extension_signature(sig_then_overload_header, "func")
@@ -120,7 +120,7 @@ def test_extract_c_ext_coverage() -> None:
 
     def sig_then_doc_text() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     sig_then_doc_text.__doc__ = (
         "func(x: int) -> int\nSome description without overload header."
@@ -292,3 +292,80 @@ def test_get_custom_snapshots_paths_deduplication(
     )
     paths = get_custom_snapshots_paths()
     assert paths == [p1]
+
+
+def test_resolve_griffe_parser_setattr_failure() -> None:
+    """Test resolve_griffe_parser when setting fallback _missing_ raises an exception."""
+    from unittest import mock
+    from ml_framework_snapshots.utils import resolve_griffe_parser
+
+    orig_hasattr = hasattr
+    orig_setattr = setattr
+
+    def mock_hasattr(obj: Any, attr: str) -> bool:
+        """Mock hasattr to report missing 'rest' on griffe.Parser.
+
+        Args:
+            obj: The object to inspect.
+            attr: The attribute name to check.
+
+        Returns:
+            False if checking 'rest' on griffe.Parser, else original hasattr result.
+        """
+        if attr == "rest":
+            return False
+        return orig_hasattr(obj, attr)
+
+    def mock_setattr(obj: Any, attr: str, val: Any) -> None:
+        """Mock setattr to raise an exception when setting _missing_.
+
+        Args:
+            obj: The object being modified.
+            attr: The attribute name.
+            val: The attribute value.
+
+        Raises:
+            RuntimeError: Always raised when attr is '_missing_'.
+        """
+        if attr == "_missing_":
+            raise RuntimeError("Cannot set attribute")
+        orig_setattr(obj, attr, val)
+
+    with (
+        mock.patch("builtins.hasattr", side_effect=mock_hasattr),
+        mock.patch("builtins.setattr", side_effect=mock_setattr),
+    ):
+        res = resolve_griffe_parser("rest")
+        assert res is not None
+
+
+def test_parse_docstring_with_griffe_import_error() -> None:
+    """Test parse_docstring_with_griffe returns empty list when griffe cannot be imported."""
+    import sys
+    from unittest.mock import patch
+    from ml_framework_snapshots.utils import parse_docstring_with_griffe
+
+    with patch.dict(sys.modules, {"griffe": None}):
+        sections = parse_docstring_with_griffe("Some docstring")
+        assert sections == []
+
+
+def test_resolve_griffe_parser_has_rest() -> None:
+    """Test resolve_griffe_parser when griffe.Parser already has rest attribute."""
+    import griffe
+    from unittest.mock import patch
+    from ml_framework_snapshots.utils import resolve_griffe_parser
+
+    with patch.object(griffe.Parser, "rest", griffe.Parser.sphinx, create=True):
+        res = resolve_griffe_parser("rest")
+        assert res == griffe.Parser.sphinx
+
+
+def test_parse_docstring_with_griffe_parse_exception() -> None:
+    """Test parse_docstring_with_griffe when griffe.parse raises an exception."""
+    from unittest.mock import patch
+    from ml_framework_snapshots.utils import parse_docstring_with_griffe
+
+    with patch("griffe.parse", side_effect=ValueError("simulated parse error")):
+        res = parse_docstring_with_griffe("some docstring text")
+        assert res == []

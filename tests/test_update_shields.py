@@ -16,6 +16,7 @@ def test_get_test_coverage_success(mocker: Any) -> None:
     Args:
         mocker: Parameter.
     """
+    mocker.patch("os.path.exists", return_value=True)
     mock_run = mocker.patch("subprocess.run")
     mock_run.return_value.stdout = "TOTAL  100 0 100%\n"
     assert get_test_coverage() == "100"
@@ -29,6 +30,60 @@ def test_get_test_coverage_fail(mocker: Any) -> None:
     """
     mock_run = mocker.patch("subprocess.run")
     mock_run.return_value.stdout = "No total here"
+    assert get_test_coverage() == "unknown"
+
+
+def test_get_test_coverage_no_coverage_file(mocker: Any) -> None:
+    """Test get_test_coverage when .coverage file does not exist (branch 17->35).
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mocker.patch("os.path.exists", return_value=False)
+    mock_run = mocker.patch("subprocess.run")
+    mock_run.return_value.stdout = "TOTAL  100 0 100%\n"
+    assert get_test_coverage() == "100"
+
+
+def test_get_test_coverage_coverage_report_exception(mocker: Any) -> None:
+    """Test get_test_coverage when coverage report raises exception (lines 32-33).
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mocker.patch("os.path.exists", return_value=True)
+    mock_run = mocker.patch("subprocess.run")
+    mock_run.side_effect = [
+        Exception("coverage report failed"),
+        mocker.MagicMock(stdout="TOTAL  95 0 95%\n"),
+    ]
+    assert get_test_coverage() == "95"
+
+
+def test_get_test_coverage_coverage_report_no_match(mocker: Any) -> None:
+    """Test get_test_coverage when coverage report output has no match (branch 30->35).
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mocker.patch("os.path.exists", return_value=True)
+    mock_run = mocker.patch("subprocess.run")
+    mock_run.side_effect = [
+        mocker.MagicMock(stdout="No total here\n"),
+        mocker.MagicMock(stdout="TOTAL  88 0 88%\n"),
+    ]
+    assert get_test_coverage() == "88"
+
+
+def test_get_test_coverage_fallback_no_match(mocker: Any) -> None:
+    """Test get_test_coverage when fallback pytest output has no match (line 48).
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    mocker.patch("os.path.exists", return_value=False)
+    mock_run = mocker.patch("subprocess.run")
+    mock_run.return_value.stdout = "No match at all"
     assert get_test_coverage() == "unknown"
 
 

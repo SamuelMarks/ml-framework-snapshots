@@ -166,7 +166,7 @@ def S_MOV_B32 : SOP1_32 <"s_mov_b32">;
                     """
                     if "amd_rdna_exhaustive.json" in path:
                         return original_open(output_path, *args, **kwargs)
-                    return original_open(path, *args, **kwargs)  # pragma: no cover
+                    return original_open(path, *args, **kwargs)
 
                 mock_open.side_effect = open_side_effect
 
@@ -477,3 +477,11 @@ def test_fetch_td_file_local_dir(tmp_path: typing.Any) -> None:
         output_path=str(out_path), local_dir=str(tmp_path)
     )
     assert isinstance(res, list)
+
+
+def test_scrape_amd_rdna_main_entrypoint(mocker: typing.Any) -> None:
+    """Test running scrape_amd_rdna as __main__."""
+    import runpy
+
+    mocker.patch.object(scrape_amd_rdna, "main", return_value=None)
+    runpy.run_path(scrape_amd_rdna.__file__, run_name="__main__")

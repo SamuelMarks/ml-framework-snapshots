@@ -208,6 +208,10 @@ def test_init_db_and_index_snapshot_file(tmp_path: Any) -> None:
     db_file = str(tmp_path / "test.db")
     conn = init_db(db_file)
 
+    # Fallback to :memory: when path directory creation fails
+    conn_mem = init_db("/dev/null/forbidden_subdir/test.db")
+    assert conn_mem is not None
+
     # 1. Test indexing a non-existent file returns 0
     assert index_snapshot_file("non_existent.json", conn) == 0
 
@@ -361,7 +365,7 @@ def test_ensure_index_and_search_index(tmp_path: Any, monkeypatch: Any) -> None:
     assert results[0]["api_path"] == "torch.sum"
 
     # Query without framework or version
-    all_res = search_index("add", db_path=db_file)
+    all_res = search_index("torch.add", db_path=db_file)
     assert any(r.get("api_path") == "torch.add" for r in all_res)
 
     # Test corrupted json_data handling in search_index
@@ -376,6 +380,21 @@ def test_ensure_index_and_search_index(tmp_path: Any, monkeypatch: Any) -> None:
     conn.commit()
     bad_res = search_index("corrupt_unique_token", db_path=db_file)
     assert bad_res == []
+
+    # Test extract_framework_and_version with general underscore
+    fw_u, ver_u = extract_framework_and_version("customfw_customver.json")
+    assert fw_u == "customfw"
+    assert ver_u == "customver"
+
+    # Test indexing a .json.gz file
+    import gzip
+
+    gz_snap = str(snap_dir / "gztarget_v1.0.0.json.gz")
+    with gzip.open(gz_snap, "wt", encoding="utf-8") as gf:
+        json.dump([{"api_path": "gztarget.op", "name": "op", "kind": "function"}], gf)
+
+    indexed_count = index_snapshot_file(gz_snap, conn)
+    assert indexed_count == 1
 
 
 def test_lookup_symbol(tmp_path: Any) -> None:

@@ -834,3 +834,52 @@ def test_parse_stablehlo_tblgen_json_dump_alias() -> None:
     assert refs[0]["name"] == "subtract"
     assert refs[0]["api_path"] == "stablehlo.subtract"
     assert len(refs[0]["operands"]) == 2
+
+
+def test_build_stablehlo_snapshot_sys_path_insert() -> None:
+    """Test module reload when _src_dir is not in sys.path to cover sys.path insertion.
+
+    Returns:
+        None.
+    """
+    import importlib
+    from pathlib import Path
+    import sys
+
+    _src_dir = str(
+        Path(build_stablehlo_snapshot.__file__).resolve().parent.parent.parent
+    )
+    orig_path = list(sys.path)
+    try:
+        sys.path = [p for p in sys.path if p != _src_dir]
+        importlib.reload(build_stablehlo_snapshot)
+        assert _src_dir in sys.path
+    finally:
+        sys.path = orig_path
+
+
+def test_extract_ops_tablegen_failure_fallback(mocker: mock.MagicMock) -> None:
+    """Test extract_ops falls back to SPEC_URL when TABLEGEN_URL fails."""
+    mock_response = mock.MagicMock()
+    mock_response.read.return_value = (
+        b"# StableHLO Spec\n### abs\n#### Semantics\nAbs op.\n#### Inputs\n"
+        b"| (I1) | `x` | tensor | (C1) |\n#### Outputs\n| `res` | tensor | (C1) |\n"
+    )
+    mock_urlopen = mocker.patch(
+        "urllib.request.urlopen",
+        side_effect=[Exception("TableGen 404"), mock_response],
+    )
+    ops = build_stablehlo_snapshot.extract_ops()
+    assert len(ops) == 1
+    assert mock_urlopen.call_count == 2
+
+
+def test_main_entrypoint(mocker: mock.MagicMock) -> None:
+    """Test running build_stablehlo_snapshot as __main__."""
+    import runpy
+
+    mocker.patch.object(build_stablehlo_snapshot, "main", return_value=None)
+    runpy.run_path(
+        build_stablehlo_snapshot.__file__,
+        run_name="__main__",
+    )

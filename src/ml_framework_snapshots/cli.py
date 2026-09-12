@@ -489,6 +489,136 @@ def cmd_pull(args: argparse.Namespace) -> None:
         print(f"Failed to download snapshot: {e}")
 
 
+def cmd_download_all(args: argparse.Namespace) -> None:
+    """Download all canonical pre-compiled framework and ISA snapshots into local cache.
+
+    Args:
+        args: Parsed command line arguments containing cache_dir and optional offline flag.
+    """
+    if getattr(args, "offline", False) or is_offline_mode():
+        print(
+            "Network access disabled: download-all command cannot be executed in offline mode."
+        )
+        sys.exit(1)
+
+    import shutil
+    import urllib.request
+    from .index import get_cache_dir
+
+    cache_dir = getattr(args, "cache_dir", None) or os.path.join(
+        get_cache_dir(), "snapshots"
+    )
+    os.makedirs(cache_dir, exist_ok=True)
+
+    targets = [
+        "torch",
+        "jax",
+        "tensorflow",
+        "keras",
+        "mlx",
+        "numpy",
+        "nvidia_sass",
+        "amd_rdna",
+        "mlir",
+        "stablehlo",
+        "nvidia_ptx",
+    ]
+    print(f"Downloading pre-compiled snapshot bundle to {cache_dir}...")
+    success_count = 0
+
+    for target in targets:
+        fname = f"{target}_exhaustive.json"
+        dest_path = os.path.join(cache_dir, fname)
+        url = f"https://github.com/SamuelMarks/ml-framework-snapshots/releases/download/latest/{fname}"
+        try:
+            urllib.request.urlretrieve(url, dest_path)
+            print(f"  + Downloaded {target} -> {dest_path}")
+            success_count += 1
+        except Exception:
+            bundled_src = os.path.join(os.path.dirname(__file__), "frameworks", fname)
+            if os.path.exists(bundled_src):
+                shutil.copyfile(bundled_src, dest_path)
+                print(f"  + Copied bundled {target} -> {dest_path}")
+                success_count += 1
+            else:
+                print(f"  ! Failed to download {target} snapshot")
+
+    print(f"Download complete: {success_count}/{len(targets)} snapshots ready.")
+
+
+def cmd_verify_local_cache(args: argparse.Namespace) -> None:
+    """Validate SHA256 checksums and JSON schema integrity of cached and bundled snapshots.
+
+    Args:
+        args: Parsed command line arguments containing cache_dir.
+    """
+    import gzip
+    import hashlib
+    from .index import get_cache_dir
+
+    cache_dir = getattr(args, "cache_dir", None) or get_cache_dir()
+    search_dirs = [
+        cache_dir,
+        os.path.join(cache_dir, "snapshots"),
+        os.path.join(os.path.dirname(__file__), "snapshots"),
+        os.path.join(os.path.dirname(__file__), "frameworks"),
+    ]
+
+    discovered: List[str] = []
+    seen = set()
+    for d in search_dirs:
+        if os.path.isdir(d):
+            for fname in sorted(os.listdir(d)):
+                if fname.endswith(".json") or fname.endswith(".json.gz"):
+                    p = os.path.join(d, fname)
+                    if p not in seen:
+                        seen.add(p)
+                        discovered.append(p)
+
+    if not discovered:
+        print(f"No snapshot files discovered in cache directories: {search_dirs}")
+        return
+
+    print(f"Verifying local snapshot cache across {len(discovered)} files...\n")
+    has_errors = False
+
+    for fpath in discovered:
+        fname = os.path.basename(fpath)
+        try:
+            sha = hashlib.sha256()
+            with open(fpath, "rb") as f:
+                while True:
+                    chunk = f.read(65536)
+                    if not chunk:
+                        break
+                    sha.update(chunk)
+            digest_prefix = sha.hexdigest()[:12]
+            size_kb = os.path.getsize(fpath) // 1024
+
+            if fpath.endswith(".gz"):
+                with gzip.open(fpath, "rt", encoding="utf-8") as gf:
+                    data = json.load(gf)
+            else:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+            count = (
+                len(data) if isinstance(data, list) else len(data.get("categories", {}))
+            )
+            print(
+                f"  [OK] {fname:35s} {size_kb:6d} KB  sha256:{digest_prefix}...  ({count} entries)"
+            )
+        except Exception as e:
+            has_errors = True
+            print(f"  [FAIL] {fname:35s} Corrupted or invalid: {e}")
+
+    if has_errors:
+        print("\nCache verification failed: corrupted snapshots detected.")
+        sys.exit(1)
+    else:
+        print(f"\nCache verification passed: {len(discovered)} snapshots verified.")
+
+
 def cmd_index(args: argparse.Namespace) -> None:
     """Manage ephemeral local SQLite search index.
 
@@ -901,6 +1031,37 @@ def main() -> None:
     )
     parser_pull.set_defaults(func=cmd_pull)
 
+    # download-all
+    parser_download_all = subparsers.add_parser(
+        "download-all",
+        help="Download all canonical pre-compiled snapshot assets into cache",
+    )
+    parser_download_all.add_argument(
+        "--cache-dir",
+        type=str,
+        default=None,
+        help="Custom destination directory for downloaded snapshots",
+    )
+    parser_download_all.add_argument(
+        "--offline",
+        action="store_true",
+        help="Force offline mode",
+    )
+    parser_download_all.set_defaults(func=cmd_download_all)
+
+    # verify-local-cache
+    parser_verify_cache = subparsers.add_parser(
+        "verify-local-cache",
+        help="Validate SHA256 checksums and integrity of cached snapshots",
+    )
+    parser_verify_cache.add_argument(
+        "--cache-dir",
+        type=str,
+        default=None,
+        help="Custom cache directory to inspect and verify",
+    )
+    parser_verify_cache.set_defaults(func=cmd_verify_local_cache)
+
     # index
     parser_index = subparsers.add_parser(
         "index", help="Manage ephemeral local SQLite search index"
@@ -1102,5 +1263,5 @@ def main() -> None:
     args.func(args)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

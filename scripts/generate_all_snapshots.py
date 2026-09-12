@@ -2,7 +2,12 @@
 
 import os
 import sys
-from ml_framework_snapshots.api import (
+
+_src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+from ml_framework_snapshots.api import (  # noqa: E402
     extract_snapshot,
     extract_snapshot_isolated,
     write_snapshot,
@@ -68,5 +73,5 @@ def main() -> None:
         sys.exit(1)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

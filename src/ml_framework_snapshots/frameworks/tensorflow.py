@@ -14,7 +14,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 
 try:
     import tensorflow as tf
-except ImportError:  # pragma: no cover
+except ImportError:
     tf = None
 
 
@@ -147,7 +147,7 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                             results.append(
                                 GhostInspector.inspect(obj, f"tf.math.{name}")
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
             if hasattr(tf, "linalg"):
                 for name, obj in get_all_members(tf.linalg):
@@ -158,7 +158,7 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                             results.append(
                                 GhostInspector.inspect(obj, f"tf.linalg.{name}")
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
             top_level_tensor_ops = [
@@ -185,7 +185,7 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                     if callable(obj):
                         try:
                             results.append(GhostInspector.inspect(obj, f"tf.{name}"))
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
             for name, obj in get_all_members(tf):
@@ -199,7 +199,7 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                     ):
                         try:
                             results.append(GhostInspector.inspect(obj, f"tf.{name}"))
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
             if hasattr(tf, "raw_ops"):
@@ -210,7 +210,7 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                                 results.append(
                                     GhostInspector.inspect(obj, f"tf.raw_ops.{name}")
                                 )
-                            except Exception:  # pragma: no cover
+                            except Exception:
                                 pass
 
             # tf.Tensor and tf.Variable member methods
@@ -227,7 +227,7 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                                     obj, f"tf.Tensor.{name}", kind="method"
                                 )
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
             if hasattr(tf, "Variable"):
@@ -243,7 +243,7 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                                     obj, f"tf.Variable.{name}", kind="method"
                                 )
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
         if category in (SemanticTier.ARRAY_API, SemanticTier.UTIL) and hasattr(
@@ -257,10 +257,10 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                         ref = GhostInspector.inspect(obj, f"tf.raw_ops.{name}")
                         ref.environment_tags.append("tf.raw_op")
                         results.append(ref)
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
-    except Exception:  # pragma: no cover
+    except Exception:
         pass
 
     return results

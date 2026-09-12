@@ -11,7 +11,7 @@ try:
     import numpy as _np
 
     np: typing.Any = _np
-except ImportError:  # pragma: no cover
+except ImportError:
     np = None
 
 
@@ -33,8 +33,8 @@ def collect_api(
 
     if category == SemanticTier.ACTIVATION:
         # Numpy doesn't have an "activation" module per se, but we can capture basic math ops
-        for name in ["tanh", "exp", "maximum", "minimum"]:  # pragma: no branch
-            if hasattr(np, name):  # pragma: no branch
+        for name in ["tanh", "exp", "maximum", "minimum"]:
+            if hasattr(np, name):
                 obj = getattr(np, name)
                 if callable(obj):
                     try:
@@ -97,7 +97,7 @@ def collect_api(
                             obj, f"numpy.{name}", is_public=True
                         )
                         results.append(res)
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
         # Introspect numpy.linalg.*
@@ -112,7 +112,7 @@ def collect_api(
                                     obj, f"numpy.linalg.{name}", is_public=True
                                 )
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
         # Introspect numpy.fft.*
@@ -127,6 +127,6 @@ def collect_api(
                                     obj, f"numpy.fft.{name}", is_public=True
                                 )
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
     return results

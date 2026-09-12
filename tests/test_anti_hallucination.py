@@ -2280,6 +2280,10 @@ def test_framework_agnostic_dtype_validation(mocker: Any) -> None:
         "ml_framework_snapshots.mcp_server.get_framework_snapshot",
         return_value=mock_snap_dtypes,
     )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        return_value=None,
+    )
 
     # Valid call using jnp dtypes
     res_valid = check_hallucination(

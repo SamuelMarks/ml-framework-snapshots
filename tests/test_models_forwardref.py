@@ -20,7 +20,7 @@ def forward(x: "TensorRef") -> "TensorRef":
     Returns:
         Return value.
     """
-    return x  # pragma: no cover
+    return x
 
 
 sys.modules[__name__].TensorRef = TensorRef  # type: ignore

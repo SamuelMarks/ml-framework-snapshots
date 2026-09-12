@@ -97,7 +97,7 @@ def test_scrape_nvidia_sass() -> None:
                     return original_open(input_path, *args, **kwargs)
                 if "nvidia_sass_exhaustive.json" in path:
                     return original_open(output_path, *args, **kwargs)
-                return original_open(path, *args, **kwargs)  # pragma: no cover
+                return original_open(path, *args, **kwargs)
 
             mock_open.side_effect = side_effect
 

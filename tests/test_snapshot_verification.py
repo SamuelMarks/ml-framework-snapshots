@@ -11,7 +11,7 @@ import json
 import os
 from typing import Any, Dict, List
 
-from ml_framework_snapshots.models import GhostRef
+from ml_framework_snapshots.models import GhostInspector, GhostRef
 
 
 def _get_all_json_snapshots() -> List[str]:
@@ -66,7 +66,6 @@ def test_no_raw_unparsed_tokens() -> None:
         "???0",
         "AttributeOperand",
         "DescOperand",
-        "<class '",
     ]
 
     for json_path in _get_all_json_snapshots():
@@ -77,6 +76,21 @@ def test_no_raw_unparsed_tokens() -> None:
             assert (
                 token not in content
             ), f"Found banned token '{token}' in snapshot {os.path.basename(json_path)}"
+
+        # Ensure <class ' does not leak into types, parameter annotations, or defaults
+        for item in _load_snapshot_items(json_path):
+            if isinstance(item, dict):
+                assert (
+                    "<class '" not in str(item.get("returns_type", ""))
+                ), f"Leaked type representation in returns_type of {item.get('api_path')}"
+                for p in item.get("params", []):
+                    if isinstance(p, dict):
+                        assert (
+                            "<class '" not in str(p.get("annotation", ""))
+                        ), f"Leaked type representation in annotation of parameter {p.get('name')}"
+                        assert (
+                            "<class '" not in str(p.get("default", ""))
+                        ), f"Leaked type representation in default of parameter {p.get('name')}"
 
 
 def test_no_uniform_duplicate_operands_rdna() -> None:
@@ -218,7 +232,11 @@ def test_schema_validity_all_snapshots() -> None:
                     or "class_name" in item
                 )
             else:
-                validated = GhostRef.model_validate(item)
+                validated = (
+                    GhostRef.model_validate(item)
+                    if "kind" in item
+                    else GhostInspector.hydrate(item)
+                )
                 assert validated.name is not None
 
 

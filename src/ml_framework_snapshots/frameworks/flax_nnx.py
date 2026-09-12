@@ -19,8 +19,8 @@ import typing
 try:
     import flax.nnx as _nnx
 
-    nnx: typing.Any = _nnx  # pragma: no cover
-except ImportError:  # pragma: no cover
+    nnx: typing.Any = _nnx
+except ImportError:
     nnx = None
 
 
@@ -49,9 +49,9 @@ def _scan_nnx_layers(include_nonpublic: bool) -> List[GhostRef]:
                 try:
                     if issubclass(obj, nnx.Module):
                         found.append(GhostInspector.inspect(obj, f"flax.nnx.{name}"))
-                except TypeError:  # pragma: no cover
+                except TypeError:
                     pass
-    except Exception:  # pragma: no cover
+    except Exception:
         pass
 
     return found

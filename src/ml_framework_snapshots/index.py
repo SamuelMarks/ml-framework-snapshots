@@ -5,6 +5,7 @@ snapshot JSON files, enabling sub-millisecond lookups and fuzzy searches
 without loading multi-megabyte JSON trees into memory.
 """
 
+import gzip
 import hashlib
 import json
 import os
@@ -200,7 +201,9 @@ def extract_framework_and_version(file_name: str) -> Tuple[str, str]:
         Tuple of (framework, version).
     """
     base = file_name
-    if base.endswith(".json"):
+    if base.endswith(".json.gz"):
+        base = base[:-8]
+    elif base.endswith(".json"):
         base = base[:-5]
 
     if "_v" in base:
@@ -239,8 +242,12 @@ def index_snapshot_file(json_path: str, conn: sqlite3.Connection) -> int:
     if row and row["file_hash"] == file_hash:
         return 0
 
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    if json_path.endswith(".gz"):
+        with gzip.open(json_path, "rt", encoding="utf-8") as gf:
+            data = json.load(gf)
+    else:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
     file_name = os.path.basename(json_path)
     framework, version = extract_framework_and_version(file_name)
@@ -329,7 +336,7 @@ def get_available_snapshot_files() -> List[str]:
     for sdir in search_dirs:
         if os.path.isdir(sdir):
             for fname in sorted(os.listdir(sdir)):
-                if fname.endswith(".json"):
+                if fname.endswith(".json") or fname.endswith(".json.gz"):
                     found.append(os.path.join(sdir, fname))
     return found
 

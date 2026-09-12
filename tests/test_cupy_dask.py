@@ -38,15 +38,15 @@ def test_cupy_collect(mocker: Any) -> None:
     # Mock cp
     def fake_tanh() -> None:
         """Fake tanh function."""
-        pass  # pragma: no cover
+        pass
 
     def fake_exp() -> None:
         """Fake exp function."""
-        pass  # pragma: no cover
+        pass
 
     def fake_private() -> None:
         """Fake private function."""
-        pass  # pragma: no cover
+        pass
 
     fake_cp = create_module(
         "cupy",
@@ -116,11 +116,11 @@ def test_dask_collect(mocker: Any) -> None:
 
     def fake_func() -> None:
         """Fake function."""
-        pass  # pragma: no cover
+        pass
 
     def fake_private() -> None:
         """Fake private function."""
-        pass  # pragma: no cover
+        pass
 
     fake_da = create_module(
         "dask.array",
@@ -181,7 +181,7 @@ def test_cupy_import_success(mocker: Any) -> None:
     mocker.patch.dict(sys.modules, {"cupy": fake_cupy})
 
     # Reload framework to trigger the try block successfully
-    if "ml_framework_snapshots.frameworks.cupy" in sys.modules:  # pragma: no branch
+    if "ml_framework_snapshots.frameworks.cupy" in sys.modules:
         del sys.modules["ml_framework_snapshots.frameworks.cupy"]
 
     import ml_framework_snapshots.frameworks.cupy as c_fw
@@ -198,7 +198,7 @@ def test_cupy_import_error(mocker: Any) -> None:
     import sys
 
     mocker.patch.dict(sys.modules, {"cupy": None})
-    if "ml_framework_snapshots.frameworks.cupy" in sys.modules:  # pragma: no branch
+    if "ml_framework_snapshots.frameworks.cupy" in sys.modules:
         del sys.modules["ml_framework_snapshots.frameworks.cupy"]
 
     import ml_framework_snapshots.frameworks.cupy as c_fw
@@ -207,17 +207,29 @@ def test_cupy_import_error(mocker: Any) -> None:
 
 
 def test_dask_import_error(mocker: Any) -> None:
-    """Test dask import logic when module is not available.
+    """Test dask import logic when module is available and unavailable.
 
     Args:
         mocker: Parameter.
     """
+    import importlib
     import sys
-
-    mocker.patch.dict(sys.modules, {"dask.array": None, "dask": None})
-    if "ml_framework_snapshots.frameworks.dask" in sys.modules:  # pragma: no branch
-        del sys.modules["ml_framework_snapshots.frameworks.dask"]
-
+    import types
     import ml_framework_snapshots.frameworks.dask as d_fw
 
+    # 1. Available
+    fake_dask = types.ModuleType("dask")
+    fake_da = types.ModuleType("dask.array")
+    mocker.patch.dict(sys.modules, {"dask": fake_dask, "dask.array": fake_da})
+    importlib.reload(d_fw)
+    assert d_fw.da is fake_da
+
+    # 2. Unavailable
+    mocker.patch.dict(sys.modules, {"dask": None, "dask.array": None})
+    importlib.reload(d_fw)
     assert d_fw.da is None
+    assert d_fw.collect_api(SemanticTier.UTIL) == []
+
+    # Restore
+    mocker.stopall()
+    importlib.reload(d_fw)

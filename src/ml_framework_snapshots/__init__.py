@@ -18,6 +18,6 @@ try:
     )
 
     __all__ = ["extract_snapshot", "extract_all_snapshots", "write_snapshot"]
-except ImportError:  # pragma: no cover
+except ImportError:
     # Handle the case where the package is installed without 'generate' dependencies.
     __all__ = []

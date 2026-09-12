@@ -1317,3 +1317,82 @@ res5 = th.add(x, y, invalid_kw=123)
     assert rep["is_valid"] is False
     hallucinated_lines = [f["line"] for f in rep["findings"]]
     assert len(hallucinated_lines) == 3
+
+
+def test_check_hallucination_known_enums_without_allowed_values(
+    mocker: Any,
+) -> None:
+    """Test check_hallucination flags invalid values using known_enums when parameter lacks allowed_values (line 777).
+
+    Args:
+        mocker: Pytest mocker fixture.
+
+    Returns:
+        None.
+    """
+    from ml_framework_snapshots.mcp_server import check_hallucination
+
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_api_signature",
+        return_value={
+            "name": "custom_op",
+            "api_path": "custom.custom_op",
+            "params": [{"name": "reduction", "kind": "KEYWORD_ONLY"}],
+        },
+    )
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_framework_snapshot",
+        return_value={"categories": {"ops": []}},
+    )
+
+    res = check_hallucination(
+        "custom",
+        "custom.custom_op",
+        kwarg_values={"reduction": "invalid_reduction_mode"},
+    )
+    assert res["is_hallucinated"] is True
+    assert (
+        "Invalid enum value 'invalid_reduction_mode' for parameter 'reduction'"
+        in res["reason"]
+    )
+
+
+def test_run_mcp_server_parse_error() -> None:
+    """Test run_mcp_server handles malformed JSON input and returns JSON-RPC parse error."""
+    import io
+    from ml_framework_snapshots.mcp_server import run_mcp_server
+
+    in_stream = io.StringIO("not-valid-json\n")
+    out_stream = io.StringIO()
+
+    run_mcp_server(input_stream=in_stream, output_stream=out_stream)
+    output = out_stream.getvalue().strip()
+    assert output
+    resp = json.loads(output)
+    assert resp["jsonrpc"] == "2.0"
+    assert resp["id"] is None
+    assert resp["error"]["code"] == -32700
+    assert "Parse error" in resp["error"]["message"]
+
+
+def test_get_framework_snapshot_corrupt_file(tmp_path: Any, monkeypatch: Any) -> None:
+    """Test get_framework_snapshot exception handling when reading corrupt snapshot file.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    from ml_framework_snapshots.mcp_server import (
+        _SNAPSHOT_CACHE,
+        get_framework_snapshot,
+    )
+
+    _SNAPSHOT_CACHE.clear()
+    custom_dir = tmp_path / "custom_snaps"
+    custom_dir.mkdir()
+    corrupt_file = custom_dir / "corruptfw_v1.0.json"
+    corrupt_file.write_text("{corrupted json content")
+
+    monkeypatch.setenv("ML_SNAPSHOTS_PATH", str(custom_dir))
+    snap = get_framework_snapshot("corruptfw", version="1.0")
+    assert snap is not None

@@ -15,7 +15,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 try:
     import sklearn
     from sklearn.base import BaseEstimator
-except ImportError:  # pragma: no cover
+except ImportError:
     sklearn = None
     BaseEstimator = None
 
@@ -90,7 +90,7 @@ def collect_api(
 
     """
     global sklearn
-    if not sklearn:  # pragma: no cover
+    if not sklearn:
         return []
 
     results = []

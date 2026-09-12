@@ -160,3 +160,15 @@ scripts/fix_docs.py
 
 # JSON snapshots & metadata (packaged into wheels and GitHub releases, never tracked in git)
 *.json
+*.json.gz
+*.jsonl
+*.jsonl.gz
+src/ml_framework_snapshots/snapshots/*.json
+src/ml_framework_snapshots/snapshots/*.json.gz
+src/ml_framework_snapshots/frameworks/*.json
+src/ml_framework_snapshots/frameworks/*.json.gz
+src/ml_framework_snapshots/concept_map.json
+matrix_snapshots/**/*.json
+matrix_snapshots/**/*.json.gz
+dist_snapshots/
+downloaded_snapshots/

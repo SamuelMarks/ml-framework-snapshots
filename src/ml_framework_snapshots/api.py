@@ -66,13 +66,11 @@ def get_available_frameworks() -> Dict[str, Any]:
                     # Derive a reasonable identifier based on the module or function name
                     if name == "collect_api":
                         identifier = module_name
-                    elif name.startswith("collect_"):  # pragma: no branch
+                    else:
                         identifier = f"{module_name}_{name[8:]}"
-                    else:  # pragma: no cover
-                        continue
 
                     collectors[identifier] = obj
-        except Exception:  # pragma: no branch
+        except Exception:
             pass
 
     # Legacy mapping mapping shortnames to correct functions
@@ -408,7 +406,7 @@ def extract_snapshot(
                     d["kwargs"] = kwargs_list
                     dumped_refs.append(d)
                 return cat.value, dumped_refs
-        except Exception:  # pragma: no branch
+        except Exception:
             pass
         return cat.value, []
 

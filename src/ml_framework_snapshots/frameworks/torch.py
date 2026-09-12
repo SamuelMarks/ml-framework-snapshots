@@ -18,13 +18,13 @@ import typing
 try:
     import torch  # noqa: F401
     import torch.nn as _nn
-    import torch.optim as _optim  # pragma: no cover
-    import torch.utils.data as _data  # pragma: no cover
+    import torch.optim as _optim
+    import torch.utils.data as _data
 
-    nn: typing.Any = _nn  # pragma: no cover
-    optim: typing.Any = _optim  # pragma: no cover
-    data: typing.Any = _data  # pragma: no cover
-except (ImportError, RuntimeError):  # pragma: no cover
+    nn: typing.Any = _nn
+    optim: typing.Any = _optim
+    data: typing.Any = _data
+except (ImportError, RuntimeError):
     nn = None
     optim = None
     data = None
@@ -50,7 +50,7 @@ def _scan_losses(include_nonpublic: bool) -> List[GhostRef]:
             try:
                 if issubclass(obj, nn.Module):
                     found.append(GhostInspector.inspect(obj, f"torch.nn.{name}"))
-            except TypeError:  # pragma: no cover
+            except TypeError:
                 pass
     return found
 
@@ -75,7 +75,7 @@ def _scan_optimizers(include_nonpublic: bool) -> List[GhostRef]:
             try:
                 if issubclass(obj, optim.Optimizer):
                     found.append(GhostInspector.inspect(obj, f"torch.optim.{name}"))
-            except TypeError:  # pragma: no cover
+            except TypeError:
                 pass
     return found
 
@@ -130,7 +130,7 @@ def _scan_activations(include_nonpublic: bool) -> List[GhostRef]:
             try:
                 if issubclass(obj, nn.Module) and name in target_activations:
                     found.append(GhostInspector.inspect(obj, f"torch.nn.{name}"))
-            except TypeError:  # pragma: no cover
+            except TypeError:
                 pass
     return found
 
@@ -158,7 +158,7 @@ def _scan_layers(include_nonpublic: bool) -> List[GhostRef]:
                 if issubclass(obj, nn.Module):
                     if not name.endswith("Loss") and name not in target_activations:
                         found.append(GhostInspector.inspect(obj, f"torch.nn.{name}"))
-            except TypeError:  # pragma: no cover
+            except TypeError:
                 pass
     return found
 
@@ -225,7 +225,7 @@ def _scan_metrics(include_nonpublic: bool) -> List[GhostRef]:
             if inspect.isclass(obj) and (include_nonpublic or not name.startswith("_")):
                 try:
                     found.append(GhostInspector.inspect(obj, f"torchmetrics.{name}"))
-                except Exception:  # pragma: no cover
+                except Exception:
                     pass
     except ImportError:
         pass
@@ -280,7 +280,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
             if callable(obj) and not inspect.isclass(obj) and not inspect.ismodule(obj):
                 try:
                     found.append(GhostInspector.inspect(obj, f"torch.{name}"))
-                except Exception:  # pragma: no cover
+                except Exception:
                     pass
 
         # 2. linalg module
@@ -295,7 +295,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                         found.append(
                             GhostInspector.inspect(obj, f"torch.linalg.{name}")
                         )
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
         # 3. special module
@@ -310,7 +310,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                         found.append(
                             GhostInspector.inspect(obj, f"torch.special.{name}")
                         )
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
         # 4. fft module
@@ -322,7 +322,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                             found.append(
                                 GhostInspector.inspect(obj, f"torch.fft.{name}")
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
         # 5. Exhaustive nn.functional module
@@ -336,7 +336,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                                     obj, f"torch.nn.functional.{name}"
                                 )
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
         # 6. autograd functions
@@ -348,7 +348,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                             found.append(
                                 GhostInspector.inspect(obj, f"torch.autograd.{name}")
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
         # 7. distributed functions
@@ -360,7 +360,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                             found.append(
                                 GhostInspector.inspect(obj, f"torch.distributed.{name}")
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
         # 8. torch.Tensor instance methods
@@ -374,16 +374,16 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                             obj, f"torch.Tensor.{name}", kind="method"
                         )
                         is_in_place = name.endswith("_") and not name.startswith("__")
-                        if ref.domain_metadata is None:  # pragma: no cover
+                        if ref.domain_metadata is None:
                             ref.domain_metadata = {}
                         ref.domain_metadata["is_in_place"] = is_in_place
                         if is_in_place:
-                            if ref.environment_tags is None:  # pragma: no cover
+                            if ref.environment_tags is None:
                                 ref.environment_tags = []
                             if "in_place_mutation" not in ref.environment_tags:
                                 ref.environment_tags.append("in_place_mutation")
                         found.append(ref)
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
         # 9. torch.ops.aten operations
@@ -395,7 +395,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                             found.append(
                                 GhostInspector.inspect(obj, f"torch.ops.aten.{name}")
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
     except ImportError:
@@ -651,7 +651,7 @@ def get_jit_schemas_for_op(op_name: str) -> List[Dict[str, Any]]:
 
         if not hasattr(torch, "_C") or not hasattr(torch._C, "_jit_get_all_schemas"):
             return []
-    except Exception:  # pragma: no cover
+    except Exception:
         return []
 
     clean_op = op_name.split(".")[-1]
@@ -731,7 +731,7 @@ def get_aten_op_schema(op_name: str) -> Optional[List[Dict[str, Any]]]:
     """
     try:
         import torch
-    except ImportError:  # pragma: no cover
+    except ImportError:
         return None
 
     clean_op = op_name.split(".")[-1]

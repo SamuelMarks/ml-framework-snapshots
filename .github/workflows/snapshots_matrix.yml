@@ -60,7 +60,7 @@ jobs:
         cp -r ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir 2>/dev/null || mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.0.1
+      uses: astral-sh/setup-uv@v10.1.0
       with:
         version: "latest"
 

@@ -826,3 +826,152 @@ def test_cmd_index_cache_clean(capsys: Any, mocker: Any) -> None:
     main()
     captured = capsys.readouterr()
     assert "Cleared index database at /tmp/test_cache.db" in captured.out
+
+
+def test_cmd_download_all(capsys: Any, mocker: Any, tmp_path: Any) -> None:
+    """Test download-all CLI subcommand under online and offline modes.
+
+    Args:
+        capsys: Pytest capsys fixture.
+        mocker: Pytest mocker fixture.
+        tmp_path: Pytest temporary directory fixture.
+    """
+    from ml_framework_snapshots.cli import cmd_download_all, main
+    import argparse
+    import pytest
+
+    cache_dir = str(tmp_path / "download_cache")
+
+    # 1. Test offline mode exits
+    args_offline = argparse.Namespace(offline=True, cache_dir=cache_dir)
+    with pytest.raises(SystemExit):
+        cmd_download_all(args_offline)
+    captured_offline = capsys.readouterr()
+    assert "Network access disabled" in captured_offline.out
+
+    # 2. Test online mode with mock download success
+    mocker.patch("urllib.request.urlretrieve", return_value=None)
+    args_online = argparse.Namespace(offline=False, cache_dir=cache_dir)
+    cmd_download_all(args_online)
+    captured_success = capsys.readouterr()
+    assert "Downloaded" in captured_success.out
+
+    # 2b. Test online mode with network failure fallback to bundled copy
+    mocker.patch("urllib.request.urlretrieve", side_effect=Exception("network down"))
+    cmd_download_all(args_online)
+    captured_online = capsys.readouterr()
+    assert "Downloading pre-compiled snapshot bundle" in captured_online.out
+    assert "Download complete" in captured_online.out
+
+    # 2c. Test online mode when bundled copy also fails
+    mocker.patch("ml_framework_snapshots.cli.os.path.exists", return_value=False)
+    cmd_download_all(args_online)
+    captured_fail = capsys.readouterr()
+    assert "Failed to download" in captured_fail.out
+
+    # 3. Test main dispatch
+    mocker.patch(
+        "sys.argv",
+        ["ml_framework_snapshots", "download-all", "--cache-dir", cache_dir],
+    )
+    main()
+    captured_dispatch = capsys.readouterr()
+    assert "Download complete" in captured_dispatch.out
+
+
+def test_cmd_verify_local_cache(capsys: Any, mocker: Any, tmp_path: Any) -> None:
+    """Test verify-local-cache CLI subcommand.
+
+    Args:
+        capsys: Pytest capsys fixture.
+        mocker: Pytest mocker fixture.
+        tmp_path: Pytest temporary directory fixture.
+    """
+    import gzip
+    from ml_framework_snapshots.cli import cmd_verify_local_cache, main
+    import argparse
+    import json
+    import pytest
+
+    empty_dir = str(tmp_path / "empty_cache")
+    os.makedirs(empty_dir, exist_ok=True)
+
+    # 1. Empty cache directory
+    mocker.patch("ml_framework_snapshots.cli.os.path.isdir", return_value=False)
+    args_empty = argparse.Namespace(cache_dir=empty_dir)
+    cmd_verify_local_cache(args_empty)
+    captured_empty = capsys.readouterr()
+    assert "No snapshot files discovered" in captured_empty.out
+
+    # 2. Valid cache directory with json, json.gz, and non-json file
+    valid_dir = str(tmp_path / "valid_cache")
+    os.makedirs(valid_dir, exist_ok=True)
+    with open(os.path.join(valid_dir, "test_snap.json"), "w") as f:
+        json.dump([{"name": "test_op"}], f)
+    with open(os.path.join(valid_dir, "ignore.txt"), "w") as f:
+        f.write("text")
+    gz_path = os.path.join(valid_dir, "test_snap2.json.gz")
+    with gzip.open(gz_path, "wt", encoding="utf-8") as gf:
+        json.dump({"categories": {"ops": [{"name": "op1"}]}}, gf)
+
+    mocker.patch(
+        "ml_framework_snapshots.cli.os.path.isdir", side_effect=lambda d: d == valid_dir
+    )
+    args_valid = argparse.Namespace(cache_dir=valid_dir)
+    cmd_verify_local_cache(args_valid)
+    captured_valid = capsys.readouterr()
+    assert "Cache verification passed" in captured_valid.out
+
+    # 2b. Test duplicate directory triggering seen branch
+    import ml_framework_snapshots.cli as cli_mod
+
+    fw_dir = os.path.join(os.path.dirname(cli_mod.__file__), "frameworks")
+    mocker.patch(
+        "ml_framework_snapshots.cli.os.path.isdir",
+        side_effect=lambda d: d in (valid_dir, fw_dir),
+    )
+    args_dup = argparse.Namespace(cache_dir=fw_dir)
+    cmd_verify_local_cache(args_dup)
+    captured_dup = capsys.readouterr()
+    assert "Cache verification passed" in captured_dup.out
+
+    # 3. Corrupted cache file
+    corrupt_dir = str(tmp_path / "corrupt_cache")
+    os.makedirs(corrupt_dir, exist_ok=True)
+    with open(os.path.join(corrupt_dir, "bad_snap.json"), "w") as f:
+        f.write("{invalid_json")
+
+    mocker.patch(
+        "ml_framework_snapshots.cli.os.path.isdir",
+        side_effect=lambda d: d == corrupt_dir,
+    )
+    args_corrupt = argparse.Namespace(cache_dir=corrupt_dir)
+    with pytest.raises(SystemExit):
+        cmd_verify_local_cache(args_corrupt)
+    captured_corrupt = capsys.readouterr()
+    assert "Cache verification failed" in captured_corrupt.out
+
+    # 4. Main dispatch
+    mocker.patch(
+        "sys.argv",
+        ["ml_framework_snapshots", "verify-local-cache", "--cache-dir", valid_dir],
+    )
+    mocker.patch(
+        "ml_framework_snapshots.cli.os.path.isdir", side_effect=lambda d: d == valid_dir
+    )
+    main()
+    captured_main = capsys.readouterr()
+    assert "Cache verification passed" in captured_main.out
+
+
+def test_cli_main_entrypoint(mocker: Any) -> None:
+    """Test running cli as __main__.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    import runpy
+    from ml_framework_snapshots import cli
+
+    mocker.patch("sys.argv", ["ml_framework_snapshots", "list-snapshots"])
+    runpy.run_path(cli.__file__, run_name="__main__")

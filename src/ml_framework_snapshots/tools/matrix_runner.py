@@ -94,8 +94,8 @@ def upload_to_s3(directory: Path, bucket: str) -> None:
 
         s3 = boto3.client("s3")
         for root, dirs, files in os.walk(directory):
-            for file in files:  # pragma: no branch
-                if file.endswith(".json"):  # pragma: no branch
+            for file in files:
+                if file.endswith(".json"):
                     local_path = os.path.join(root, file)
                     rel_path = os.path.relpath(local_path, directory)
                     s3_key = f"snapshots/{rel_path}"
@@ -138,5 +138,5 @@ def main() -> None:
         upload_to_s3(out_dir, args.s3_bucket)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

@@ -38,7 +38,7 @@ def collect_api(
             continue
 
         obj = getattr(mod, name, None)
-        if obj is None:  # pragma: no cover
+        if obj is None:
             continue
 
         obj_cat = SemanticTier.MODEL if "Session" in name else SemanticTier.UTIL
@@ -46,13 +46,13 @@ def collect_api(
         if obj_cat == category:
             try:
                 ref = inspector.inspect(obj, f"onnxruntime.{name}")
-                if ref:  # pragma: no branch
+                if ref:
                     # Introspect execution providers from the signature or dynamically
                     # Usually providers is a kwarg in InferenceSession.__init__
-                    if name == "InferenceSession":  # pragma: no branch
+                    if name == "InferenceSession":
                         # Ensure 'providers' is in parameters
                         has_providers = any(p.name == "providers" for p in ref.params)
-                        if not has_providers:  # pragma: no branch
+                        if not has_providers:
                             from ml_switcheroo_ir.schema.ghost import GhostParam
 
                             ref.params.append(
@@ -64,7 +64,7 @@ def collect_api(
                                 )
                             )
                     results.append(ref)
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
     return results

@@ -10,7 +10,7 @@ import typing
 try:
     import dask.array as _da
 
-    da: typing.Any = _da  # pragma: no cover
+    da: typing.Any = _da
 except ImportError:
     da = None
 

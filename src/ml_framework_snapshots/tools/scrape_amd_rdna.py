@@ -525,5 +525,5 @@ def main() -> None:
     scrape_amd_rdna()
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

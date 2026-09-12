@@ -15,7 +15,7 @@ def some_function(a: int = 1, b: str = "test", *args: Any, **kwargs: Any) -> Non
         args: description
         kwargs: description
     """
-    pass  # pragma: no cover
+    pass
 
 
 class SomeClass:
@@ -32,7 +32,7 @@ class SomeClass:
             x: Parameter.
             y: Parameter.
         """
-        pass  # pragma: no cover
+        pass
 
 
 def test_ghost_inspector_cdd_function() -> None:

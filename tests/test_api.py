@@ -55,9 +55,9 @@ def test_get_all_members() -> None:
             """
             if name == "broken_all" or name == "broken_dir":
                 raise Exception("simulated error")
-            if name in self._cache:  # pragma: no branch
+            if name in self._cache:
                 return self._cache[name]
-            raise AttributeError(name)  # pragma: no cover
+            raise AttributeError(name)
 
     lazy_mod = LazyModule()
     members = dict(get_all_members(lazy_mod))
@@ -223,11 +223,11 @@ def test_get_available_frameworks_discovery() -> None:
                 m.collect_api = lambda *args: []
                 m.collect_test_api = lambda *args: []
                 return m
-            elif name.endswith("other_mod"):  # pragma: no branch
+            elif name.endswith("other_mod"):
                 m = MagicMock()
                 m.collect_other = lambda *args: []
                 return m
-            return MagicMock()  # pragma: no cover
+            return MagicMock()
 
         with patch("importlib.import_module", side_effect=mock_import):
             res = get_available_frameworks()
@@ -525,6 +525,20 @@ def test_get_pkg_version_fallback() -> None:
             )
             assert get_pkg_version("some_package") == "unknown"
 
+        # Non-matching line followed by matching line (branch 238->234)
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value = mock.MagicMock(
+                stdout="unrelated-pkg==1.0.0\nsome-package==1.2.3\n"
+            )
+            assert get_pkg_version("some_package") == "1.2.3"
+
+        # Loop finishes without match (branch 234->242)
+        with mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value = mock.MagicMock(
+                stdout="unrelated-pkg==1.0.0\nanother-pkg==2.0.0\n"
+            )
+            assert get_pkg_version("some_package") == "unknown"
+
         # Match subprocess exception
         with mock.patch("subprocess.run", side_effect=Exception):
             assert get_pkg_version("some_package") == "unknown"
@@ -720,3 +734,36 @@ def test_extract_snapshot_isolated() -> None:
         ):
             res_all = extract_all_snapshots(isolated=True)
             assert "html_dsl" in res_all
+
+
+def test_init_import_error(monkeypatch: Any) -> None:
+    """Test fallback when importing api in __init__ raises ImportError."""
+    import builtins
+    import importlib
+    import ml_framework_snapshots
+
+    orig_import = builtins.__import__
+
+    def fake_import(name: str, *args: Any, **kwargs: Any) -> Any:
+        """Simulate missing ml_framework_snapshots.api.
+
+        Args:
+            name: Module name.
+            *args: Positional arguments.
+            **kwargs: Keyword arguments.
+
+        Returns:
+            Imported module.
+        """
+        if name == "ml_framework_snapshots.api":
+            raise ImportError("simulated missing api")
+        return orig_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    importlib.reload(ml_framework_snapshots)
+    assert ml_framework_snapshots.__all__ == []
+
+    # Restore normal import
+    monkeypatch.undo()
+    importlib.reload(ml_framework_snapshots)
+    assert "extract_snapshot" in ml_framework_snapshots.__all__

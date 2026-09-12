@@ -1,4 +1,5 @@
 recursive-include src/ml_framework_snapshots *.json
+recursive-include src/ml_framework_snapshots *.json.gz
 recursive-exclude * *.db
 recursive-exclude * *.db-*
 recursive-exclude * *.db-journal

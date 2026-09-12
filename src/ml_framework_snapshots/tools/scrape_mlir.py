@@ -9,11 +9,17 @@ import importlib
 import json
 import os
 import re
+import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import urllib.request
 import warnings
 
-from ml_framework_snapshots.utils import extract_tablegen_traits
+_src_dir = str(Path(__file__).resolve().parent.parent.parent)
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+from ml_framework_snapshots.utils import extract_tablegen_traits  # noqa: E402
 
 MLIR_DOCS_URL = "https://mlir.llvm.org/docs/Dialects/"
 CORE_MLIR_DIALECTS: List[str] = [
@@ -32,7 +38,7 @@ CORE_MLIR_DIALECTS: List[str] = [
 ]
 
 
-def fetch_html(url: str) -> str:  # pragma: no cover
+def fetch_html(url: str) -> str:
     """Fetch HTML content from a URL.
 
     Args:
@@ -98,7 +104,7 @@ def parse_dialect_page(url: str, dialect_name: str) -> List[Dict[str, Any]]:
         stacklevel=2,
     )
     html = fetch_html(url)
-    if not html:  # pragma: no cover
+    if not html:
         return []
 
     ops = []
@@ -1012,7 +1018,7 @@ def scrape_stablehlo() -> List[Dict[str, Any]]:
     url = "https://raw.githubusercontent.com/openxla/stablehlo/main/docs/spec.md"
     md = fetch_html(url)
     ops: List[Dict[str, Any]] = []
-    if not md:  # pragma: no cover
+    if not md:
         return ops
 
     sections = re.split(r"\n### (?![#])", md)
@@ -1085,8 +1091,6 @@ def main() -> None:
         "gpu": ["GPUOps.td"],
         "vector": ["VectorOps.td"],
         "llvm": ["LLVMOps.td"],
-        "nvvm": ["NVVMOps.td"],
-        "rocdl": ["ROCDLOps.td"],
     }
     capital_map = {
         "arith": "Arith",
@@ -1099,8 +1103,6 @@ def main() -> None:
         "gpu": "GPU",
         "vector": "Vector",
         "llvm": "LLVMIR",
-        "nvvm": "LLVMIR",
-        "rocdl": "LLVMIR",
     }
 
     for d, files in dialect_map.items():
@@ -1126,7 +1128,7 @@ def main() -> None:
             seen_paths.add(op["api_path"])
             all_ops.append(op)
 
-    if not all_ops:  # pragma: no cover
+    if not all_ops:
         print(f"Fetching dialects from {MLIR_DOCS_URL}...")
         index_html = fetch_html(MLIR_DOCS_URL)
         dialect_links = re.findall(
@@ -1165,5 +1167,5 @@ def main() -> None:
     print(f"Dumped exhaustive MLIR operations to {output_path}")
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

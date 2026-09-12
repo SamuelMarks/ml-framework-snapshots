@@ -15,13 +15,13 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 import typing
 
 try:
-    import mlx.core as _core  # noqa: F401 # pragma: no cover
-    import mlx.nn as _nn  # noqa: F401 # pragma: no cover
-    import mlx.optimizers as _optimizers  # noqa: F401 # pragma: no cover
-    import mlx as _mlx  # pragma: no cover
+    import mlx.core as _core  # noqa: F401
+    import mlx.nn as _nn  # noqa: F401
+    import mlx.optimizers as _optimizers  # noqa: F401
+    import mlx as _mlx
 
-    mlx: typing.Any = _mlx  # pragma: no cover
-except ImportError:  # pragma: no cover
+    mlx: typing.Any = _mlx
+except ImportError:
     mlx = None
 
 
@@ -66,6 +66,9 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                 "selu",
                 "step",
                 "log_softmax",
+                "softplus",
+                "hard_sigmoid",
+                "hardsigmoid",
             }
             for name, obj in get_all_members(mlx.nn):
                 if (
@@ -107,7 +110,7 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                             results.append(
                                 GhostInspector.inspect(obj, f"mlx.core.{name}")
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
                 fft_mod = getattr(core_mod, "fft", None)
@@ -122,7 +125,7 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                                 results.append(
                                     GhostInspector.inspect(obj, f"mlx.core.fft.{name}")
                                 )
-                            except Exception:  # pragma: no cover
+                            except Exception:
                                 pass
 
                 linalg_mod = getattr(core_mod, "linalg", None)
@@ -139,9 +142,9 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                                         obj, f"mlx.core.linalg.{name}"
                                     )
                                 )
-                            except Exception:  # pragma: no cover
+                            except Exception:
                                 pass
-    except Exception:  # pragma: no cover
+    except Exception:
         pass
 
     return results

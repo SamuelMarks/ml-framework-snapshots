@@ -1,5 +1,5 @@
 pydantic>=2.0.0
-ml-switcheroo-ir @ git+https://github.com/SamuelMarks/ml-switcheroo-ir.git
+ml-switcheroo-ir @ git+https://github.com/SamuelMarks/ml-switcheroo-ir.git@master
 griffe @ git+https://github.com/SamuelMarks/griffe.git@rest
 cdd @ git+https://github.com/offscale/cdd-python.git@master
 rich

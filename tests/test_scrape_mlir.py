@@ -751,3 +751,124 @@ def test_parse_tblgen_json_dump_alias() -> None:
     assert ops[0]["api_path"] == "arith.subf"
     assert len(ops[0]["operands"]) == 2
     assert ops[0]["results"][0]["name"] == "result"
+
+
+def test_scrape_mlir_sys_path_insert() -> None:
+    """Test module reload when _src_dir is not in sys.path to cover sys.path insertion.
+
+    Returns:
+        None.
+    """
+    import importlib
+    from pathlib import Path
+    import sys
+
+    _src_dir = str(Path(scrape_mlir.__file__).resolve().parent.parent.parent)
+    orig_path = list(sys.path)
+    try:
+        sys.path = [p for p in sys.path if p != _src_dir]
+        importlib.reload(scrape_mlir)
+        assert _src_dir in sys.path
+    finally:
+        sys.path = orig_path
+
+
+def test_fetch_html_exception() -> None:
+    """Test fetch_html exception handling when urlopen fails.
+
+    Returns:
+        None.
+    """
+    with mock.patch("urllib.request.urlopen", side_effect=Exception("network error")):
+        assert scrape_mlir.fetch_html("https://invalid.url") == ""
+
+
+def test_parse_dialect_page_empty_html() -> None:
+    """Test parse_dialect_page returns empty list when fetch_html returns empty string.
+
+    Returns:
+        None.
+    """
+    with mock.patch(
+        "ml_framework_snapshots.tools.scrape_mlir.fetch_html", return_value=""
+    ):
+        assert scrape_mlir.parse_dialect_page("http://fake", "arith") == []
+
+
+def test_expand_foreach_nested_braces() -> None:
+    """Test TableGenASTParser._expand_foreach with nested braces.
+
+    Returns:
+        None.
+    """
+    parser = scrape_mlir.TableGenASTParser("")
+    text = 'foreach var = ["a", "b"] in { def Op_ # var { let inner = { 1 }; } }'
+    expanded = parser._expand_foreach(text)
+    assert "def Op_ # a" in expanded
+    assert "def Op_ # b" in expanded
+    assert "let inner = { 1 };" in expanded
+
+
+def test_scrape_stablehlo_empty_md() -> None:
+    """Test scrape_stablehlo returns empty list when markdown fetching returns empty string.
+
+    Returns:
+        None.
+    """
+    with mock.patch(
+        "ml_framework_snapshots.tools.scrape_mlir.fetch_html", return_value=""
+    ):
+        assert scrape_mlir.scrape_stablehlo() == []
+
+
+def test_main_docs_with_ops_and_duplicates(mocker: Any) -> None:
+    """Test main() with duplicate dialect links and duplicate ops from parse_dialect_page.
+
+    Args:
+        mocker: Pytest mocker fixture.
+
+    Returns:
+        None.
+    """
+    mocker.patch(
+        "ml_framework_snapshots.tools.scrape_mlir.inspect_mlir_python_module",
+        return_value=[],
+    )
+    # Return duplicate links in index_html to exercise dialect_url in seen_urls branch
+    index_html = (
+        """<a href="/docs/Dialects/ArithOps/">'arith' Dialect</a>\n"""
+        """<a href="/docs/Dialects/ArithOps/">'arith' Dialect</a>\n"""
+    )
+    mocker.patch(
+        "ml_framework_snapshots.tools.scrape_mlir.fetch_html",
+        return_value=index_html,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.tools.scrape_mlir.parse_dialect_page",
+        return_value=[
+            {"api_path": "arith.addf"},
+            {"api_path": "arith.addf"},
+        ],
+    )
+    mocker.patch(
+        "ml_framework_snapshots.tools.scrape_mlir.scrape_stablehlo",
+        return_value=[{"api_path": "stablehlo.abs"}],
+    )
+    mock_open = mocker.patch("builtins.open", mocker.mock_open())
+    scrape_mlir.main()
+    mock_open.assert_called_once()
+
+
+def test_scrape_mlir_main_entrypoint(mocker: Any) -> None:
+    """Test running scrape_mlir as __main__.
+
+    Args:
+        mocker: Pytest mocker fixture.
+
+    Returns:
+        None.
+    """
+    import runpy
+
+    mocker.patch.object(scrape_mlir, "main", return_value=None)
+    runpy.run_path(scrape_mlir.__file__, run_name="__main__")

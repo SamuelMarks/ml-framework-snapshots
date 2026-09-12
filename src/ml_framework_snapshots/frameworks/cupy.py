@@ -10,8 +10,8 @@ try:
     import cupy as _cp
 
     cp: typing.Any = _cp
-except Exception:  # pragma: no cover
-    cp = None  # pragma: no cover
+except Exception:
+    cp = None
 
 
 def collect_api(

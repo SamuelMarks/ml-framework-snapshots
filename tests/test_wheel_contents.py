@@ -70,12 +70,17 @@ def test_wheel_packaging_and_data_assets(tmp_path: os.PathLike[str]) -> None:
                 len(db_artifacts) == 0
             ), f"Found database files leaked into wheel: {db_artifacts}"
 
-            # 2. Exhaustive JSON assets bundled
+            # 2. Exhaustive JSON assets bundled and non-trivial in size
             for req in required_exhaustive_jsons:
                 matching = [n for n in namelist if n.endswith(req)]
                 assert (
                     len(matching) > 0
                 ), f"Required data asset '{req}' missing from wheel archive"
+                info = zf.getinfo(matching[0])
+                if req != "concept_map.json":
+                    assert (
+                        info.file_size > 5000
+                    ), f"Asset '{req}' has trivial size {info.file_size} in wheel archive"
 
             # 3. Test querying extracted wheel assets
             extract_dir = os.path.join(str(tmp_path), "extracted")
@@ -129,3 +134,33 @@ def test_wheel_bundles_dynamic_snapshots(tmp_path: os.PathLike[str]) -> None:
             os.remove(test_json)
         if os.path.exists(test_db):
             os.remove(test_db)
+
+
+def test_zero_json_files_in_git() -> None:
+    """Verify that zero .json files are tracked in git repository / master branch."""
+    import subprocess
+
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    git_dir = os.path.join(root_dir, ".git")
+    if not os.path.isdir(git_dir):
+        return
+
+    try:
+        proc = subprocess.run(
+            ["git", "ls-files"],
+            cwd=root_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        tracked_files = proc.stdout.splitlines()
+        tracked_jsons = [
+            f
+            for f in tracked_files
+            if f.lower().endswith(".json") or f.lower().endswith(".json.gz")
+        ]
+        assert (
+            len(tracked_jsons) == 0
+        ), f"Found JSON files tracked in git: {tracked_jsons}"
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass

@@ -9,11 +9,17 @@ traits, and return types, outputting a standard GhostRef JSON snapshot.
 import json
 import os
 import re
+import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 import urllib.request
 
-from ml_framework_snapshots.tools.scrape_mlir import TableGenASTParser
-from ml_framework_snapshots.utils import extract_tablegen_traits
+_src_dir = str(Path(__file__).resolve().parent.parent.parent)
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+from ml_framework_snapshots.tools.scrape_mlir import TableGenASTParser  # noqa: E402
+from ml_framework_snapshots.utils import extract_tablegen_traits  # noqa: E402
 
 SPEC_URL = "https://raw.githubusercontent.com/openxla/stablehlo/main/docs/spec.md"
 TABLEGEN_URL = "https://raw.githubusercontent.com/openxla/stablehlo/main/stablehlo/dialect/StablehloOps.td"
@@ -689,7 +695,7 @@ def extract_ops(
             content = (
                 urllib.request.urlopen(TABLEGEN_URL, timeout=10).read().decode("utf-8")
             )
-        except Exception:  # pragma: no cover
+        except Exception:
             content = urllib.request.urlopen(SPEC_URL).read().decode("utf-8")
 
     assert content is not None
@@ -832,5 +838,5 @@ def main() -> None:
     print(f"Wrote {len(ghost_refs)} ops to {out_path} and {exhaustive_path}")
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

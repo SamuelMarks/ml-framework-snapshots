@@ -23,18 +23,16 @@ def _extract_triton_kernel(
     """
     # A triton JIT kernel often wraps the original function in `obj.fn` or `obj.src`
     fn = obj
-    if hasattr(obj, "fn"):  # pragma: no branch
+    if hasattr(obj, "fn"):
         fn = obj.fn
-    else:  # pragma: no cover
+    else:
         pass
 
     ref = inspector.inspect(fn, f"{module_name}.{name}")
     if ref:
         # Check for constexpr hints. Sometimes it's in annotations.
         for param in ref.params:
-            if (
-                hasattr(fn, "__annotations__") and param.name in fn.__annotations__
-            ):  # pragma: no branch
+            if hasattr(fn, "__annotations__") and param.name in fn.__annotations__:
                 anno = fn.__annotations__[param.name]
                 if "constexpr" in str(anno):
                     param.annotation = "tl.constexpr"
@@ -59,7 +57,7 @@ def collect_api(
 
     try:
         importlib.import_module("triton")
-    except ImportError:  # pragma: no cover
+    except ImportError:
         return results
 
     import inspect
@@ -73,7 +71,7 @@ def collect_api(
             if not include_nonpublic and name.startswith("_"):
                 continue
             obj = getattr(tl, name, None)
-            if obj and callable(obj):  # pragma: no branch
+            if obj and callable(obj):
                 ref = _extract_triton_kernel(obj, name, "triton.language", inspector)
                 if ref:
                     results.append(ref)
@@ -90,7 +88,7 @@ def collect_api(
                     )
                     if ref:
                         results.append(ref)
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
 
     return results

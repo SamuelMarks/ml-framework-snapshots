@@ -271,7 +271,7 @@ class SnapshotEnvelope(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    schema_version: str = Field(default="1.0.0", description="Snapshot schema version.")
+    schema_version: str = Field(default="2.0.0", description="Snapshot schema version.")
     target: str = Field(..., description="Target framework, dialect, or hardware ISA.")
     version: Optional[str] = Field(
         default=None,
@@ -527,7 +527,7 @@ def sanitize_type_str(typ_str: Optional[str]) -> Optional[str]:
         node = ast.parse(typ_str, mode="eval")
         node = TypeHintSanitizer().visit(node)
         return ast.unparse(node)
-    except Exception:  # pragma: no cover
+    except Exception:
         return typ_str
 
 
@@ -596,7 +596,7 @@ def extract_accepted_kwargs_from_ast(func: Any) -> Optional[List[str]]:
                     discovered.add(slice_node.value)
                 elif hasattr(ast, "Index") and isinstance(
                     slice_node, getattr(ast, "Index")
-                ):  # pragma: no cover
+                ):
                     idx_val = getattr(slice_node, "value", None)
                     if isinstance(idx_val, ast.Constant) and isinstance(
                         idx_val.value, str
@@ -654,7 +654,7 @@ class GhostInspector:
 
         # Recursively unwrap nested decorators and framework wrappers
         unwrapped_obj = obj
-        for _ in range(10):  # max depth  # pragma: no branch
+        for _ in range(10):  # max depth
             if hasattr(unwrapped_obj, "__wrapped__"):
                 unwrapped_obj = unwrapped_obj.__wrapped__
             elif hasattr(unwrapped_obj, "_python_function"):  # TensorFlow
@@ -738,7 +738,7 @@ class GhostInspector:
                         if "typ" in exc_dict:
                             raises.append(exc_dict["typ"])
 
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
             # Supplement with Griffe's structured docstring enumeration
@@ -768,7 +768,7 @@ class GhostInspector:
                             cdd_params[p_name]["doc"] = p_data["doc"]
                         if p_data.get("typ") and not cdd_params[p_name].get("typ"):
                             cdd_params[p_name]["typ"] = p_data["typ"]
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
         # 2. Try to load AST information via cdd.parse as primary zero-import static analysis engine
@@ -794,15 +794,13 @@ class GhostInspector:
                             isinstance(node.func, ast.Attribute)
                             and node.func.attr == "__init__"
                         ):
-                            if (  # pragma: no branch
+                            if (
                                 isinstance(node.func.value, ast.Call)
                                 and isinstance(node.func.value.func, ast.Name)
                                 and node.func.value.func.id == "super"
                             ):
-                                for keyword in node.keywords:  # pragma: no branch
-                                    if (
-                                        keyword.arg is None
-                                    ):  # **kwargs  # pragma: no branch
+                                for keyword in node.keywords:
+                                    if keyword.arg is None:  # **kwargs
                                         has_super_kwargs_call = True
                                         break
 
@@ -819,13 +817,13 @@ class GhostInspector:
                 with contextlib.redirect_stderr(io.StringIO()):
                     cdd_parsed_ir = cdd.function.parse.function(parsed_ast)
 
-            if cdd_parsed_ir and "params" in cdd_parsed_ir:  # pragma: no branch
+            if cdd_parsed_ir and "params" in cdd_parsed_ir:
                 for p_name, p_val in cdd_parsed_ir["params"].items():
                     cdd_ast_params[p_name] = p_val
                     # Ensure doc is merged
                     if p_name in cdd_params and "doc" in cdd_params[p_name]:
                         cdd_ast_params[p_name]["doc"] = cdd_params[p_name]["doc"]
-        except Exception:  # pragma: no cover  # pragma: no cover
+        except Exception:
             pass
 
         # 2.5 Try to load AST information via griffe (fallback)
@@ -850,7 +848,7 @@ class GhostInspector:
                     for part in parts[1:]:
                         current = current.members[part]
                     griffe_node = current
-            except Exception:  # pragma: no cover  # pragma: no cover
+            except Exception:
                 pass
 
         if is_public is None:
@@ -867,7 +865,7 @@ class GhostInspector:
                 resolved_hints = typing.get_type_hints(target)
                 if "return" in resolved_hints and returns_type is None:
                     returns_type = sanitize_type_str(str(resolved_hints["return"]))
-            except Exception:  # pragma: no cover  # pragma: no cover
+            except Exception:
                 pass
 
         if griffe_node is not None and returns_type is None:
@@ -894,14 +892,14 @@ class GhostInspector:
                         griffe_params = getattr(init_node, "parameters", None)
                 if griffe_params and len(griffe_params) > 0:
                     has_griffe_params = True
-        except Exception:  # pragma: no cover
+        except Exception:
             pass
 
         if cdd_ast_params:
             # Use CDD AST parser
             for p_name, p_info in cdd_ast_params.items():
                 if p_name == "self":
-                    continue  # pragma: no cover
+                    continue
                 # CDD IR doesn't explicitly store kinds, we infer from name (e.g. kwargs)
                 # or fallback to POSITIONAL_OR_KEYWORD.
                 p_kind_str = "POSITIONAL_OR_KEYWORD"
@@ -915,21 +913,17 @@ class GhostInspector:
                     # CDD default can be AST node or literal
                     try:
                         if isinstance(p_info["default"], ast.AST):
-                            default_val = ast.unparse(
-                                p_info["default"]
-                            )  # pragma: no cover
+                            default_val = ast.unparse(p_info["default"])
                         elif isinstance(p_info["default"], str):
                             default_val = repr(p_info["default"])
                         else:
                             default_val = str(p_info["default"])
-                    except Exception:  # pragma: no cover  # pragma: no cover
+                    except Exception:
                         default_val = str(p_info["default"])
 
                 anno_val = p_info.get("typ")
                 if not anno_val and p_name in resolved_hints:
-                    anno_val = sanitize_type_str(
-                        str(resolved_hints[p_name])
-                    )  # pragma: no cover
+                    anno_val = sanitize_type_str(str(resolved_hints[p_name]))
                 else:
                     anno_val = sanitize_type_str(anno_val)
 
@@ -939,7 +933,7 @@ class GhostInspector:
             if has_griffe_params and griffe_params is not None:
                 for param in griffe_params:
                     if param.name == "self":
-                        continue  # pragma: no cover
+                        continue
                     if param.name not in cdd_ast_params:
                         p_kind_str = (
                             param.kind.name.upper()
@@ -1001,7 +995,7 @@ class GhostInspector:
                             for i, (pn, pk, pd, pa) in enumerate(extracted_params):
                                 if pn == param.name:
                                     extracted_params[i] = (pn, str(param.kind), pd, pa)
-                except Exception:  # pragma: no cover
+                except Exception:
                     pass
 
         elif has_griffe_params and griffe_params is not None:
@@ -1106,7 +1100,7 @@ class GhostInspector:
                             ):
                                 c_ext_params.overloads = aten_sig.overloads
                                 is_exact_aten = True
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
                 if c_ext_params is not None:
@@ -1117,7 +1111,7 @@ class GhostInspector:
                         returns_type = sanitize_type_str(c_ext_params.returns_type)
                     for pn, pk, pd, pa in c_ext_params:
                         if pk == "VAR_POSITIONAL":
-                            has_varargs = True  # pragma: no cover
+                            has_varargs = True
 
                         # Sanitize type string if extracted
                         sanitized_pa = sanitize_type_str(pa) if pa else None
@@ -1145,10 +1139,8 @@ class GhostInspector:
                             inspect.Parameter.VAR_POSITIONAL,
                             inspect.Parameter.VAR_KEYWORD,
                         ):
-                            continue  # pragma: no cover
-                        if not any(
-                            ep[0] == param.name for ep in extracted_params
-                        ):  # pragma: no branch
+                            continue
+                        if not any(ep[0] == param.name for ep in extracted_params):
                             default_val = (
                                 str(param.default)
                                 if param.default is not inspect.Parameter.empty
@@ -1167,7 +1159,7 @@ class GhostInspector:
                             extracted_params.append(
                                 (param.name, str(param.kind), default_val, anno_val)
                             )
-                except Exception:  # pragma: no cover
+                except Exception:
                     pass
 
         # 3.5 Promote documented **kwargs into formal KEYWORD_ONLY GhostParams
@@ -1229,7 +1221,7 @@ class GhostInspector:
                     p_dtypes, p_rank = infer_torch_dtype_and_rank(
                         name, p_name, p_anno or ""
                     )
-                except Exception:  # pragma: no cover
+                except Exception:
                     pass
 
             p_factory = None
@@ -1286,7 +1278,7 @@ class GhostInspector:
                 # Construct a partial GhostRef for each overload
                 overload_params = []
                 overload_has_varargs = False
-                if hasattr(overload, "parameters"):  # pragma: no branch
+                if hasattr(overload, "parameters"):
                     for param in overload.parameters:
                         if param.name == "self":
                             continue
@@ -1367,7 +1359,7 @@ class GhostInspector:
                             ov_dtypes, ov_rank = infer_torch_dtype_and_rank(
                                 name, pn, sanitized_pa or ""
                             )
-                        except Exception:  # pragma: no cover
+                        except Exception:
                             pass
 
                     ov_factory = None
@@ -1600,6 +1592,30 @@ class GhostInspector:
         elif domain_type in ("mlir", "operation"):
             ref_cls = GhostOperationRef
 
+        if "kind" not in data:
+            data = dict(data)
+            data["kind"] = "function"
+
         res = ref_cls.model_validate(data)
         assert isinstance(res, ExtendedGhostRef)
         return res
+
+
+def migrate_ghost_ref_v2(data: Dict[str, Any]) -> ExtendedGhostRef:
+    """Seamlessly upgrade v1.x or v2.x dictionaries to ExtendedGhostRef structure.
+
+    Args:
+        data: Dictionary representation of ghost reference.
+
+    Returns:
+        Validated ExtendedGhostRef instance.
+    """
+    data_copy = dict(data)
+    if "schema_version" not in data_copy or data_copy["schema_version"] in (
+        "1.0",
+        "1.0.0",
+        "1.2",
+    ):
+        data_copy["schema_version"] = "2.0.0"
+
+    return GhostInspector.hydrate(data_copy)

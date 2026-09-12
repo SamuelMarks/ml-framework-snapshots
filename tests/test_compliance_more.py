@@ -353,6 +353,12 @@ def test_validate_broadcast_and_matmul_shapes() -> None:
     assert compat_s2d is False
     assert "Strict 2D matmul error" in (err_s2d or "")
 
+    compat_s2d_ok, res_s2d_ok, _ = validate_matmul_shapes(
+        [2, 3], [3, 4], strict_2d=True
+    )
+    assert compat_s2d_ok is True
+    assert res_s2d_ok == [2, 4]
+
     # 1D vector dot products
     compat_1d, _, _ = validate_matmul_shapes([4], [4])
     assert compat_1d is True
@@ -399,3 +405,105 @@ def test_validate_broadcast_and_matmul_shapes() -> None:
     compat_bm_err, _, err_bm = validate_matmul_shapes([2, 3, 4], [3, 4, 5])
     assert compat_bm_err is False
     assert "Batch dimension broadcasting error" in (err_bm or "")
+
+
+def test_compliance_edge_branches(tmp_path: Any) -> None:
+    """Test edge branches in align_namespace and extract_target_refs_single."""
+    from ml_framework_snapshots.compliance import (
+        align_namespace,
+        extract_target_refs_single,
+    )
+
+    # Test exact mapping match where api_path != target_prefix
+    assert align_namespace("zero_chex", "custom_target", "custom_ref") == "chex"
+    assert (
+        align_namespace("zero_chex.assert_shape", "custom_target", "custom_ref")
+        == "chex.assert_shape"
+    )
+    assert align_namespace("zero_orbax", "custom_target", "custom_ref") == "orbax"
+    assert align_namespace("zero_grain", "custom_target", "custom_ref") == "grain"
+
+    # Test extract_target_refs_single with zero_jax module
+    pkg_dir = tmp_path / "zero_jax"
+    os.makedirs(pkg_dir / "nn", exist_ok=True)
+    with open(pkg_dir / "__init__.py", "w") as f:
+        f.write("")
+    with open(pkg_dir / "nn" / "__init__.py", "w") as f:
+        f.write("def relu(x):\n    '''Rectified linear unit.'''\n    return x\n")
+
+    refs = extract_target_refs_single(str(pkg_dir), "zero_jax", "jax")
+    assert len(refs) >= 1
+
+    # Also test when node.path does not start with zero_jax. but zero_jax in current_path
+    pkg_dir2 = tmp_path / "sub_zero_jax"
+    os.makedirs(pkg_dir2 / "sub", exist_ok=True)
+    with open(pkg_dir2 / "__init__.py", "w") as f:
+        f.write("")
+    with open(pkg_dir2 / "sub" / "__init__.py", "w") as f:
+        f.write("def gelu(x):\n    '''Gelu.'''\n    return x\n")
+    refs2 = extract_target_refs_single(str(pkg_dir2), "sub_zero_jax", "jax")
+    assert len(refs2) >= 1
+
+    # Test when parts has no subparts to loop over (len(parts) == 1)
+    single_file = tmp_path / "single_file.py"
+    with open(single_file, "w") as f:
+        f.write("def standalone():\n    '''Standalone.'''\n    return 42\n")
+    refs3 = extract_target_refs_single(str(single_file), "single_file", "ref_pkg")
+    assert len(refs3) >= 1
+
+
+def test_score_compliance_opaque_c_extensions() -> None:
+    """Test opaque C-extension signature matching and strict rejection."""
+    from ml_framework_snapshots.compliance import score_compliance
+    from ml_switcheroo_ir.schema.ghost import GhostRef
+
+    ref_snap = {
+        "categories": {
+            "math": [
+                {
+                    "api_path": "test.opaque",
+                    "name": "opaque",
+                    "kind": "function",
+                    "environment_tags": ["opaque_c_extension"],
+                    "params": [],
+                }
+            ]
+        }
+    }
+    target_opaque = [
+        GhostRef(
+            api_path="test.opaque",
+            name="opaque",
+            kind="function",
+            environment_tags=["opaque_c_extension"],
+            params=[],
+        )
+    ]
+    # Permissive
+    res_perm = score_compliance(ref_snap, target_opaque, strict_c_extensions=False)
+    assert "test.opaque" in res_perm["matched"]
+
+    # Strict
+    res_strict = score_compliance(ref_snap, target_opaque, strict_c_extensions=True)
+    assert any(m["api_path"] == "test.opaque" for m in res_strict["mismatched"])
+
+
+def test_extract_target_refs_single_root_function(tmp_path: Any, mocker: Any) -> None:
+    """Test extract_target_refs_single when root node is a Function."""
+    import griffe
+    from ml_framework_snapshots.compliance import extract_target_refs_single
+
+    fpath = os.path.join(str(tmp_path), "standalone.py")
+    with open(fpath, "w") as f:
+        f.write("def standalone():\n    return 42\n")
+
+    def real_fn() -> int:
+        """Standalone."""
+        return 42
+
+    fn_node = griffe.Function(name="standalone", parent=None)
+    mocker.patch("griffe.load", return_value=fn_node)
+    mocker.patch("importlib.import_module", return_value=real_fn)
+
+    refs = extract_target_refs_single(fpath, "standalone", "ref_pkg")
+    assert len(refs) == 1

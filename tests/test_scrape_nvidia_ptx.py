@@ -2,6 +2,7 @@
 
 import json
 import os
+from typing import Any
 import urllib.error
 from unittest import mock
 
@@ -122,3 +123,11 @@ def test_main_invocation() -> None:
     ) as mock_scrape:
         scrape_nvidia_ptx.main()
         mock_scrape.assert_called_once()
+
+
+def test_scrape_nvidia_ptx_main_entrypoint(mocker: Any) -> None:
+    """Test running scrape_nvidia_ptx as __main__."""
+    import runpy
+
+    mocker.patch.object(scrape_nvidia_ptx, "main", return_value=None)
+    runpy.run_path(scrape_nvidia_ptx.__file__, run_name="__main__")

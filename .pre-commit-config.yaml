@@ -42,6 +42,12 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: check-no-json-files
+        name: Check No JSON Files Staged
+        entry: bash -c '! git diff --cached --name-only | grep -iE "\.json(\.gz)?$"'
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: build
         name: Build
         entry: python3 -m build

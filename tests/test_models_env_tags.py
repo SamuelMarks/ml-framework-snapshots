@@ -36,7 +36,7 @@ def test_ghostinspector_env_tags_deterministic() -> None:
 
     def dummy() -> Any:
         """Dummy function for inspection."""
-        pass  # pragma: no cover
+        pass
 
     # Test unknown framework defaults to ['cpu']
     ref = GhostInspector.inspect(dummy, "dummy")
@@ -60,7 +60,7 @@ def test_ghostinspector_env_tags_explicit_override() -> None:
 
     def dummy() -> Any:
         """Dummy function for inspection."""
-        pass  # pragma: no cover
+        pass
 
     custom_tags = ["cuda", "rocm", "custom_backend"]
     ref = GhostInspector.inspect(

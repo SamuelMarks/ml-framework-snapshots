@@ -1,6 +1,7 @@
 pytest
 pytest-cov
 pytest-mock
+pytest-xdist
 pydantic
 scikit-learn
 build

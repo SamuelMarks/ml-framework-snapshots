@@ -111,11 +111,11 @@ def test_torch_collect(mocker: Any) -> None:
 
     def xavier_uniform_() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def _private_init() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     class DataLoader:
         """Class docstring."""
@@ -463,7 +463,7 @@ def test_tensorflow_collect(mocker: Any) -> None:
 
     def relu() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     class DenseLayer:
         """Class docstring."""
@@ -512,11 +512,11 @@ def test_tensorflow_collect(mocker: Any) -> None:
 
     def abs() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def matmul() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     fake_math = create_module("tf.math", {"abs": abs})
     fake_linalg = create_module("tf.linalg", {"matmul": matmul})
@@ -554,15 +554,15 @@ def test_tensorflow_collect(mocker: Any) -> None:
 
     def concat() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def Add() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def custom_tensor_op() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     class FakeTensor:
         """Fake Tensor class."""
@@ -811,7 +811,7 @@ def test_keras_collect(mocker: Any) -> None:
                     "neither": MockMember(is_class=False, is_function=False),
                 }
             )
-        raise Exception("Unknown path")  # pragma: no cover
+        raise Exception("Unknown path")
 
     mocker.patch.object(keras_fw.griffe, "load", mock_load_metrics)  # type: ignore[attr-defined]
     mets2 = keras_fw.collect_api(SemanticTier.METRIC)
@@ -857,11 +857,11 @@ def test_mlx_collect(mocker: Any) -> None:
 
     def relu() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def mse_loss() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     class Adam:
         """Class docstring."""
@@ -954,15 +954,15 @@ def test_jax_collect(mocker: Any) -> None:
 
     def relu() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def _priv() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def glorot() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     mocker.patch.object(jax_fw, "jax", True)
     fake_jax_nn = create_module(
@@ -1177,43 +1177,43 @@ def test_optax_shim_collect(mocker: Any) -> None:
 
     def adam() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def sgd() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def my_optimizer() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def _priv() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def mse_loss() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def other_error() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def kl_entropy() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def _priv_loss() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def some_other_func() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     def cosine() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     fake_losses = create_module(
         "losses",
@@ -1233,7 +1233,7 @@ def test_optax_shim_collect(mocker: Any) -> None:
 
     def not_a_thing() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     fake_optax = create_module(
         "optax",
@@ -1304,7 +1304,7 @@ def test_sklearn_collect(mocker: Any) -> None:
             Args:
                 n_estimators: description
             """
-            pass  # pragma: no cover
+            pass
 
     class NotAnEstimator:
         """Class docstring."""
@@ -1318,7 +1318,7 @@ def test_sklearn_collect(mocker: Any) -> None:
             y_true: description
             y_pred: description
         """
-        pass  # pragma: no cover
+        pass
 
     mock_sklearn = types.ModuleType("sklearn")
     mock_sklearn.base = types.ModuleType("sklearn.base")  # type: ignore
@@ -1414,9 +1414,9 @@ def test_sklearn_module_import_error(mocker: Any) -> None:
         Returns:
             Return value.
         """
-        if name.startswith("sklearn."):  # pragma: no branch
+        if name.startswith("sklearn."):
             raise ImportError("Mocked import error")
-        return original_import(name, *args, **kwargs)  # pragma: no cover
+        return original_import(name, *args, **kwargs)
 
     mocker.patch("builtins.__import__", side_effect=mock_import)
 
@@ -1453,7 +1453,7 @@ def test_sklearn_scan_module_edge_cases(mocker: Any) -> None:
             Raises:
                 RuntimeError: Exception.
             """
-            raise RuntimeError("Bad")  # pragma: no cover
+            raise RuntimeError("Bad")
 
     mock_mod.bad_obj = BadObj()  # type: ignore
     mocker.patch(
@@ -1499,7 +1499,7 @@ def test_sklearn_scan_module_branches(mocker: Any) -> None:
 
     def valid_func() -> Any:
         """Function docstring."""
-        pass  # pragma: no cover
+        pass
 
     # 1. kind="class", is_estimator=False
     mock_mod.ValidObj = ValidObj  # type: ignore
@@ -1551,11 +1551,11 @@ def test_numpy_collect(mocker: Any) -> None:
 
     def tanh() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     def exp() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     fake_np = create_module(
         "numpy",
@@ -1639,11 +1639,11 @@ def test_orbax_collect(mocker: Any) -> None:
 
     def checkpoint() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     def _priv() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     class Checkpointer:
         """Docstring."""
@@ -1652,7 +1652,7 @@ def test_orbax_collect(mocker: Any) -> None:
 
     def error_func() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     fake_ocp = create_module(
         "orbax.checkpoint",
@@ -1733,7 +1733,7 @@ def test_pax_collect(mocker: Any) -> None:
 
     def not_a_class() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     class ErrorClass:
         """Docstring."""
@@ -1803,7 +1803,7 @@ def test_triton_collect(mocker: Any) -> None:
 
     def cdiv() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     fake_triton = create_module("triton", {"cdiv": cdiv, "_priv": lambda: None})
 
@@ -1827,11 +1827,11 @@ def test_triton_collect(mocker: Any) -> None:
         """
         if name == "triton":
             return fake_triton
-        elif name == "triton.language":  # pragma: no branch
+        elif name == "triton.language":
             return fake_tl
-        elif name == "triton_fail":  # pragma: no cover
-            raise ImportError("mock error")  # pragma: no cover
-        return original_import(name, *args, **kwargs)  # pragma: no cover
+        elif name == "triton_fail":
+            raise ImportError("mock error")
+        return original_import(name, *args, **kwargs)
 
     mocker.patch("importlib.import_module", side_effect=mock_import)
 
@@ -1858,11 +1858,11 @@ def test_deepspeed_collect(mocker: Any) -> None:
 
     def initialize() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     def helper_util() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     fake_ds = create_module(
         "deepspeed", {"initialize": initialize, "helper_util": helper_util}
@@ -1881,9 +1881,9 @@ def test_deepspeed_collect(mocker: Any) -> None:
         Returns:
             Return value.
         """
-        if name == "deepspeed":  # pragma: no branch
+        if name == "deepspeed":
             return fake_ds
-        return original_import(name, *args, **kwargs)  # pragma: no cover
+        return original_import(name, *args, **kwargs)
 
     mocker.patch("importlib.import_module", side_effect=mock_import)
     # Filter out helper_util for MODEL (branch 50 -> 36)
@@ -1919,7 +1919,7 @@ def test_onnxruntime_collect(mocker: Any) -> None:
 
     def get_device() -> Any:
         """Docstring."""
-        pass  # pragma: no cover
+        pass
 
     fake_ort = create_module(
         "onnxruntime", {"InferenceSession": InferenceSession, "get_device": get_device}
@@ -1938,9 +1938,9 @@ def test_onnxruntime_collect(mocker: Any) -> None:
         Returns:
             Return value.
         """
-        if name == "onnxruntime":  # pragma: no branch
+        if name == "onnxruntime":
             return fake_ort
-        return original_import(name, *args, **kwargs)  # pragma: no cover
+        return original_import(name, *args, **kwargs)
 
     mocker.patch("importlib.import_module", side_effect=mock_import)
 
@@ -2002,9 +2002,9 @@ def test_huggingface_collect(mocker: Any) -> None:
         Returns:
             Return value.
         """
-        if name == "transformers":  # pragma: no branch
+        if name == "transformers":
             return fake_transformers
-        return original_import(name, *args, **kwargs)  # pragma: no cover
+        return original_import(name, *args, **kwargs)
 
     mocker.patch("importlib.import_module", side_effect=mock_import)
 
@@ -2406,3 +2406,42 @@ def test_tensor_instance_methods_extraction() -> None:
         ref = GhostInspector.inspect(obj, f"tf.Variable.{m}", kind="method")
         assert ref.kind == "method"
         assert ref.api_path == f"tf.Variable.{m}"
+
+
+def test_keras_griffe_missing(monkeypatch: Any) -> None:
+    """Test keras import logic when griffe is not available."""
+    import importlib
+    import sys
+    import ml_framework_snapshots.frameworks.keras as k_fw
+
+    monkeypatch.setitem(sys.modules, "griffe", None)
+    importlib.reload(k_fw)
+    assert getattr(k_fw, "griffe") is None
+
+    # Restore
+    monkeypatch.undo()
+    importlib.reload(k_fw)
+    assert getattr(k_fw, "griffe") is not None
+
+
+def test_maxtext_import_coverage(monkeypatch: Any) -> None:
+    """Test maxtext import logic when module is available and unavailable."""
+    import importlib
+    import sys
+    import types
+    import ml_framework_snapshots.frameworks.maxtext as m_fw
+
+    # Available
+    fake_mt = types.ModuleType("maxtext")
+    monkeypatch.setitem(sys.modules, "maxtext", fake_mt)
+    importlib.reload(m_fw)
+    assert m_fw.maxtext is fake_mt
+
+    # Unavailable
+    monkeypatch.setitem(sys.modules, "maxtext", None)
+    importlib.reload(m_fw)
+    assert m_fw.maxtext is None
+
+    # Restore
+    monkeypatch.undo()
+    importlib.reload(m_fw)

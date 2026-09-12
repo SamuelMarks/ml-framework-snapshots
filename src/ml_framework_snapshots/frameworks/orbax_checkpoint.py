@@ -10,7 +10,7 @@ from ml_switcheroo_ir.schema.ghost import SemanticTier
 
 try:
     import orbax.checkpoint as ocp
-except ImportError:  # pragma: no cover
+except ImportError:
     ocp = None
 
 
@@ -38,7 +38,7 @@ def _scan_orbax_checkpoint(include_nonpublic: bool) -> List[GhostRef]:
                     )
                 except Exception:
                     pass
-    except Exception:  # pragma: no cover
+    except Exception:
         pass
 
     return found

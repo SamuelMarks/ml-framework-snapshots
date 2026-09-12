@@ -53,13 +53,13 @@ def get_bundled_json(filename: str) -> Any:
             data = _get_canonical_stablehlo_records()
         else:
             data = []
-        if isinstance(data, dict) and "categories" in data:
-            items: List[Any] = []
-            for cat_items in data["categories"].values():
-                if isinstance(cat_items, list):
-                    items.extend(cat_items)
-            return items
-        return data
+    if isinstance(data, dict) and "categories" in data:
+        items: List[Any] = []
+        for cat_items in data["categories"].values():
+            if isinstance(cat_items, list):
+                items.extend(cat_items)
+        return items
+    return data
 
 
 def test_zero_unparsed_regex_tokens_in_bundled_snapshots() -> None:
@@ -83,7 +83,9 @@ def test_zero_unparsed_regex_tokens_in_bundled_snapshots() -> None:
 
 def test_no_decay_to_varargs_for_top_pytorch_ops() -> None:
     """Verify top PyTorch functions do not decay to (*args, **kwargs)."""
-    import torch
+    import pytest
+
+    torch = pytest.importorskip("torch")
     from ml_framework_snapshots.models import GhostInspector
 
     top_ops = [

@@ -40,7 +40,7 @@ def test_collect_transformers() -> None:
             Returns:
                 Return value.
             """
-            return ""  # pragma: no cover
+            return ""
 
     mock_mod.DummyConfig = DummyConfig
     mock_mod.AutoModelForCausalLM = AutoModelForCausalLM
@@ -167,7 +167,7 @@ def test_parse_pretrained_config_with_empty_annotations() -> None:
             Args:
                 **kwargs: kwargs
             """
-            pass  # pragma: no cover
+            pass
 
     _parse_pretrained_config(DummyConfig, ref)
     assert len(ref.params) == 0

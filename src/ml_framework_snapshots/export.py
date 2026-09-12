@@ -27,15 +27,15 @@ def _ghost_to_cdd_ir(ref: GhostRef) -> Dict[str, Any]:
         p_dict = {}
         if param.annotation:
             p_dict["typ"] = param.annotation
-        else:  # pragma: no cover
+        else:
             pass
         if param.description:
             p_dict["doc"] = param.description
-        else:  # pragma: no cover
+        else:
             pass
         if param.default is not None:
             p_dict["default"] = param.default
-        else:  # pragma: no cover
+        else:
             pass
         ir["params"][param.name] = p_dict
 

@@ -43,7 +43,7 @@ def _extract_generation_kwargs(obj: Any, ref: GhostRef) -> None:
                         annotation=anno_str,
                     )
                 )
-    except Exception:  # pragma: no cover
+    except Exception:
         pass
 
 
@@ -54,14 +54,14 @@ def _parse_pretrained_config(obj: Any, ref: GhostRef) -> None:
         obj: description
         ref: description
     """
-    if not hasattr(obj, "__annotations__"):  # pragma: no cover
+    if not hasattr(obj, "__annotations__"):
         return
 
     for (
         attr_name,
         attr_type,
-    ) in obj.__annotations__.items():  # pragma: no branch  # pragma: no branch
-        if not any(p.name == attr_name for p in ref.params):  # pragma: no branch
+    ) in obj.__annotations__.items():
+        if not any(p.name == attr_name for p in ref.params):
             anno_str = str(attr_type) if not isinstance(attr_type, str) else attr_type
             final_anno = sanitize_type_str(anno_str) if anno_str else None
             ref.params.append(
@@ -82,7 +82,7 @@ def _handle_automodel_factory(obj: Any, name: str, ref: GhostRef) -> None:
         name: description
         ref: description
     """
-    if not any(p.name == "config" for p in ref.params):  # pragma: no branch
+    if not any(p.name == "config" for p in ref.params):
         ref.params.append(
             GhostParam(
                 name="config",
@@ -132,7 +132,7 @@ def collect_huggingface(
         if not include_nonpublic and name.startswith("_"):
             continue
 
-        if is_large_module and module_name == "transformers":  # pragma: no cover
+        if is_large_module and module_name == "transformers":
             if not (
                 name.startswith("Auto")
                 or name.startswith("TFAuto")

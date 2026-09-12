@@ -17,8 +17,8 @@ from ml_framework_snapshots.frameworks.optax_shim import OptaxScanner
 try:
     import jax as _jax
 
-    jax: typing.Any = _jax  # pragma: no cover
-except Exception:  # pragma: no cover
+    jax: typing.Any = _jax
+except Exception:
     jax = None
 
 
@@ -43,7 +43,7 @@ def _scan_jax_activations(include_nonpublic: bool) -> List[GhostRef]:
                 continue
             if inspect.isfunction(obj):
                 found.append(GhostInspector.inspect(obj, f"jax.nn.{name}"))
-    except Exception:  # pragma: no cover
+    except Exception:
         pass
     return found
 
@@ -69,7 +69,7 @@ def _scan_jax_initializers(include_nonpublic: bool) -> List[GhostRef]:
                 continue
             if inspect.isfunction(obj):
                 found.append(GhostInspector.inspect(obj, f"jax.nn.initializers.{name}"))
-    except Exception:  # pragma: no cover
+    except Exception:
         pass
     return found
 
@@ -133,7 +133,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                 try:
                     ref = GhostInspector.inspect(obj, f"jax.numpy.{name}")
                     found.append(_attach_jax_static_arg_metadata(ref, obj))
-                except Exception:  # pragma: no cover
+                except Exception:
                     pass
 
         # 2. Core primitive operations in jax.lax.*
@@ -147,7 +147,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                     try:
                         ref = GhostInspector.inspect(obj, f"jax.lax.{name}")
                         found.append(_attach_jax_static_arg_metadata(ref, obj))
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
         # 3. Random generation APIs in jax.random.*
@@ -160,7 +160,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                 ):
                     try:
                         found.append(GhostInspector.inspect(obj, f"jax.random.{name}"))
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
 
         # 4. Transformations (jax.jit, jax.grad, jax.vmap, jax.pmap, jax.checkpoint)
@@ -169,7 +169,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
             if obj and callable(obj):
                 try:
                     found.append(GhostInspector.inspect(obj, f"jax.{transform_name}"))
-                except Exception:  # pragma: no cover
+                except Exception:
                     pass
 
         obj = getattr(jnp, "transpose", None)
@@ -190,8 +190,40 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
                                 obj, f"jax.Array.{name}", kind="method"
                             )
                         )
-                    except Exception:  # pragma: no cover
+                    except Exception:
                         pass
+
+        # 6. jax.sharding APIs
+        if hasattr(jax, "sharding"):
+            for name, obj in inspect.getmembers(jax.sharding):
+                if not include_nonpublic and name.startswith("_"):
+                    continue
+                if callable(obj):
+                    try:
+                        found.append(
+                            GhostInspector.inspect(obj, f"jax.sharding.{name}")
+                        )
+                    except Exception:
+                        pass
+
+        # 7. jax.experimental.pallas custom GPU/TPU kernel primitives
+        try:
+            import jax.experimental.pallas as pallas
+
+            for name, obj in inspect.getmembers(pallas):
+                if not include_nonpublic and name.startswith("_"):
+                    continue
+                if callable(obj):
+                    try:
+                        found.append(
+                            GhostInspector.inspect(
+                                obj, f"jax.experimental.pallas.{name}"
+                            )
+                        )
+                    except Exception:
+                        pass
+        except Exception:
+            pass
     except ImportError:
         pass
 

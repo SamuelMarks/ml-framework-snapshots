@@ -201,6 +201,10 @@ def test_infer_torch_dtype_and_rank() -> None:
 
 def test_get_aten_op_schema_real() -> None:
     """Test get_aten_op_schema querying real PyTorch runtime ATen schemas."""
+    import pytest
+
+    pytest.importorskip("torch")
+
     # torch.ops.aten.add has overloads: Tensor, Scalar, out, etc.
     schemas_add = get_aten_op_schema("add")
     assert schemas_add is not None
@@ -233,7 +237,9 @@ def test_get_aten_op_schema_real() -> None:
 
 def test_extract_aten_c_extension_signature_real() -> None:
     """Test extract_aten_c_extension_signature extracting full signature and overloads."""
-    import torch
+    import pytest
+
+    torch = pytest.importorskip("torch")
 
     sig = extract_aten_c_extension_signature(torch.add, "torch.add")
     assert sig is not None
@@ -324,7 +330,9 @@ def test_parse_native_functions_yaml(tmp_path: Any) -> None:
 
 def test_ghost_inspector_aten_torch_no_decay() -> None:
     """Test that GhostInspector inspects PyTorch ATen operators without decaying to (*args, **kwargs)."""
-    import torch
+    import pytest
+
+    torch = pytest.importorskip("torch")
 
     # Inspect torch.add
     ref_add = GhostInspector.inspect(torch.add, "torch.add")
@@ -544,7 +552,9 @@ def test_aten_edge_cases_and_mocks(mocker: Any) -> None:
     Args:
         mocker: Pytest mocker fixture.
     """
-    import torch
+    import pytest
+
+    torch = pytest.importorskip("torch")
 
     # 1. Test get_aten_op_schema when schema is None on an overload
     class DummyOp:
@@ -607,7 +617,9 @@ def test_torch_collect_api_array_api_aten(mocker: Any) -> None:
     Args:
         mocker: Pytest mocker fixture.
     """
-    import torch
+    import pytest
+
+    torch = pytest.importorskip("torch")
     from ml_framework_snapshots.frameworks import torch as torch_fw
     from ml_switcheroo_ir.schema.ghost import SemanticTier
 
@@ -636,7 +648,9 @@ def test_get_jit_schemas_for_op(monkeypatch: Any) -> None:
     Args:
         monkeypatch: Pytest monkeypatch fixture.
     """
-    import torch
+    import pytest
+
+    torch = pytest.importorskip("torch")
     from ml_framework_snapshots.frameworks.torch import get_jit_schemas_for_op
 
     monkeypatch.delattr(torch._C, "_jit_get_all_schemas", raising=False)
