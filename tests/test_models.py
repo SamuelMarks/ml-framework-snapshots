@@ -121,6 +121,16 @@ def test_ghost_inspector_hydrate() -> None:
     ref = GhostInspector.hydrate(data)
     assert ref.name == "foo"
 
+    # Test hydrate without explicit kind to verify default function kind assignment
+    data_no_kind: dict[str, Any] = {
+        "name": "bar",
+        "api_path": "bar",
+        "params": [],
+    }
+    ref_no_kind = GhostInspector.hydrate(data_no_kind)
+    assert ref_no_kind.name == "bar"
+    assert ref_no_kind.kind == "function"
+
 
 def test_unrepresentable_default() -> None:
     """Function docstring."""

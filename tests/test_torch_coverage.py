@@ -53,7 +53,10 @@ def test_torch_module_import_reload() -> None:
 
     # Restore clean reload
     importlib.reload(torch_fw)
-    assert torch_fw.nn is not None
+    if getattr(torch_fw, "torch", None) is not None:
+        assert torch_fw.nn is not None
+    else:
+        assert torch_fw.nn is None
 
 
 def test_torch_scan_metrics_inspect_exception(mocker: Any) -> None:

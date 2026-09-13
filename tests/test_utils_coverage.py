@@ -352,13 +352,23 @@ def test_parse_docstring_with_griffe_import_error() -> None:
 
 def test_resolve_griffe_parser_has_rest() -> None:
     """Test resolve_griffe_parser when griffe.Parser already has rest attribute."""
-    import griffe
+    import sys
+    import types
     from unittest.mock import patch
     from ml_framework_snapshots.utils import resolve_griffe_parser
 
-    with patch.object(griffe.Parser, "rest", griffe.Parser.sphinx, create=True):
+    class MockParser:
+        """Mock parser class with rest attribute."""
+
+        rest = "custom_rest_parser"
+        sphinx = "custom_sphinx_parser"
+
+    mock_griffe = types.ModuleType("griffe")
+    mock_griffe.Parser = MockParser  # type: ignore
+
+    with patch.dict(sys.modules, {"griffe": mock_griffe}):
         res = resolve_griffe_parser("rest")
-        assert res == griffe.Parser.sphinx
+        assert res == "custom_rest_parser"
 
 
 def test_parse_docstring_with_griffe_parse_exception() -> None:

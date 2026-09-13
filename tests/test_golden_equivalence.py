@@ -9,17 +9,30 @@ def test_golden_symbol_counts_and_mandatory_ops() -> None:
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     fw_dir = os.path.join(repo_root, "src", "ml_framework_snapshots", "frameworks")
 
+    required_exhaustive = [
+        "stablehlo_exhaustive.json",
+        "mlir_exhaustive.json",
+        "nvidia_sass_exhaustive.json",
+        "nvidia_ptx_exhaustive.json",
+        "amd_rdna_exhaustive.json",
+    ]
+    for req_f in required_exhaustive:
+        if not os.path.isfile(os.path.join(fw_dir, req_f)):
+            import pytest
+
+            pytest.skip(
+                f"Exhaustive JSON file {req_f} not present on clean clone; bundled into wheels and releases."
+            )
+
     # 1. StableHLO
     shlo_path = os.path.join(fw_dir, "stablehlo_exhaustive.json")
-    if not os.path.isfile(shlo_path):
-        import pytest
-
-        pytest.skip(
-            "Exhaustive JSON files not present on clean clone; bundled into wheels and releases."
-        )
-
     with open(shlo_path, "r", encoding="utf-8") as f:
-        shlo_data = json.load(f)
+        shlo_raw = json.load(f)
+    shlo_data = (
+        shlo_raw.get("categories", {}).get("UTIL", [])
+        if isinstance(shlo_raw, dict)
+        else shlo_raw
+    )
     assert len(shlo_data) >= 100, f"StableHLO golden count too low: {len(shlo_data)}"
     shlo_names = {op.get("api_path") or op.get("name") for op in shlo_data}
     for req in [
@@ -36,7 +49,12 @@ def test_golden_symbol_counts_and_mandatory_ops() -> None:
 
     # 2. Core MLIR
     with open(os.path.join(fw_dir, "mlir_exhaustive.json"), "r", encoding="utf-8") as f:
-        mlir_data = json.load(f)
+        mlir_raw = json.load(f)
+    mlir_data = (
+        mlir_raw.get("categories", {}).get("UTIL", [])
+        if isinstance(mlir_raw, dict)
+        else mlir_raw
+    )
     assert len(mlir_data) >= 300, f"MLIR golden count too low: {len(mlir_data)}"
     mlir_names = {op.get("api_path") or op.get("name") for op in mlir_data}
     for req in [
@@ -53,7 +71,12 @@ def test_golden_symbol_counts_and_mandatory_ops() -> None:
     with open(
         os.path.join(fw_dir, "nvidia_sass_exhaustive.json"), "r", encoding="utf-8"
     ) as f:
-        sass_data = json.load(f)
+        sass_raw = json.load(f)
+    sass_data = (
+        sass_raw.get("categories", {}).get("UTIL", [])
+        if isinstance(sass_raw, dict)
+        else sass_raw
+    )
     assert len(sass_data) >= 500, f"SASS golden count too low: {len(sass_data)}"
     sass_mnemonics = {
         (op.get("mnemonic") or op.get("name") or "").upper() for op in sass_data
@@ -65,7 +88,12 @@ def test_golden_symbol_counts_and_mandatory_ops() -> None:
     with open(
         os.path.join(fw_dir, "nvidia_ptx_exhaustive.json"), "r", encoding="utf-8"
     ) as f:
-        ptx_data = json.load(f)
+        ptx_raw = json.load(f)
+    ptx_data = (
+        ptx_raw.get("categories", {}).get("UTIL", [])
+        if isinstance(ptx_raw, dict)
+        else ptx_raw
+    )
     assert len(ptx_data) >= 200, f"PTX golden count too low: {len(ptx_data)}"
     ptx_names = {
         (op.get("mnemonic") or op.get("name") or "").lower() for op in ptx_data
@@ -77,7 +105,12 @@ def test_golden_symbol_counts_and_mandatory_ops() -> None:
     with open(
         os.path.join(fw_dir, "amd_rdna_exhaustive.json"), "r", encoding="utf-8"
     ) as f:
-        rdna_data = json.load(f)
+        rdna_raw = json.load(f)
+    rdna_data = (
+        rdna_raw.get("categories", {}).get("UTIL", [])
+        if isinstance(rdna_raw, dict)
+        else rdna_raw
+    )
     assert len(rdna_data) >= 1000, f"RDNA golden count too low: {len(rdna_data)}"
     rdna_names = {
         (op.get("mnemonic") or op.get("name") or "").upper() for op in rdna_data

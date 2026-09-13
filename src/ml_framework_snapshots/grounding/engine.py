@@ -158,6 +158,37 @@ class GroundingEngine:
                 except Exception:
                     continue
 
+        if not symbol_index:
+            try:
+                from ml_framework_snapshots.api import (
+                    FRAMEWORK_COLLECTORS,
+                    extract_snapshot,
+                )
+
+                if norm_target in FRAMEWORK_COLLECTORS:
+                    snap = extract_snapshot(norm_target)
+                    if isinstance(snap, dict) and "categories" in snap:
+                        for cat_items in snap["categories"].values():
+                            if isinstance(cat_items, list):
+                                for item in cat_items:
+                                    if not isinstance(item, dict):
+                                        continue
+                                    try:
+                                        ref = GhostInspector.hydrate(item)
+                                        if ref.api_path:
+                                            symbol_index[ref.api_path] = ref
+                                        if ref.name:
+                                            symbol_index[ref.name] = ref
+                                            short_index[ref.name.lower()] = ref
+                                        mnemonic = item.get("mnemonic")
+                                        if mnemonic:
+                                            symbol_index[str(mnemonic)] = ref
+                                            short_index[str(mnemonic).lower()] = ref
+                                    except Exception:
+                                        continue
+            except Exception:
+                pass
+
         self._target_cache[norm_target] = symbol_index
         self._short_name_cache[norm_target] = short_index
         return symbol_index

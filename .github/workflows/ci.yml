@@ -47,6 +47,26 @@ jobs:
         uv pip install --system -e /Users/samuel/repos/ml-switcheroo-ir
         uv pip install --system -e ".[test,generate]" build pytest pytest-cov pytest-xdist hatchling hatch-requirements-txt
 
+    - name: Generate offline snapshots
+      run: |
+        python3 scripts/generate_all_snapshots.py nvidia_sass amd_rdna nvidia_ptx html_dsl latex_dsl tikz stablehlo mlir
+        python3 -c "
+        import json, os
+        from ml_framework_snapshots.frameworks.nvidia_sass import _load_exhaustive_sass
+        from ml_framework_snapshots.frameworks.amd_rdna import _load_exhaustive_rdna
+        from ml_framework_snapshots.frameworks.nvidia_ptx import _load_exhaustive_ptx
+        fw_dir = os.path.join('src', 'ml_framework_snapshots', 'frameworks')
+        for fname, getter in [
+            ('nvidia_sass_exhaustive.json', _load_exhaustive_sass),
+            ('amd_rdna_exhaustive.json', _load_exhaustive_rdna),
+            ('nvidia_ptx_exhaustive.json', _load_exhaustive_ptx),
+        ]:
+            fpath = os.path.join(fw_dir, fname)
+            if not os.path.exists(fpath):
+                with open(fpath, 'w', encoding='utf-8') as f:
+                    json.dump(getter(), f, indent=2)
+        "
+
     - name: Run pre-commit
       run: pre-commit run --all-files
 

@@ -926,14 +926,21 @@ def test_cmd_verify_local_cache(capsys: Any, mocker: Any, tmp_path: Any) -> None
     import ml_framework_snapshots.cli as cli_mod
 
     fw_dir = os.path.join(os.path.dirname(cli_mod.__file__), "frameworks")
-    mocker.patch(
-        "ml_framework_snapshots.cli.os.path.isdir",
-        side_effect=lambda d: d in (valid_dir, fw_dir),
-    )
-    args_dup = argparse.Namespace(cache_dir=fw_dir)
-    cmd_verify_local_cache(args_dup)
-    captured_dup = capsys.readouterr()
-    assert "Cache verification passed" in captured_dup.out
+    snap_in_fw = os.path.join(fw_dir, "verify_test_snap.json")
+    try:
+        with open(snap_in_fw, "w", encoding="utf-8") as f:
+            json.dump([{"name": "test_op"}], f)
+        mocker.patch(
+            "ml_framework_snapshots.cli.os.path.isdir",
+            side_effect=lambda d: d in (valid_dir, fw_dir),
+        )
+        args_dup = argparse.Namespace(cache_dir=fw_dir)
+        cmd_verify_local_cache(args_dup)
+        captured_dup = capsys.readouterr()
+        assert "Cache verification passed" in captured_dup.out
+    finally:
+        if os.path.exists(snap_in_fw):
+            os.remove(snap_in_fw)
 
     # 3. Corrupted cache file
     corrupt_dir = str(tmp_path / "corrupt_cache")

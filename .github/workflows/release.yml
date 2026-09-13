@@ -87,7 +87,7 @@ jobs:
 
       - name: Generate remaining snapshots
         run: |
-          frameworks="torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface diffusers tokenizers triton sklearn onnxruntime nvidia_sass html_dsl latex_dsl tikz maxtext mlir amd_rdna"
+          frameworks="torch jax tensorflow keras mlx numpy cupy dask flax_nnx deepspeed optax_shim orbax_checkpoint huggingface diffusers tokenizers triton sklearn onnxruntime nvidia_sass nvidia_ptx html_dsl latex_dsl tikz maxtext mlir amd_rdna"
 
           mkdir -p src/ml_framework_snapshots/snapshots
 
@@ -127,6 +127,7 @@ jobs:
               onnxruntime) PKGS="onnxruntime" ;;
               maxtext) PKGS="maxtext" ;;
               mlir) PKGS="jaxlib" ;;
+              nvidia_ptx) PKGS="" ;;
               *) PKGS="" ;;
             esac
 
@@ -179,7 +180,7 @@ jobs:
           cp -r ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir 2>/dev/null || mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
       - name: Download all snapshot artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v7
         with:
           path: downloaded_snapshots
           merge-multiple: true
@@ -189,15 +190,9 @@ jobs:
           mkdir -p src/ml_framework_snapshots/snapshots
           mkdir -p src/ml_framework_snapshots/frameworks
           if [ -d downloaded_snapshots ]; then
-            for f in downloaded_snapshots/*; do
-              if [[ "$f" == *"_exhaustive.json"* ]]; then
-                cp -f "$f" src/ml_framework_snapshots/frameworks/ || true
-              elif [[ "$f" == *"concept_map.json"* ]]; then
-                cp -f "$f" src/ml_framework_snapshots/ || true
-              elif [[ "$f" == *".json"* ]]; then
-                cp -f "$f" src/ml_framework_snapshots/snapshots/ || true
-              fi
-            done
+            find downloaded_snapshots -type f -name "*_exhaustive.json" -exec cp -f {} src/ml_framework_snapshots/frameworks/ \;
+            find downloaded_snapshots -type f -name "concept_map.json" -exec cp -f {} src/ml_framework_snapshots/ \;
+            find downloaded_snapshots -type f -name "*.json" ! -name "*_exhaustive.json" ! -name "concept_map.json" -exec cp -f {} src/ml_framework_snapshots/snapshots/ \;
           fi
           echo "Bundled snapshots:"
           ls -la src/ml_framework_snapshots/snapshots/

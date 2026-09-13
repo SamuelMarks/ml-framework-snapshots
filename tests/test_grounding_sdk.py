@@ -713,3 +713,111 @@ def test_grounding_branch_coverage(tmp_path: Any, monkeypatch: Any) -> None:
         json.dump([{"name": "fail", "kind": "function"}], f)
     fail_eng = GroundingEngine(base_dirs=[fail_dir])
     assert fail_eng.load_target("fail") == {}
+
+
+def test_grounding_engine_collector_fallback(tmp_path: Any, monkeypatch: Any) -> None:
+    """Test GroundingEngine collector fallback when files are absent on disk.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    empty_dir = str(tmp_path / "empty_dir")
+    os.makedirs(empty_dir, exist_ok=True)
+    eng = GroundingEngine(base_dirs=[empty_dir])
+
+    # 1. Fallback succeeds for known collector without files on disk
+    html_target = eng.load_target("html_dsl")
+    assert len(html_target) > 0
+    assert "div" in html_target
+
+    # 2. Unknown target returns empty dict
+    assert eng.load_target("nonexistent_framework") == {}
+
+    # 3. Exception during extract_snapshot returns empty dict
+    import ml_framework_snapshots.api as api_mod
+
+    def mock_extract_fail(target: str) -> Any:
+        """Simulate extraction failure.
+
+        Args:
+            target: Target framework name.
+
+        Raises:
+            RuntimeError: Simulated failure.
+        """
+        raise RuntimeError("extraction error")
+
+    monkeypatch.setattr(api_mod, "extract_snapshot", mock_extract_fail)
+    eng_fail = GroundingEngine(base_dirs=[empty_dir])
+    assert eng_fail.load_target("tikz") == {}
+
+    # 4. Fallback with malformed items and hydrate exception
+    def mock_extract_malformed(target: str) -> Any:
+        """Return snapshot with malformed items for coverage.
+
+        Args:
+            target: Target framework name.
+
+        Returns:
+            Snapshot dict with non-dict and faulty items.
+        """
+        return {
+            "categories": {
+                "scalar_cat": "not_a_list",
+                "tags": [
+                    "not_a_dict",
+                    {"name": "fail", "kind": "function"},
+                    {
+                        "name": "valid_tag",
+                        "kind": "function",
+                        "api_path": "valid_tag",
+                        "mnemonic": "VT",
+                    },
+                    {
+                        "name": "",
+                        "kind": "function",
+                        "api_path": "path_only",
+                    },
+                    {
+                        "name": "name_only",
+                        "kind": "function",
+                        "api_path": "",
+                    },
+                ],
+            }
+        }
+
+    from ml_framework_snapshots.models import GhostInspector
+
+    orig_hydrate = GhostInspector.hydrate
+
+    def bad_hydrate(d: Any) -> Any:
+        """Simulate hydrate error for item named fail.
+
+        Args:
+            d: Dictionary to hydrate.
+
+        Returns:
+            Hydrated GhostRef.
+
+        Raises:
+            ValueError: If item is named 'fail'.
+        """
+        if isinstance(d, dict) and d.get("name") == "fail":
+            raise ValueError("simulated error")
+        return orig_hydrate(d)
+
+    monkeypatch.setattr(GhostInspector, "hydrate", bad_hydrate)
+    monkeypatch.setattr(api_mod, "extract_snapshot", mock_extract_malformed)
+    eng_malformed = GroundingEngine(base_dirs=[empty_dir])
+    res = eng_malformed.load_target("tikz")
+    assert "valid_tag" in res
+    assert "VT" in res
+    assert "path_only" in res
+    assert "name_only" in res
+
+    # 5. Fallback when extract_snapshot returns non-dict or missing categories
+    monkeypatch.setattr(api_mod, "extract_snapshot", lambda t: {"no_categories": 123})
+    eng_non_dict = GroundingEngine(base_dirs=[empty_dir])
+    assert eng_non_dict.load_target("latex_dsl") == {}

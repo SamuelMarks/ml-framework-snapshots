@@ -36,10 +36,24 @@ def test_wheel_packaging_and_data_assets(tmp_path: os.PathLike[str]) -> None:
                 else os.path.join(fw_dir, req)
             )
             if not os.path.exists(target_file):
-                with open(target_file, "w", encoding="utf-8") as f:
-                    f.write(
-                        '{"categories": {"UTIL": [{"name": "test_op", "mnemonic": "test_op"}]}}'
-                    )
+                if req == "concept_map.json":
+                    with open(target_file, "w", encoding="utf-8") as f:
+                        f.write(
+                            '{"categories": {"UTIL": [{"name": "test_op", "mnemonic": "test_op"}]}}'
+                        )
+                else:
+                    import json
+
+                    dummy_entries = [
+                        {
+                            "name": f"test_op_{i}",
+                            "mnemonic": f"test_op_{i}",
+                            "docstring": "Detailed test operation description for size threshold.",
+                        }
+                        for i in range(120)
+                    ]
+                    with open(target_file, "w", encoding="utf-8") as f:
+                        json.dump(dummy_entries, f, indent=2)
                 created_fixtures.append(target_file)
 
         whl_filename = build_wheel(str(tmp_path))

@@ -65,6 +65,7 @@ def test_main_success(
         "latex_dsl",
         "tikz",
         "nvidia_sass",
+        "nvidia_ptx",
         "amd_rdna",
     ]
 
@@ -133,6 +134,7 @@ def test_main_failure(
         "latex_dsl",
         "tikz",
         "nvidia_sass",
+        "nvidia_ptx",
         "amd_rdna",
     ]
 
