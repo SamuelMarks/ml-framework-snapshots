@@ -47,6 +47,9 @@ jobs:
         uv pip install --system -e /Users/samuel/repos/ml-switcheroo-ir
         uv pip install --system -e ".[test,generate]" build pytest pytest-cov pytest-xdist hatchling hatch-requirements-txt
 
+    - name: Run pre-commit
+      run: pre-commit run --all-files
+
     - name: Generate offline snapshots
       run: |
         python3 scripts/generate_all_snapshots.py nvidia_sass amd_rdna nvidia_ptx html_dsl latex_dsl tikz stablehlo mlir
@@ -63,12 +66,10 @@ jobs:
         ]:
             fpath = os.path.join(fw_dir, fname)
             if not os.path.exists(fpath):
+                data = getter()
                 with open(fpath, 'w', encoding='utf-8') as f:
-                    json.dump(getter(), f, indent=2)
+                    json.dump(data, f, indent=2)
         "
-
-    - name: Run pre-commit
-      run: pre-commit run --all-files
 
     - name: Build wheel and verify snapshot artifacts & zero database files
       run: |
@@ -91,9 +92,10 @@ jobs:
 
     - name: End-to-end offline smoke test with pre-built wheel
       run: |
-        uv venv .venv_smoke --python 3.9
+        uv venv .venv_smoke --python 3.11
         uv pip install -p .venv_smoke -e /Users/samuel/repos/ml-switcheroo-ir
-        uv pip install -p .venv_smoke --no-index --find-links=dist ml_framework_snapshots
+        uv pip install -p .venv_smoke -r requirements.txt
+        uv pip install -p .venv_smoke --no-deps dist/*.whl
         .venv_smoke/bin/ml_framework_snapshots list-snapshots
         .venv_smoke/bin/python3 -c "
         from ml_framework_snapshots.mcp_server import check_sass_instruction, check_rdna_instruction, check_ptx_instruction

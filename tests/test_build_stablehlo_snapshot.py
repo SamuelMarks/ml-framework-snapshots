@@ -879,6 +879,8 @@ def test_main_entrypoint(mocker: mock.MagicMock) -> None:
     import runpy
 
     mocker.patch.object(build_stablehlo_snapshot, "main", return_value=None)
+    mocker.patch("builtins.open", mocker.mock_open())
+    mocker.patch("urllib.request.urlopen")
     runpy.run_path(
         build_stablehlo_snapshot.__file__,
         run_name="__main__",

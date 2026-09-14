@@ -523,6 +523,36 @@ def test_validate_python_call(tmp_path: Any) -> None:
     assert not res_too_many_args.is_grounded
     assert any(d.field == "args" for d in res_too_many_args.diagnostics)
 
+    # Overloads (dict & object) and accepted_kwargs coverage
+    from ml_framework_snapshots.models import ExtendedGhostRef, GhostParam, GhostRef
+
+    mock_ref = ExtendedGhostRef(
+        name="fn",
+        api_path="mock.fn",
+        kind="function",
+        params=[GhostParam(name="a", kind="POSITIONAL_OR_KEYWORD")],
+        overloads=[
+            {"params": [{"name": "b"}, {"name": ""}]},
+            GhostRef(
+                name="fn",
+                api_path="mock.fn",
+                kind="function",
+                params=[GhostParam(name="c", kind="KEYWORD_ONLY")],
+            ),
+        ],
+        accepted_kwargs=["extra_kw"],
+    )
+
+    engine._target_cache["mock"] = {"mock.fn": mock_ref}
+    res_ov = validate_python_call(
+        framework="mock",
+        api_path="mock.fn",
+        args=[],
+        kwargs={"a": 1, "b": 2, "c": 3, "extra_kw": 4},
+        engine=engine,
+    )
+    assert res_ov.is_grounded
+
 
 def test_grounding_branch_coverage(tmp_path: Any, monkeypatch: Any) -> None:
     """Test edge branches in compiler, hardware, and engine modules."""

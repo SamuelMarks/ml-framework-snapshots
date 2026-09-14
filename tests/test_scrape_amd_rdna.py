@@ -484,4 +484,6 @@ def test_scrape_amd_rdna_main_entrypoint(mocker: typing.Any) -> None:
     import runpy
 
     mocker.patch.object(scrape_amd_rdna, "main", return_value=None)
+    mocker.patch("builtins.open", mocker.mock_open())
+    mocker.patch("urllib.request.urlopen")
     runpy.run_path(scrape_amd_rdna.__file__, run_name="__main__")

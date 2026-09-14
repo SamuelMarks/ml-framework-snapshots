@@ -607,3 +607,28 @@ def test_index_snapshot_file_with_target_and_version(tmp_path: Any) -> None:
     )
     assert res is not None
     assert res["name"] == "custom_op"
+
+
+def test_discover_local_snapshots_filtering(tmp_path: Any, monkeypatch: Any) -> None:
+    """Test get_available_snapshot_files filters non-json files.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    from ml_framework_snapshots.index import get_available_snapshot_files
+
+    snap_dir = tmp_path / "custom_snaps"
+    snap_dir.mkdir()
+    (snap_dir / "valid.json").write_text("{}", encoding="utf-8")
+    (snap_dir / "valid.json.gz").write_text("{}", encoding="utf-8")
+    (snap_dir / "ignore.txt").write_text("ignored", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "ml_framework_snapshots.index.get_custom_snapshots_paths",
+        lambda: [str(snap_dir), str(tmp_path / "nonexistent")],
+    )
+    files = get_available_snapshot_files()
+    assert any("valid.json" in f for f in files)
+    assert any("valid.json.gz" in f for f in files)
+    assert not any("ignore.txt" in f for f in files)

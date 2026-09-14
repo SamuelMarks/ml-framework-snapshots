@@ -725,6 +725,10 @@ def test_check_hallucination_positional_and_strict(mocker: Any) -> None:
         "ml_framework_snapshots.mcp_server.get_framework_snapshot",
         return_value=mock_snap,
     )
+    mocker.patch(
+        "ml_framework_snapshots.index.lookup_symbol",
+        return_value=None,
+    )
 
     # Missing required positional argument
     res_missing = check_hallucination("torch", "torch.sum", args_count=0)

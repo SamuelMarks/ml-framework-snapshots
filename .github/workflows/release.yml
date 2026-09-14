@@ -180,7 +180,7 @@ jobs:
           cp -r ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir 2>/dev/null || mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
       - name: Download all snapshot artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: downloaded_snapshots
           merge-multiple: true

@@ -389,11 +389,13 @@ def test_mcp_server_disk_and_index_fallbacks(mocker: Any, tmp_path: Any) -> None
     # Clear cache for custom_fw
     from ml_framework_snapshots.mcp_server import _SNAPSHOT_CACHE
 
+    _SNAPSHOT_CACHE.pop("custom_fw", None)
     _SNAPSHOT_CACHE.pop("custom_fw_none", None)
     snap = get_framework_snapshot("custom_fw", version=None)
     assert snap == {"categories": {}}
 
     # When version IS provided but file in dir does not match (branch 58->68)
+    _SNAPSHOT_CACHE.pop("custom_fw@99.0.0", None)
     _SNAPSHOT_CACHE.pop("custom_fw_99.0.0", None)
     snap_v = get_framework_snapshot("custom_fw", version="99.0.0")
     assert snap_v == {"categories": {}}

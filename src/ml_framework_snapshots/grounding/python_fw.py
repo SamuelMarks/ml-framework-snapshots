@@ -51,11 +51,23 @@ def validate_python_call(
     report.matched_ref = ref
 
     # Build known parameter sets
-    param_names = {p.name for p in ref.params if p.name}
+    param_names = {p.name for p in ref.params if getattr(p, "name", None)}
+    for ov in getattr(ref, "overloads", []):
+        ov_params = (
+            ov.get("params", []) if isinstance(ov, dict) else getattr(ov, "params", [])
+        )
+        for p in ov_params:
+            p_name = p.get("name") if isinstance(p, dict) else getattr(p, "name", None)
+            if p_name:
+                param_names.add(p_name)
+
+    if ref.accepted_kwargs:
+        param_names.update(ref.accepted_kwargs)
+
     has_var_kwargs = (
         getattr(ref, "has_varargs", False)
         or any("VAR_KEYWORD" in str(getattr(p, "kind", "")) for p in ref.params)
-        or bool(getattr(ref, "accepted_kwargs", None))
+        or bool(ref.accepted_kwargs)
     )
 
     # Check for hallucinated kwargs

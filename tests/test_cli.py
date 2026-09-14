@@ -858,9 +858,12 @@ def test_cmd_download_all(capsys: Any, mocker: Any, tmp_path: Any) -> None:
 
     # 2b. Test online mode with network failure fallback to bundled copy
     mocker.patch("urllib.request.urlretrieve", side_effect=Exception("network down"))
+    mocker.patch("ml_framework_snapshots.cli.os.path.exists", return_value=True)
+    mocker.patch("shutil.copyfile")
     cmd_download_all(args_online)
     captured_online = capsys.readouterr()
     assert "Downloading pre-compiled snapshot bundle" in captured_online.out
+    assert "Copied bundled" in captured_online.out
     assert "Download complete" in captured_online.out
 
     # 2c. Test online mode when bundled copy also fails

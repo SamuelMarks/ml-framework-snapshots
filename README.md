@@ -6,9 +6,9 @@ ml-framework-snapshots
 [![Tests](https://img.shields.io/badge/tests-100%25-brightgreen.svg)]()
 [![Docs](https://img.shields.io/badge/docs-100%25-brightgreen.svg)]()
 
-**ML Framework Snapshots** is a core component of the **ml-switcheroo** ecosystem. It is a toolset designed to statically extract and formalize API signatures from major machine learning frameworks into stable, serializable `GhostRef` schemas (as defined in `ml_switcheroo_ir`).
+**ML Framework Snapshots** is a core component of the **ml-switcheroo** ecosystem. It is a toolset designed to statically extract and formalize API signatures, compiler intermediate representations (IR), and hardware instruction set architectures (ISAs) into stable, serializable `GhostRef` schemas (as defined in `ml_switcheroo_ir`).
 
-By deeply introspecting libraries like PyTorch, JAX, TensorFlow, Keras, MLX, and Flax without requiring them to be imported natively into your final application, this project acts as the foundational "Ghost Mode" layer for ML synthesis tools, API emulation layers, and cross-framework translation compilers.
+By deeply introspecting libraries like PyTorch, JAX, TensorFlow, Keras, MLX, Triton, Core MLIR, StableHLO, NVIDIA SASS/PTX, and AMD RDNA without requiring heavy GPU drivers or native dependencies in downstream tools, this project acts as the foundational **"Ghost Mode"** layer for ML synthesis tools, compiler backends, and agentic anti-hallucination engines.
 
 ---
 
@@ -17,136 +17,207 @@ By deeply introspecting libraries like PyTorch, JAX, TensorFlow, Keras, MLX, and
 Machine Learning frameworks frequently utilize heavy GPU-bound libraries, complex C/C++ extensions, and dynamic metaprogramming. If you are building tools to analyze, compile, or transpile ML code, installing every ML framework into your runtime environment is prohibitive—especially for lightweight environments like WebAssembly (WASM), CI/CD pipelines, or edge devices.
 
 `ml-framework-snapshots` decouples **API discovery** from **API execution**. It allows you to:
-1. Extract robust metadata (signatures, docstrings, type hints, overloads, return types) from installed ML frameworks into standard JSON snapshots.
-2. Ship those lightweight JSON snapshots to your lightweight downstream tools.
-3. Use those snapshots to generate Type Stubs (`.pyi`), Pydantic models, JSON Schemas, or OpenAPI definitions, and perform structural compliance checking or diffs across framework versions.
-
-## ✨ Core Features
-
-- **Multi-Framework Introspection**: Natively supports a wide array of machine learning libraries and toolkits (see [Supported Frameworks](#-supported-frameworks) below), including non-Python domains like NVIDIA SASS and AMD RDNA instruction sets via static JSON extraction.
-- **Deep Static & Runtime Analysis**: Achieves maximum fidelity by cascading through AST parsers (`cdd-python`), static typing analyzers (`griffe`), and standard runtime reflection (`inspect`), before falling back to custom C-Extension docstring parsers.
-- **Rich Context Extraction**: Beyond standard arguments, it captures docstrings, parameter descriptions, function overloads, `raises` exceptions, return types, and environment execution tags (e.g., CUDA vs. CPU).
-- **Format Agnostic Exports**: Instantly convert captured API snapshots into OpenAPI specifications, JSON Schema, Pydantic V2 models, and Protobuf (`.proto`) definitions.
-- **Structural Diffing & Semantic Versioning**: Compare two API snapshots to generate markdown changelogs, detecting not just added/removed functions but highlighting potentially breaking signature changes.
-- **Python Stub Generation**: Export snapshots back into python via `.pyi` type stubs so that IDEs and language servers can understand the API without the framework installed.
-- **Compliance Checking**: Automatically test a new API implementation (like a transpiled module or a custom wrapper) against a canonical snapshot to measure coverage and highlight signature mismatches.
+1. Extract robust metadata (signatures, docstrings, type hints, overloads, return types, instruction scheduling) from installed ML frameworks and compiler ODS definitions into standard JSON snapshots.
+2. Ship those lightweight JSON snapshots to zero-dependency downstream tools.
+3. Ground Large Language Models (LLMs), transpilers, and IDEs against hallucinations via an in-memory Grounding SDK and a live Model Context Protocol (MCP) server.
+4. Export schemas to Type Stubs (`.pyi`), Pydantic V2 models, JSON Schemas, OpenAPI, Protobuf v3, and optimized LLM prompt contexts.
 
 ---
 
-## 📦 Supported Frameworks
+## ✨ Core Features
 
-| Framework | Link | Description |
-|-----------|------|-------------|
-| **CuPy** | [cupy.dev](https://cupy.dev/) | NumPy/SciPy-compatible Array Library for GPU-accelerated computing |
+- **Multi-Domain Introspection**: Natively introspects Python ML frameworks, compiled C-extensions, LLVM TableGen ODS dialects (Core MLIR, StableHLO), GPU assembly ISAs (NVIDIA SASS, NVIDIA PTX, AMD RDNA/CDNA), and declarative domain DSLs (HTML, LaTeX, TikZ).
+- **Deep Static & Runtime Analysis**: Cascades through AST parsers (`cdd-python`), static typing analyzers (`griffe`), and runtime reflection (`inspect`), with fallback C-extension docstring regex parsers and AST keyword access analysis (`KwargAccessVisitor`).
+- **Subprocess Isolation Engine**: Isolates framework extractions in clean child subprocesses, avoiding CUDA/Metal driver initializations, C++ symbol collisions, and memory leaks.
+- **Anti-Hallucination Grounding SDK**: In-memory `GroundingEngine` with Levenshtein fuzzy distance matching, cross-framework argument translation (e.g. PyTorch `dim` vs. NumPy `axis`), and SSA operand/attribute verification.
+- **Model Context Protocol (MCP) Server**: Full JSON-RPC 2.0 tool server exposing real-time signature lookups, keyword hallucination validation, anti-pattern diagnostics, and assembly checking directly to AI agents.
+- **High-Throughput SQLite FTS5 Index**: Ephemeral on-demand full-text search index for sub-millisecond symbol lookups without memory-heavy JSON loading.
+- **Format-Agnostic Exports**: Convert snapshots into OpenAPI specifications, JSON Schema, Pydantic V2 models, Protobuf (`.proto`) messages/services, and scoped LLM prompt context templates with built-in hallucination guards.
+- **Structural Diffing & Semantic Changelogs**: Compare snapshots to generate Markdown changelogs, classifying changes into breaking vs. non-breaking updates across signatures, modifiers, and microarchitecture capabilities.
+- **Python Type Stub Generation**: Reconstruct `.pyi` type stubs so that IDEs and language servers provide accurate autocompletion without needing frameworks installed.
+- **Static Compliance Verification**: Benchmark candidate framework shims or transpiled modules against canonical reference snapshots, scoring API parity and reporting mismatches.
+
+---
+
+## 📦 Supported Frameworks & Hardware ISAs
+
+| Framework / Target | Link / Origin | Description |
+|:---|:---|:---|
+| **AMD RDNA** | *Built-in* | AMD RDNA1-4 / CDNA GFX assembly instruction set and VOPD dual-issue profiles |
+| **CuPy** | [cupy.dev](https://cupy.dev/) | NumPy/SciPy-compatible array library for GPU-accelerated computing |
 | **Dask** | [dask.org](https://dask.org/) | Library for parallel computing in Python |
-| **DeepSpeed** | [deepspeed.ai](https://www.deepspeed.ai/) | Deep learning optimization library |
+| **DeepSpeed** | [deepspeed.ai](https://www.deepspeed.ai/) | Extreme-scale deep learning optimization library |
 | **Flax (NNX)** | [flax.readthedocs.io](https://flax.readthedocs.io/) | Neural network library and ecosystem for JAX |
-| **HTML DSL** | *Built-in* | HTML DSL API Snapshot Extractor |
-| **HuggingFace** | [huggingface.co](https://huggingface.co/) | Tools and models for NLP and more |
+| **HTML DSL** | *Built-in* | Declarative HTML tags and attribute snapshot schema |
+| **HuggingFace** | [huggingface.co](https://huggingface.co/) | Transformers, Diffusers, and Tokenizers API signatures |
 | **JAX** | [jax.readthedocs.io](https://jax.readthedocs.io/) | Composable transformations of Python+NumPy programs |
-| **Keras** | [keras.io](https://keras.io/) | Deep learning API |
-| **LaTeX DSL** | *Built-in* | LaTeX DSL API Snapshot Extractor |
-| **MaxText** | [github.com/google/maxtext](https://github.com/google/maxtext) | A simple, performant and highly scalable Jax LLM |
-| **MLIR** | [mlir.llvm.org](https://mlir.llvm.org/) | Multi-Level Intermediate Representation |
-| **MLX** | [ml-explore.github.io/mlx](https://ml-explore.github.io/mlx/) | An array framework for Apple silicon |
+| **Keras** | [keras.io](https://keras.io/) | Multi-backend deep learning API |
+| **LaTeX DSL** | *Built-in* | Standard LaTeX mathematical environments and formatting macros |
+| **MaxText** | [github.com/google/maxtext](https://github.com/google/maxtext) | Performant and highly scalable JAX LLM implementation |
+| **MLIR** | [mlir.llvm.org](https://mlir.llvm.org/) | Core MLIR dialects (`arith`, `math`, `tensor`, `linalg`, `scf`, `gpu`, etc.) via TableGen |
+| **MLX** | [ml-explore.github.io/mlx](https://ml-explore.github.io/mlx/) | Array framework optimized for Apple Silicon |
 | **NumPy** | [numpy.org](https://numpy.org/) | The fundamental package for scientific computing with Python |
-| **NVIDIA SASS** | *Built-in* | NVIDIA SASS Assembly Snapshot Extractor |
-| **AMD RDNA** | *Built-in* | AMD RDNA Assembly Snapshot Extractor |
-| **ONNXRuntime** | [onnxruntime.ai](https://onnxruntime.ai/) | Cross-platform, high performance ML inferencing and training accelerator |
+| **NVIDIA PTX** | *Built-in* | NVIDIA Parallel Thread Execution (PTX) ISA, state spaces, and type qualifiers |
+| **NVIDIA SASS** | *Built-in* | NVIDIA SASS GPU assembly instruction set and cycle-accurate control codes |
+| **ONNXRuntime** | [onnxruntime.ai](https://onnxruntime.ai/) | Cross-platform, high-performance ML inferencing accelerator |
 | **Optax** | [optax.readthedocs.io](https://optax.readthedocs.io/) | Gradient processing and optimization library for JAX |
-| **Orbax** | [orbax.readthedocs.io](https://orbax.readthedocs.io/) | Checkpointing library for JAX |
-| **Pax** | [github.com/google/paxml](https://github.com/google/paxml) | Jax-based machine learning framework |
-| **PyTorch** | [pytorch.org](https://pytorch.org/) | Tensors and Dynamic neural networks in Python |
-| **Scikit-Learn** | [scikit-learn.org](https://scikit-learn.org/) | Machine learning in Python |
-| **TensorFlow** | [tensorflow.org](https://www.tensorflow.org/) | An end-to-end open source machine learning platform |
-| **TikZ DSL** | *Built-in* | TikZ DSL API Snapshot Extractor |
-| **Triton** | [triton-lang.org](https://triton-lang.org/) | An open-source Python-like programming language |
+| **Orbax** | [orbax.readthedocs.io](https://orbax.readthedocs.io/) | Checkpointing and persistence library for JAX |
+| **Pax** | [github.com/google/paxml](https://github.com/google/paxml) | JAX-based high-performance machine learning framework |
+| **PyTorch** | [pytorch.org](https://pytorch.org/) | Dynamic neural networks, ATen operators, and native C-extensions |
+| **Scikit-Learn** | [scikit-learn.org](https://scikit-learn.org/) | Classical machine learning algorithms in Python |
+| **StableHLO** | [github.com/openxla/stablehlo](https://github.com/openxla/stablehlo) | Backward-compatible ML compiler operations, attributes, and regions |
+| **TensorFlow** | [tensorflow.org](https://www.tensorflow.org/) | End-to-end open source platform for machine learning |
+| **TikZ DSL** | *Built-in* | Declarative diagramming and vector geometry DSL schema |
+| **Triton** | [triton-lang.org](https://triton-lang.org/) | Python-like programming language for high-throughput GPU kernels |
 
 ---
 
 ## 🚀 Installation
 
-Requires Python >= 3.9.
+Requires **Python >= 3.10**.
 
 ```bash
 pip install ml-framework-snapshots
 ```
 
-If you intend to generate new snapshots from your environment, you must install the target frameworks (or install the meta-package that brings them in):
+### Installation Extras
 
 ```bash
-# Install the library along with the heavy framework dependencies
+# Install with heavy framework dependencies for live extraction
 pip install "ml-framework-snapshots[frameworks]"
+
+# Install with development and code generation tools
+pip install "ml-framework-snapshots[generate]"
+
+# Install with full test dependencies
+pip install "ml-framework-snapshots[test]"
 ```
 
-*(Note: If you only want to use the CLI to diff, export, or check existing JSON snapshots, you do not need to install the heavy ML framework dependencies.)*
+*(Note: Running the CLI to diff, export, ground, or check existing pre-bundled JSON snapshots requires **zero** heavy ML dependencies.)*
 
 ---
 
 ## 💻 CLI Usage
 
-The tool operates primarily via the `ml_framework_snapshots` command line interface.
+The tool provides an extensive command line interface via `ml_framework_snapshots`:
 
 ### 1. Capture Snapshots
 
-Extract API structures from the current environment and save them as JSON. You can specify exact frameworks or use `"all"`.
+Extract API structures from your local environment and save them as JSON:
 
 ```bash
 ml_framework_snapshots capture torch jax keras --out-dir ./snapshots
 ```
-*Use `--include-nonpublic` if you want to include internal/private APIs (methods starting with `_`).*
+*Flags:*
+- `--isolated`: Runs each extraction in an isolated child subprocess to prevent driver crashes.
+- `--include-nonpublic`: Captures internal and private APIs (`_` prefix).
 
-### 2. Check Compliance
+### 2. Check Implementation Compliance
 
-Test a target module's API compliance against a reference snapshot. Excellent for verifying custom shims or wrappers.
-
-```bash
-ml_framework_snapshots check ./snapshots/torch_v2.0.0.json ./my_project/src/my_torch_shim --reference-prefix torch --target-prefix my_project.my_torch_shim
-```
-Outputs a percentage score, missing APIs, and a list of mismatched signatures.
-
-### 3. Diff & Changelogs
-
-Find API drift between two versions of the same framework.
+Test a local module's API compliance against a canonical reference snapshot:
 
 ```bash
-ml_framework_snapshots diff ./snapshots/jax_v0.4.0.json ./snapshots/jax_v0.4.1.json --changelog
+ml_framework_snapshots check ./snapshots/torch_v2.4.0.json ./my_project/src/my_torch_shim
+    --reference-prefix torch --target-prefix my_project.my_torch_shim
 ```
 
-### 4. Generate Type Stubs
+### 3. Diff & Semantic Changelogs
 
-Generate standard Python `.pyi` stub files that can be distributed to enable auto-completion without full installations.
+Compare two snapshots to detect additions, deletions, and breaking/non-breaking signature shifts:
 
 ```bash
-ml_framework_snapshots generate-stubs --input ./snapshots/torch_v2.0.0.json --out-dir ./stubs/
+ml_framework_snapshots diff ./snapshots/jax_v0.4.30.json ./snapshots/jax_v0.4.31.json --changelog
 ```
 
-### 5. Export Definitions
+### 4. Generate Python Type Stubs (`.pyi`)
 
-Export the framework definitions to standard schemas.
+Export snapshots back into PEP-484 `.pyi` type stubs with sanitized signatures and overload definitions:
 
 ```bash
-# Export all Torch API definitions to Pydantic models
-ml_framework_snapshots export --input ./snapshots/torch_v2.0.0.json --format pydantic --out-dir ./pydantic_models/
+ml_framework_snapshots generate-stubs --input ./snapshots/torch_v2.4.0.json --out-dir ./stubs/
+```
 
-# Export to OpenAPI schema
-ml_framework_snapshots export --input ./snapshots/torch_v2.0.0.json --format openapi --out-dir ./openapi/
+### 5. Multi-Target Schema & Prompt Export
+
+Export framework definitions to standard schemas or compact LLM prompt context:
+
+```bash
+# Export to Pydantic V2 models
+ml_framework_snapshots export --input ./snapshots/torch_v2.4.0.json --format pydantic --out-dir ./models/
+
+# Export to OpenAPI 3.0 specification
+ml_framework_snapshots export --input ./snapshots/torch_v2.4.0.json --format openapi --out-dir ./openapi/
+
+# Export to Protobuf v3 message and gRPC definitions
+ml_framework_snapshots export --input ./snapshots/torch_v2.4.0.json --format protobuf --out-dir ./proto/
+
+# Export compact, typed LLM prompt context with hallucination guards
+ml_framework_snapshots export --input ./snapshots/torch_v2.4.0.json --format prompt --out-dir ./prompts/
+```
+
+### 6. Hardware ISA & Compiler Dialect Verification
+
+Directly validate assembly snippets and compiler IR from the terminal:
+
+```bash
+# Validate NVIDIA SASS instruction against Hopper architecture
+ml_framework_snapshots check-sass WGMMA --sm-arch sm_90 --modifiers .F16
+
+# Validate AMD RDNA instruction against RDNA3 architecture
+ml_framework_snapshots check-rdna v_dual_fmac_f32 --gfx-arch GFX11/RDNA3
+
+# Validate StableHLO operation attributes and operand counts
+ml_framework_snapshots check-stablehlo stablehlo.dot_general --operands-count 2 --attributes dot_dimension_numbers
+```
+
+### 7. Snapshot Management & Local Cache
+
+```bash
+# List all pre-bundled and locally cached snapshots
+ml_framework_snapshots list-snapshots
+
+# Download official pre-compiled snapshot releases into cache
+ml_framework_snapshots pull torch 2.4.0
+ml_framework_snapshots download-all
+
+# Cryptographically verify the integrity of cached snapshot files
+ml_framework_snapshots verify-local-cache
+
+# Rebuild or query the local SQLite FTS5 search index
+ml_framework_snapshots index --rebuild
 ```
 
 ---
 
-## 🤖 Model Context Protocol (MCP) Server Setup
+## 🤖 Model Context Protocol (MCP) Server
 
-`ml-framework-snapshots` provides a built-in Model Context Protocol (MCP) server that exposes zero-dependency ground-truth validation, real-time signature inspection, anti-hallucination guards, and GPU/compiler verification tools to AI agents.
+`ml-framework-snapshots` includes a built-in Model Context Protocol (MCP) server that connects LLM coding assistants and transpiler agents to ground-truth framework signatures in real time via JSON-RPC 2.0.
 
-Launch directly via CLI:
+### Starting the Server
+
 ```bash
 ml_framework_snapshots mcp
 ```
 
-### Cursor Integration
+### Available MCP Tools
 
-Add to your `.cursor/mcp.json` or Global Cursor Settings:
+| Tool Name | Description |
+|:---|:---|
+| `get_api_signature` | Look up exact parameter types, kinds, defaults, and return specifications. |
+| `search_apis` | Search available framework operations and mnemonics by keyword or prefix. |
+| `check_hallucination` | Verify whether an API path or keyword arguments represent LLM hallucinations. |
+| `explain_anti_pattern` | Provide canonical migration advice for common cross-framework anti-patterns. |
+| `check_sass_instruction` | Validate NVIDIA SASS assembly against target compute capabilities (`sm_70`–`sm_100`). |
+| `check_rdna_instruction` | Validate AMD RDNA/CDNA assembly against GFX generations (`GFX9`–`GFX12`). |
+| `check_ptx_instruction` | Validate NVIDIA PTX instructions, type qualifiers, state spaces, and scopes. |
+| `check_mlir_op` | Verify MLIR dialect operations against TableGen ODS traits and type constraints. |
+| `check_stablehlo_op` | Verify StableHLO operation attributes, dimensions, and region signatures. |
+| `check_code_block` | Batch verify an entire code block for nonexistent APIs and invalid kwargs. |
+| `translate_concept_arguments` | Translate arguments across frameworks (e.g. PyTorch `dim` to NumPy `axis`). |
+
+### Client Configuration Examples
+
+#### Cursor (`.cursor/mcp.json`)
 ```json
 {
   "mcpServers": {
@@ -158,9 +229,7 @@ Add to your `.cursor/mcp.json` or Global Cursor Settings:
 }
 ```
 
-### Claude Desktop Integration
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%/Claude/claude_desktop_config.json` (Windows):
+#### Claude Desktop (`claude_desktop_config.json`)
 ```json
 {
   "mcpServers": {
@@ -172,9 +241,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 }
 ```
 
-### Gemini CLI Integration
-
-Configure in your Gemini CLI agent settings or invoke via stdio:
+#### Gemini CLI
 ```json
 {
   "mcpServers": {
@@ -188,55 +255,95 @@ Configure in your Gemini CLI agent settings or invoke via stdio:
 
 ---
 
-## 🛠️ SDK Usage
+## 🛠️ Python SDK Usage
 
-You can also integrate the snapshot engine programmatically into your own python applications.
+### 1. Snapshot Extraction & Diffing
 
 ```python
 from ml_framework_snapshots.api import extract_snapshot, write_snapshot
 from ml_framework_snapshots.diff import diff_snapshots, generate_changelog
 
-# Extract snapshot for PyTorch (if available in the local env)
-snapshot = extract_snapshot("torch", include_nonpublic=False)
+# Extract snapshot for PyTorch (uses isolated subprocess by default)
+snapshot = extract_snapshot("torch")
 
 if snapshot:
     print(f"Captured Torch v{snapshot['version']}")
-
-    # Save the snapshot to JSON
     write_snapshot("torch", snapshot, output_dir="./snapshots")
 
-# Diffing programmatically
-# diff_result = diff_snapshots(snap_old, snap_new)
-# print(generate_changelog(diff_result))
+# Diff two snapshot dictionaries
+# result = diff_snapshots(snap_v1, snap_v2)
+# print(generate_changelog(result))
 ```
 
----
+### 2. Anti-Hallucination Grounding SDK
 
-## 🤝 Contribution
+```python
+from ml_framework_snapshots.grounding import (
+    GroundingEngine,
+    validate_python_call,
+    validate_sass_instruction,
+    validate_stablehlo_op,
+)
 
-We welcome contributions.
+engine = GroundingEngine()
 
-**Development Setup**:
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r test-requirements.txt
-```
+# 1. Verify a Python API call and catch hallucinated kwargs
+report = validate_python_call(
+    framework="torch",
+    api_path="torch.sum",
+    args=[],
+    kwargs={"input": None, "axis": 0},  # Hallucination: 'axis' instead of 'dim'
+    engine=engine,
+)
 
-Run tests with coverage:
-```bash
-pytest --cov=src/ml_framework_snapshots --cov-branch
+if not report.is_grounded:
+    for diag in report.diagnostics:
+        print(f"[{diag.severity}] {diag.message} -> Suggested: {diag.suggested_fix}")
+
+# 2. Verify GPU assembly against target architecture
+sass_report = validate_sass_instruction(
+    mnemonic="WGMMA",
+    architecture="sm_80",  # WGMMA is sm_90+ only
+    operands=["R0", "R1"],
+    engine=engine,
+)
+print("SASS Grounded:", sass_report.is_grounded)
+
+# 3. Verify StableHLO compiler operations
+hlo_report = validate_stablehlo_op(
+    op_name="stablehlo.dot_general",
+    operand_types=["tensor<128x64xf32>", "tensor<64x256xf32>"],
+    attributes={},  # Missing required dot_dimension_numbers
+    engine=engine,
+)
+print("StableHLO Grounded:", hlo_report.is_grounded)
 ```
 
 ---
 
 ## 🛡️ The Ecosystem & Preventing LLM Hallucinations
 
-`ml-framework-snapshots` is the foundational API layer for a broader ecosystem of cross-framework translation and compilation tools. By providing deterministic, versioned JSON schemas of ML APIs, it serves as the **ground-truth source** that prevents AI-driven transpilers and compilers from hallucinating incorrect arguments, shapes, or structural hierarchies.
+`ml-framework-snapshots` serves as the ground-truth contract for a broader suite of cross-framework translation and compilation tools:
 
-- **[ml-switcheroo](https://github.com/SamuelMarks/ml-switcheroo)**: A universal compiler and transpiler that solves the $O(N^2)$ interoperability problem. It maps major dialects (PyTorch, JAX, TensorFlow) to a central "Hub" abstract standard. To generate accurate transpiled code, `ml-switcheroo` relies on these JSON snapshots to validate function signatures, ensuring the output is semantically exact rather than just structurally plausible.
-- **[ml-switcheroo-compiler](https://github.com/SamuelMarks/ml-switcheroo-compiler)**: The core execution engine that enforces a "No Math in Frontends" rule. It lowers Unified IR directly into highly optimized WebGPU or WASM SIMD executables for in-browser execution. The compiler uses these snapshots to statically resolve API routing without needing heavy framework dependencies.
-- **[zero-zoo](https://github.com/SamuelMarks/zero-zoo) (and the `zero-*` wrappers)**: The central proving grounds for the ecosystem. It maintains a zoo of canonical model implementations across all dialects and utilizes matrix testing to ensure that the lightweight API shells (like `zero-pytorch`) produce float-for-float identical results compared to native frameworks.
+- **[ml-switcheroo](https://github.com/SamuelMarks/ml-switcheroo)**: Universal compiler and transpiler solving the $O(N^2)$ ML interoperability problem by translating dialects (PyTorch, JAX, TensorFlow) through a canonical intermediate representation.
+- **[ml-switcheroo-compiler](https://github.com/SamuelMarks/ml-switcheroo-compiler)**: Core execution backend lowering Unified IR into WebGPU and WASM SIMD binaries for zero-dependency execution.
+- **[zero-zoo](https://github.com/SamuelMarks/zero-zoo)**: Verification matrix ensuring that lightweight API shells (like `zero-pytorch`) produce float-for-float identical results compared to native frameworks.
+
+---
+
+## 🤝 Contribution & Development
+
+We welcome contributions.
+
+```bash
+# Setup environment
+python -m venv .venv
+source .venv/bin/activate
+pip install -r test-requirements.txt
+
+# Run test suite with 100% coverage enforcement
+pytest --cov=src/ml_framework_snapshots --cov-branch
+```
 
 ---
 
@@ -253,4 +360,4 @@ at your option.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
-dual licensed as above, without any additional terms or conditions
+dual licensed as above, without any additional terms or conditions.

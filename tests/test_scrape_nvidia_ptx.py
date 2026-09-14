@@ -130,4 +130,6 @@ def test_scrape_nvidia_ptx_main_entrypoint(mocker: Any) -> None:
     import runpy
 
     mocker.patch.object(scrape_nvidia_ptx, "main", return_value=None)
+    mocker.patch("builtins.open", mocker.mock_open())
+    mocker.patch("urllib.request.urlopen")
     runpy.run_path(scrape_nvidia_ptx.__file__, run_name="__main__")

@@ -871,4 +871,10 @@ def test_scrape_mlir_main_entrypoint(mocker: Any) -> None:
     import runpy
 
     mocker.patch.object(scrape_mlir, "main", return_value=None)
+    mocker.patch("builtins.open", mocker.mock_open())
+    mocker.patch("urllib.request.urlopen")
+    mocker.patch(
+        "ml_framework_snapshots.tools.scrape_mlir.fetch_html",
+        return_value="<html></html>",
+    )
     runpy.run_path(scrape_mlir.__file__, run_name="__main__")
