@@ -61,16 +61,35 @@ jobs:
         cp -r ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir 2>/dev/null || mv ml-switcheroo-ir /Users/samuel/repos/ml-switcheroo-ir
 
     - name: Install uv
+      if: matrix.framework != 'pax'
       uses: astral-sh/setup-uv@v10.1.0
       with:
         version: "latest"
+        enable-cache: true
+
+    - name: Install dependencies and generate Paxml snapshot
+      if: matrix.framework == 'pax'
+      run: |
+        python3 -m pip install --upgrade pip
+        python3 -m venv venv-3-10
+        venv-3-10/bin/python3 -m pip install -U setuptools wheel pip
+        venv-3-10/bin/python3 -m pip install -e /Users/samuel/repos/ml-switcheroo-ir
+        venv-3-10/bin/python3 -m pip install '.[generate]'
+        venv-3-10/bin/python3 -m pip uninstall -y jaxlib jax optax || true
+        venv-3-10/bin/python3 -m pip install paxml "jaxlib==0.4.26"
+
+        mkdir -p dist_snapshots
+        venv-3-10/bin/python3 scripts/generate_all_snapshots.py pax || true
+        cp -f src/ml_framework_snapshots/snapshots/* dist_snapshots/ 2>/dev/null || true
 
     - name: Install base dependencies
+      if: matrix.framework != 'pax'
       run: |
         uv pip install --system -e /Users/samuel/repos/ml-switcheroo-ir
         uv pip install --system -e ".[test,generate]"
 
     - name: Install framework dependency
+      if: matrix.framework != 'pax'
       run: |
         fw="${{ matrix.framework }}"
         case $fw in
@@ -98,9 +117,8 @@ jobs:
           triton) PKGS="triton" ;;
           sklearn) PKGS="scikit-learn" ;;
           onnxruntime) PKGS="onnxruntime" ;;
-          pax) PKGS="paxml jaxlib==0.4.26" ;;
           maxtext) PKGS="maxtext" ;;
-          mlir) PKGS="" ;;
+          mlir) PKGS="jaxlib" ;;
           nvidia_ptx) PKGS="" ;;
           *) PKGS="" ;;
         esac
@@ -110,6 +128,7 @@ jobs:
         fi
 
     - name: Capture snapshot
+      if: matrix.framework != 'pax'
       run: |
         mkdir -p dist_snapshots
         python -m ml_framework_snapshots.cli capture ${{ matrix.framework }} --out-dir dist_snapshots || true
