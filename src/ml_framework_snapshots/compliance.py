@@ -258,7 +258,7 @@ def score_compliance(
             ref = GhostRef.model_validate(item)
             reference_map[ref.api_path] = ref
             # also map aliases
-            for alias in ref.aliases:
+            for alias in ref.aliases or []:
                 reference_map[alias] = ref
 
     target_map = {ref.api_path: ref for ref in target_refs}
@@ -382,12 +382,12 @@ def score_compliance(
 
 
 def extract_target_refs(
-    file_paths: List[str], target_prefix: str, reference_prefix: str
+    file_paths: Union[List[str], str], target_prefix: str, reference_prefix: str
 ) -> List[GhostRef]:
     """Extract a list of GhostRefs from multiple target file paths.
 
     Args:
-        file_paths: A list of file paths to extract refs from.
+        file_paths: A list of file paths (or a single file path) to extract refs from.
         target_prefix: The prefix in the target namespace.
         reference_prefix: The prefix in the reference namespace.
 

@@ -1,5 +1,6 @@
 """Script to scrape AMD RDNA instructions from LLVM TableGen sources."""
 
+import argparse
 from collections import defaultdict
 import json
 import os
@@ -439,6 +440,8 @@ def scrape_amd_rdna(
     output_path: Optional[str] = None,
     tblgen_json_path: Optional[str] = None,
     local_dir: Optional[str] = None,
+    llvm_version: str = "19.1.0",
+    rocm_version: str = "6.2.0",
 ) -> List[Dict[str, Any]]:
     """Scrape AMD RDNA TableGen sources or parse TableGen JSON and write the exhaustive JSON dump.
 
@@ -446,6 +449,8 @@ def scrape_amd_rdna(
         output_path: Optional path to save the output JSON.
         tblgen_json_path: Optional path to an llvm-tblgen --dump-json output file.
         local_dir: Optional local directory containing LLVM AMDGPU TableGen files.
+        llvm_version: Target LLVM version string (e.g. '19.1.0').
+        rocm_version: Target ROCm version string (e.g. '6.2.0').
 
     Returns:
         Exhaustive list of AMD RDNA instructions.
@@ -513,16 +518,78 @@ def scrape_amd_rdna(
             }
         )
 
+    exhaustive_data = {
+        "schema_version": "2.0.0",
+        "target": "amd_rdna",
+        "version": llvm_version,
+        "upstream_version": f"rocm-{rocm_version}",
+        "upstream_commit": f"llvm-project-{llvm_version}",
+        "source_type": "tablegen",
+        "supported_microarchitectures": [
+            "GFX9/CDNA",
+            "GFX10/RDNA1",
+            "GFX10.3/RDNA2",
+            "GFX11/RDNA3",
+            "GFX11.5",
+            "GFX12/RDNA4",
+        ],
+        "instructions": exhaustive_list,
+    }
+
     with open(resolved_output, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(exhaustive_list, f, indent=2, sort_keys=True)
+        json.dump(exhaustive_data, f, indent=2, sort_keys=True)
         f.write("\n")
 
     return exhaustive_list
 
 
-def main() -> None:
-    """Run the script to generate the exhaustive RDNA JSON dump."""
-    scrape_amd_rdna()
+def main(argv: Optional[List[str]] = None) -> None:
+    """Run the script to generate the exhaustive RDNA JSON dump.
+
+    Args:
+        argv: Optional list of command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Scrape exhaustive AMD RDNA instructions."
+    )
+    parser.add_argument(
+        "--llvm-version",
+        type=str,
+        default="19.1.0",
+        help="LLVM version (default: '19.1.0').",
+    )
+    parser.add_argument(
+        "--rocm-version",
+        type=str,
+        default="6.2.0",
+        help="ROCm version (default: '6.2.0').",
+    )
+    parser.add_argument(
+        "--tblgen-json",
+        type=str,
+        default=None,
+        help="Path to llvm-tblgen --dump-json file.",
+    )
+    parser.add_argument(
+        "--local-dir",
+        type=str,
+        default=None,
+        help="Local directory with LLVM AMDGPU TableGen files.",
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default=None,
+        help="Target output path for amd_rdna_exhaustive.json.",
+    )
+    args, _ = parser.parse_known_args(argv)
+    scrape_amd_rdna(
+        output_path=args.output_path,
+        tblgen_json_path=args.tblgen_json,
+        local_dir=args.local_dir,
+        llvm_version=args.llvm_version,
+        rocm_version=args.rocm_version,
+    )
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 import json
 import os
 
+from ml_switcheroo_ir.schema.ghost import ParameterKind
 from ml_framework_snapshots.models import (
     ExtendedGhostParam,
     ExtendedGhostRef,
@@ -23,7 +24,7 @@ def test_ghost_protocol_v2_models_instantiation() -> None:
 
     param = ExtendedGhostParam(
         name="input",
-        kind="POSITIONAL_ONLY",
+        kind=ParameterKind.POSITIONAL_ONLY,
         direction=OperandDirection.READ,
         role=IRParameterRole.OPERAND,
         dtypes=["float32", "bfloat16"],

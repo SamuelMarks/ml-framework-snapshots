@@ -18,7 +18,7 @@ def dummy_c_ext() -> None:
 original_sig = inspect.signature
 
 
-def patched_sig(target: Any, *args: Any, **kwargs: Any) -> None:
+def patched_sig(target: Any, *args: Any, **kwargs: Any) -> Any:
     """Function docstring.
 
     Args:
@@ -35,7 +35,8 @@ def patched_sig(target: Any, *args: Any, **kwargs: Any) -> None:
     """
     if target is dummy_c_ext:
         raise ValueError("no signature found")
-    return original_sig(target, *args, **kwargs)  # type: ignore
+    sig_fn: Any = original_sig
+    return sig_fn(target, *args, **kwargs)
 
 
 def test_c_extension_signature_fallback() -> None:
@@ -132,6 +133,7 @@ def test_c_extension_multi_signature_torch_add() -> None:
         assert ref.params[2].kind == "KEYWORD_ONLY"
 
         # Check secondary overload in ref.overloads
+        assert ref.overloads is not None
         assert len(ref.overloads) == 1
         ov = ref.overloads[0]
         assert ov.name == ref.name
@@ -154,6 +156,7 @@ def test_c_extension_multi_signature_torch_clamp() -> None:
         assert ref.params[1].kind == "POSITIONAL_OR_KEYWORD"
 
         # Check secondary and tertiary overloads
+        assert ref.overloads is not None
         assert len(ref.overloads) == 2
         ov1 = ref.overloads[0]
         assert [p.name for p in ov1.params] == ["input", "min", "max", "out"]
@@ -178,6 +181,7 @@ def test_c_extension_multi_signature_pybind11() -> None:
         assert [p.name for p in ref.params] == ["input", "factor"]
         assert ref.params[1].annotation == "float"
 
+        assert ref.overloads is not None
         assert len(ref.overloads) == 1
         ov = ref.overloads[0]
         assert [p.name for p in ov.params] == ["input", "matrix"]
@@ -199,6 +203,7 @@ def test_c_extension_overloaded_header_branch() -> None:
         ref = inspector.inspect(dummy_overloaded_header, "foo")
         assert len(ref.params) == 1
         assert ref.params[0].name == "a"
+        assert ref.overloads is not None
         assert len(ref.overloads) == 1
         assert ref.overloads[0].params[0].name == "b"
 
@@ -232,10 +237,12 @@ def test_c_extension_leading_header_and_vararg_overloads() -> None:
         ref = inspector.inspect(dummy_leading_overload_header, "bar")
         assert len(ref.params) == 1
         assert ref.params[0].name == "x"
+        assert ref.overloads is not None
         assert len(ref.overloads) == 1
         assert ref.overloads[0].params[0].name == "y"
 
         ref_var = inspector.inspect(dummy_overload_vararg, "baz")
+        assert ref_var.overloads is not None
         assert len(ref_var.overloads) == 1
         assert ref_var.overloads[0].has_varargs is True
 

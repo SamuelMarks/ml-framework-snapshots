@@ -45,7 +45,7 @@ def _scan_module(
     if not module:
         return []
     block_list = block_list or set()
-    found = []
+    found: List[GhostRef] = []
 
     try:
         # Some sklearn modules can be missing attributes or lazy loaded

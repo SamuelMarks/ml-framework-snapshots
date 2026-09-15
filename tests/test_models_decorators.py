@@ -6,7 +6,7 @@ from typing import Any
 from ml_framework_snapshots.models import GhostInspector
 
 
-def dummy_decorator(func: Any) -> None:
+def dummy_decorator(func: Any) -> Any:
     """Function docstring.
 
     Args:
@@ -30,11 +30,11 @@ def dummy_decorator(func: Any) -> None:
         """
         return func(*args, **kwargs)
 
-    wrapper.__wrapped__ = func  # type: ignore
-    return wrapper  # type: ignore
+    setattr(wrapper, "__wrapped__", func)
+    return wrapper
 
 
-def tf_function_mock(func: Any) -> None:
+def tf_function_mock(func: Any) -> Any:
     """Function docstring.
 
     Args:
@@ -48,7 +48,7 @@ def tf_function_mock(func: Any) -> None:
     class TFFunction:
         """Class docstring."""
 
-        def __init__(self, f: Any) -> Any:  # type: ignore
+        def __init__(self, f: Any) -> None:
             """Function docstring.
 
             Args:
@@ -56,7 +56,7 @@ def tf_function_mock(func: Any) -> None:
             """
             self._python_function = f
 
-    return TFFunction(func)  # type: ignore
+    return TFFunction(func)
 
 
 def test_unwrap_standard_decorator() -> None:
@@ -82,7 +82,7 @@ def test_unwrap_tf_decorator() -> None:
     """Function docstring."""
 
     @tf_function_mock
-    def my_tf_func(tensor: Any, training=False) -> Any:  # type: ignore
+    def my_tf_func(tensor: Any, training: bool = False) -> None:
         """Function docstring.
 
         Args:
@@ -152,7 +152,7 @@ def test_unwrap_variant_decorator() -> None:
             pass
 
         w = Wrapper()
-        w._original_fn = func  # type: ignore
+        setattr(w, "_original_fn", func)
         return w
 
     @variant_dec

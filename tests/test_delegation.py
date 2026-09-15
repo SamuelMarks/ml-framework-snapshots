@@ -9,7 +9,7 @@ from ml_framework_snapshots.models import GhostInspector
 class BaseLayer:
     """Class docstring."""
 
-    def __init__(self, hidden_dim: int = 256, dropout: float = 0.1) -> Any:  # type: ignore
+    def __init__(self, hidden_dim: int = 256, dropout: float = 0.1) -> None:
         """Function docstring.
 
         Args:
@@ -22,7 +22,7 @@ class BaseLayer:
 class SubLayer(BaseLayer):
     """Class docstring."""
 
-    def __init__(self, name: str, **kwargs: Any) -> Any:  # type: ignore
+    def __init__(self, name: str, **kwargs: Any) -> None:
         """Function docstring.
 
         Args:

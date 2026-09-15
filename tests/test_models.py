@@ -1,6 +1,6 @@
 """Module docstring."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 from ml_framework_snapshots.models import (
@@ -8,24 +8,26 @@ from ml_framework_snapshots.models import (
     GhostInspector,
     GhostIsaRef,
 )
-from ml_switcheroo_ir.schema.ghost import GhostParam
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
 
 
 def test_ghost_param() -> None:
     """Function docstring."""
     param = GhostParam(
-        name="x", kind="POSITIONAL_OR_KEYWORD", default="1", annotation="int"
+        name="x",
+        kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+        default="1",
+        annotation="int",
     )
     assert param.name == "x"
-    assert param.kind == "POSITIONAL_OR_KEYWORD"
+    assert param.kind == ParameterKind.POSITIONAL_OR_KEYWORD
     assert param.default == "1"
     assert param.annotation == "int"
 
 
 def test_ghost_ref_has_arg() -> None:
     """Function docstring."""
-    params = [GhostParam(name="x", kind="POSITIONAL_OR_KEYWORD")]
+    params = [GhostParam(name="x", kind=ParameterKind.POSITIONAL_OR_KEYWORD)]
     ref = GhostRef(
         name="foo",
         api_path="pkg.foo",
@@ -37,7 +39,7 @@ def test_ghost_ref_has_arg() -> None:
     assert ref.has_arg("y") is False
 
 
-def dummy_func(a: int, b=2, *args: Any, **kwargs: Any) -> None:  # type: ignore
+def dummy_func(a: int, b: int = 2, *args: Any, **kwargs: Any) -> None:
     """Docstring for dummy_func. a b args kwargs.
 
     # noqa: DAR101
@@ -48,7 +50,7 @@ def dummy_func(a: int, b=2, *args: Any, **kwargs: Any) -> None:  # type: ignore
 class DummyClass:
     """Class docstring."""
 
-    def __init__(self, c: str = "test") -> Any:  # type: ignore
+    def __init__(self, c: str = "test") -> None:
         """Function docstring. c.
 
         # noqa: DAR101
@@ -146,7 +148,7 @@ def test_unrepresentable_default() -> None:
             """
             raise Exception("no")
 
-    def f(a=Unrepresentable()):  # type: ignore
+    def f(a: Any = Unrepresentable()) -> None:
         """Function docstring. a.
 
         Args:
@@ -166,7 +168,7 @@ def test_memory_address_default() -> None:
 
         pass
 
-    def f(a=MemoryDefault()):  # type: ignore
+    def f(a: Any = MemoryDefault()) -> None:
         """Function docstring. a.
 
         Args:
@@ -185,7 +187,7 @@ def test_callable_default() -> None:
         """Function docstring."""
         pass
 
-    def f(a=my_default) -> Any:  # type: ignore
+    def f(a: Any = my_default) -> None:
         """Function docstring. a.
 
         Args:
@@ -219,7 +221,7 @@ def test_ghost_inspector_str_throws() -> None:
             """
             raise Exception("no")
 
-    def f(a=StrThrows()):  # type: ignore
+    def f(a: Any = StrThrows()) -> None:
         """Function docstring. a.
 
         Args:
@@ -273,7 +275,7 @@ def test_ghost_inspector_str_has_address() -> None:
             """
             return "something at 0x1234"
 
-    def f(a=StrAddr()):  # type: ignore
+    def f(a: Any = StrAddr()) -> None:
         """Function docstring. a.
 
         Args:
@@ -359,7 +361,7 @@ def test_ghost_inspector_cdd_fallback() -> None:
     """Function docstring."""
 
     # Test when p_anno is missing but cdd has it
-    def dummy_func_cdd(x):  # type: ignore
+    def dummy_func_cdd(x: Any) -> None:
         """Dummy func.
 
         # noqa: DAR101
@@ -448,7 +450,7 @@ def test_ghost_inspector_cdd_anno_fallback() -> None:
     """Function docstring."""
 
     # cdd_params gives 'typ' but inspect does not find it
-    def dummy_func_no_anno(x):  # type: ignore
+    def dummy_func_no_anno(x: Any) -> None:
         """Dummy func.
 
         # noqa: DAR101
@@ -576,14 +578,18 @@ def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
                 pass
 
             self.kind = FakeKind()
-            self.kind.name = kind_name if kind_name else "POSITIONAL_OR_KEYWORD"  # type: ignore
+            setattr(
+                self.kind,
+                "name",
+                kind_name if kind_name else "POSITIONAL_OR_KEYWORD",
+            )
             self.default = default
             self.annotation = annotation
 
     class FakeOverload:
         """Class docstring."""
 
-        def __init__(self, parameters: Any, returns: Any) -> Any:  # type: ignore
+        def __init__(self, parameters: Any, returns: Any) -> None:
             """Function docstring. parameters returns.
 
             Args:
@@ -597,7 +603,7 @@ def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
         """Class docstring."""
 
         is_public = True
-        parameters = []  # type: ignore
+        parameters: List[Any] = []
         overloads = [
             FakeOverload(
                 [
@@ -615,6 +621,7 @@ def test_ghost_inspector_griffe_overloads(mocker: Any) -> None:
         pass
 
     ref = GhostInspector.inspect(dummy_func_griffe, "dummy_func_griffe")
+    assert ref.overloads is not None
     assert len(ref.overloads) == 1
     assert ref.overloads[0].has_varargs is True
     assert ref.overloads[0].params[0].name == "a"
@@ -739,7 +746,7 @@ def test_extended_ghost_param_allowed_values() -> None:
     """Test ExtendedGhostParam instantiation with allowed_values."""
     param = ExtendedGhostParam(
         name="reduction",
-        kind="KEYWORD_ONLY",
+        kind=ParameterKind.KEYWORD_ONLY,
         default="mean",
         allowed_values=["none", "mean", "sum"],
     )
@@ -875,6 +882,7 @@ def test_ghost_inspector_literal_param() -> None:
 
     ref = GhostInspector.inspect(dummy_lit, "tests.dummy_lit")
     assert len(ref.params) == 1
+    assert isinstance(ref.params[0], ExtendedGhostParam)
     assert ref.params[0].allowed_values == ["train", "eval"]
 
 
@@ -953,13 +961,13 @@ def test_ghost_instruction_and_operation_refs() -> None:
         operands=[
             ExtendedGhostParam(
                 name="lhs",
-                kind="POSITIONAL_ONLY",
+                kind=ParameterKind.POSITIONAL_ONLY,
                 annotation="AnyFloat",
                 role=IRParameterRole.OPERAND,
             ),
             ExtendedGhostParam(
                 name="rhs",
-                kind="POSITIONAL_ONLY",
+                kind=ParameterKind.POSITIONAL_ONLY,
                 annotation="AnyFloat",
                 role=IRParameterRole.OPERAND,
             ),

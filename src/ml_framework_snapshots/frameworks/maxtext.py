@@ -9,9 +9,12 @@ import glob
 import os
 from typing import List
 
-from ml_switcheroo_ir.schema.ghost import GhostRef
-from ml_switcheroo_ir.schema.ghost import SemanticTier
-from ml_switcheroo_ir.schema.ghost import GhostParam
+from ml_switcheroo_ir.schema.ghost import (
+    GhostParam,
+    GhostRef,
+    ParameterKind,
+    SemanticTier,
+)
 
 import typing
 
@@ -54,12 +57,15 @@ def _parse_maxtext_classes(dir_path: str, module_prefix: str) -> List[GhostRef]:
                                     params.append(
                                         GhostParam(
                                             name=arg.arg,
-                                            kind="POSITIONAL_OR_KEYWORD",
+                                            kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                                         )
                                     )
                             for arg in subnode.args.kwonlyargs:
                                 params.append(
-                                    GhostParam(name=arg.arg, kind="KEYWORD_ONLY")
+                                    GhostParam(
+                                        name=arg.arg,
+                                        kind=ParameterKind.KEYWORD_ONLY,
+                                    )
                                 )
 
                     refs.append(

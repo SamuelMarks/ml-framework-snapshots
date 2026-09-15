@@ -107,7 +107,10 @@ def test_scrape_nvidia_sass() -> None:
         # Verify output
         assert os.path.exists(output_path)
         with open(output_path, "r") as f:
-            result_data = json.load(f)
+            raw_data = json.load(f)
+            result_data = (
+                raw_data["instructions"] if isinstance(raw_data, dict) else raw_data
+            )
 
         assert len(result_data) == 3
 

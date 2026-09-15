@@ -53,12 +53,15 @@ def collect_api(
                         # Ensure 'providers' is in parameters
                         has_providers = any(p.name == "providers" for p in ref.params)
                         if not has_providers:
-                            from ml_switcheroo_ir.schema.ghost import GhostParam
+                            from ml_switcheroo_ir.schema.ghost import (
+                                GhostParam,
+                                ParameterKind,
+                            )
 
                             ref.params.append(
                                 GhostParam(
                                     name="providers",
-                                    kind="POSITIONAL_OR_KEYWORD",
+                                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                                     default="None",
                                     annotation="Sequence[str | tuple[str, dict[str, Any]]] | None",
                                 )

@@ -1,5 +1,6 @@
 """Script to generate an exhaustive JSON dump of NVIDIA SASS instructions."""
 
+import argparse
 from collections import defaultdict
 import json
 import os
@@ -629,6 +630,7 @@ def scrape_sass(
     input_path: Optional[str] = None,
     output_path: Optional[str] = None,
     expand_catalog: bool = False,
+    cuda_version: str = "12.6.0",
 ) -> List[Dict[str, Any]]:
     """Scrape NVIDIA SASS instructions from a specified or default input source.
 
@@ -636,6 +638,7 @@ def scrape_sass(
         input_path: Optional path to JSON metadata or nvdisasm output text.
         output_path: Optional path to save the exhaustive JSON output.
         expand_catalog: Whether to expand the scraped instructions into the full 1000+ ISA catalog.
+        cuda_version: Target CUDA toolkit version string (e.g. '12.6.0').
 
     Returns:
         List of scraped instruction definitions.
@@ -678,14 +681,75 @@ def scrape_sass(
         else exhaustive_list
     )
 
+    exhaustive_data = {
+        "schema_version": "2.0.0",
+        "target": "nvidia_sass",
+        "version": cuda_version,
+        "upstream_version": cuda_version,
+        "upstream_commit": f"cuda-{cuda_version}-toolkit",
+        "source_type": "binary_disassembly",
+        "supported_microarchitectures": [
+            "sm_70",
+            "sm_75",
+            "sm_80",
+            "sm_86",
+            "sm_89",
+            "sm_90",
+            "sm_100",
+        ],
+        "instructions": final_records,
+    }
+
     with open(resolved_output, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(final_records, f, indent=2, sort_keys=True)
+        json.dump(exhaustive_data, f, indent=2, sort_keys=True)
         f.write("\n")
 
     return final_records
 
 
-def main() -> None:
-    """Run the script to generate the exhaustive SASS JSON dump."""
-    expand = os.environ.get("NVIDIA_SASS_EXPAND_CATALOG", "0") == "1"
-    scrape_sass(expand_catalog=expand)
+def main(argv: Optional[List[str]] = None) -> None:
+    """Run the script to generate the exhaustive SASS JSON dump.
+
+    Args:
+        argv: Optional list of command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Scrape exhaustive NVIDIA SASS instructions."
+    )
+    parser.add_argument(
+        "--cuda-version",
+        type=str,
+        default="12.6.0",
+        help="CUDA toolkit version (default: '12.6.0').",
+    )
+    parser.add_argument(
+        "--input-path",
+        type=str,
+        default=None,
+        help="Input path to nvdisasm JSON or text dump.",
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default=None,
+        help="Target output path for nvidia_sass_exhaustive.json.",
+    )
+    parser.add_argument(
+        "--expand-catalog",
+        action="store_true",
+        default=None,
+        help="Expand catalog with combinatorial modifiers.",
+    )
+    args, _ = parser.parse_known_args(argv)
+
+    expand = (
+        args.expand_catalog
+        if args.expand_catalog is not None
+        else (os.environ.get("NVIDIA_SASS_EXPAND_CATALOG", "0") == "1")
+    )
+    scrape_sass(
+        input_path=args.input_path,
+        output_path=args.output_path,
+        expand_catalog=expand,
+        cuda_version=args.cuda_version,
+    )

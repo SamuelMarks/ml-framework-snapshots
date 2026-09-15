@@ -1,4 +1,4 @@
-"""Unit tests for Section 6 Schema Export & Tooling Fidelity.
+"""Unit tests for schema export and tooling fidelity.
 
 Tests Pydantic V2 model generation with overloaded signatures and validated tuples,
 Protobuf structured type mapping and enum preservation, and Scoped LLM prompt context export.
@@ -12,7 +12,7 @@ from ml_framework_snapshots.export import (
     to_protobuf,
     to_pydantic,
 )
-from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef
+from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
 
 
 def test_to_pydantic_overloaded_signatures() -> None:
@@ -25,13 +25,13 @@ def test_to_pydantic_overloaded_signatures() -> None:
         params=[
             GhostParam(
                 name="input",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="Tensor",
                 description="The input tensor.",
             ),
             GhostParam(
                 name="other",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="Tensor",
                 description="The second tensor.",
             ),
@@ -45,12 +45,12 @@ def test_to_pydantic_overloaded_signatures() -> None:
                 params=[
                     GhostParam(
                         name="input",
-                        kind="POSITIONAL_OR_KEYWORD",
+                        kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                         annotation="Tensor",
                     ),
                     GhostParam(
                         name="other",
-                        kind="POSITIONAL_OR_KEYWORD",
+                        kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                         annotation="float",
                     ),
                 ],
@@ -75,13 +75,13 @@ def test_to_pydantic_variable_positional_tuple() -> None:
         params=[
             GhostParam(
                 name="args",
-                kind="VAR_POSITIONAL",
+                kind=ParameterKind.VAR_POSITIONAL,
                 annotation="int",
                 description="Variable positional integer arguments.",
             ),
             GhostParam(
                 name="kwargs",
-                kind="VAR_KEYWORD",
+                kind=ParameterKind.VAR_KEYWORD,
                 annotation="Any",
                 description="Arbitrary keyword arguments.",
             ),
@@ -104,33 +104,33 @@ def test_to_protobuf_structured_types_and_enums() -> None:
         params=[
             GhostParam(
                 name="input",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="Tensor",
                 description="Input feature map tensor.",
             ),
             GhostParam(
                 name="shape",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="Tuple[int, ...]",
                 description="Kernel spatial dimensions.",
             ),
             GhostParam(
                 name="reduction",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="str",
                 default="mean",
                 description="Loss reduction mode.",
             ),
             GhostParam(
                 name="padding",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="str",
                 default="zeros",
                 description="Padding mode.",
             ),
             GhostParam(
                 name="layout",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="str",
                 default="NCHW",
                 description="Memory layout format.",

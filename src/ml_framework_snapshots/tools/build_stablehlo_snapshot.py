@@ -6,6 +6,7 @@ or specification spec.md to extract operations, SSA operands, attributes, region
 traits, and return types, outputting a standard GhostRef JSON snapshot.
 """
 
+import argparse
 import json
 import os
 import re
@@ -810,20 +811,62 @@ def extract_ops(
     return ghost_refs
 
 
-def main() -> None:
-    """Main entrypoint for snapshot generation."""
+def main(argv: Optional[List[str]] = None) -> None:
+    """Main entrypoint for StableHLO snapshot generation.
+
+    Args:
+        argv: Optional list of command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Build StableHLO Ground Truth Snapshot."
+    )
+    parser.add_argument(
+        "--tag",
+        type=str,
+        default="v1.9.0",
+        help="Git tag or commit hash for upstream StableHLO.",
+    )
+    parser.add_argument(
+        "--version",
+        type=str,
+        default="1.9.0",
+        help="SemVer version string for the snapshot.",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=str,
+        default=None,
+        help="Output directory for versioned snapshot JSON.",
+    )
+    parser.add_argument(
+        "--exhaustive-path",
+        type=str,
+        default=None,
+        help="Output path for exhaustive framework JSON.",
+    )
+    args, _ = parser.parse_known_args(argv)
+
     ghost_refs = extract_ops()
 
-    snapshot_data = {"categories": {"stablehlo_op": ghost_refs}}
+    snapshot_data = {
+        "schema_version": "2.0.0",
+        "target": "stablehlo",
+        "version": args.version,
+        "upstream_commit": args.tag,
+        "upstream_version": args.version,
+        "source_type": "tablegen",
+        "categories": {"stablehlo_op": ghost_refs},
+    }
 
-    out_dir = os.path.join(os.path.dirname(__file__), "..", "snapshots")
-    out_path = os.path.abspath(os.path.join(out_dir, "stablehlo_v1.0.0.json"))
+    out_dir = args.out_dir or os.path.join(os.path.dirname(__file__), "..", "snapshots")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.abspath(os.path.join(out_dir, f"stablehlo_v{args.version}.json"))
 
     with open(out_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(snapshot_data, f, indent=2, sort_keys=True)
         f.write("\n")
 
-    exhaustive_path = os.path.abspath(
+    exhaustive_path = args.exhaustive_path or os.path.abspath(
         os.path.join(
             os.path.dirname(__file__),
             "..",
@@ -831,8 +874,17 @@ def main() -> None:
             "stablehlo_exhaustive.json",
         )
     )
+    exhaustive_data = {
+        "schema_version": "2.0.0",
+        "target": "stablehlo",
+        "version": args.version,
+        "upstream_commit": args.tag,
+        "upstream_version": args.version,
+        "source_type": "tablegen",
+        "operations": ghost_refs,
+    }
     with open(exhaustive_path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(ghost_refs, f, indent=2, sort_keys=True)
+        json.dump(exhaustive_data, f, indent=2, sort_keys=True)
         f.write("\n")
 
     print(f"Wrote {len(ghost_refs)} ops to {out_path} and {exhaustive_path}")

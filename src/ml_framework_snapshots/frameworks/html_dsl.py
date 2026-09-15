@@ -5,9 +5,12 @@ Provides a static snapshot of standard HTML tags and attributes for the HTML DSL
 
 from typing import List
 
-from ml_switcheroo_ir.schema.ghost import GhostRef
-from ml_switcheroo_ir.schema.ghost import SemanticTier
-from ml_switcheroo_ir.schema.ghost import GhostParam
+from ml_switcheroo_ir.schema.ghost import (
+    GhostParam,
+    GhostRef,
+    ParameterKind,
+    SemanticTier,
+)
 
 _HTML_TAGS = [
     "div",
@@ -79,11 +82,11 @@ def collect_api(
     refs = []
     for tag in _HTML_TAGS:
         params = [
-            GhostParam(name="children", kind="POSITIONAL_OR_KEYWORD"),
-            GhostParam(name="id", kind="KEYWORD_ONLY"),
-            GhostParam(name="class_name", kind="KEYWORD_ONLY"),
-            GhostParam(name="style", kind="KEYWORD_ONLY"),
-            GhostParam(name="kwargs", kind="VAR_KEYWORD"),
+            GhostParam(name="children", kind=ParameterKind.POSITIONAL_OR_KEYWORD),
+            GhostParam(name="id", kind=ParameterKind.KEYWORD_ONLY),
+            GhostParam(name="class_name", kind=ParameterKind.KEYWORD_ONLY),
+            GhostParam(name="style", kind=ParameterKind.KEYWORD_ONLY),
+            GhostParam(name="kwargs", kind=ParameterKind.VAR_KEYWORD),
         ]
 
         refs.append(

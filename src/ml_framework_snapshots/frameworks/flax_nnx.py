@@ -39,7 +39,7 @@ def _scan_nnx_layers(include_nonpublic: bool) -> List[GhostRef]:
     if not nnx:
         return []
 
-    found = []
+    found: List[GhostRef] = []
     try:
         for name, obj in get_all_members(nnx):
             if not include_nonpublic and name.startswith("_"):

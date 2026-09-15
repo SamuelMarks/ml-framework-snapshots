@@ -34,7 +34,7 @@ def _scan_jax_activations(include_nonpublic: bool) -> List[GhostRef]:
     """
     if jax is None:
         return []
-    found = []
+    found: List[GhostRef] = []
     try:
         import jax.nn as jax_nn
 
@@ -60,7 +60,7 @@ def _scan_jax_initializers(include_nonpublic: bool) -> List[GhostRef]:
     """
     if jax is None:
         return []
-    found = []
+    found: List[GhostRef] = []
     try:
         import jax.nn.initializers as jax_init
 
@@ -92,6 +92,8 @@ def _attach_jax_static_arg_metadata(ref: GhostRef, obj: Any) -> GhostRef:
     )
 
     if static_nums:
+        if ref.environment_tags is None:
+            ref.environment_tags = []
         ref.environment_tags.append(
             f"static_argnums:{','.join(map(str, sorted(list(static_nums))))}"
         )
@@ -100,6 +102,8 @@ def _attach_jax_static_arg_metadata(ref: GhostRef, obj: Any) -> GhostRef:
                 p.standardized_name = "static_arg"
 
     if static_names:
+        if ref.environment_tags is None:
+            ref.environment_tags = []
         ref.environment_tags.append(
             f"static_argnames:{','.join(map(str, sorted(list(static_names))))}"
         )

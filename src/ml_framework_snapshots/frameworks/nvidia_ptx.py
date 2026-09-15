@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Set, cast
 from ml_switcheroo_ir.schema.ghost import (
     GhostParam,
     GhostRef,
+    ParameterKind,
     SemanticTier,
 )
 from ..models import (
@@ -570,7 +571,13 @@ def _load_exhaustive_ptx() -> List[Dict[str, Any]]:
                     if isinstance(cat_ops, list):
                         all_ops.extend(cat_ops)
                 return all_ops
-            return cast(List[Dict[str, Any]], data.get("instructions", []))
+            return cast(
+                List[Dict[str, Any]],
+                data.get("instructions")
+                or data.get("operations")
+                or data.get("items")
+                or [],
+            )
         return cast(List[Dict[str, Any]], data)
 
 
@@ -608,7 +615,7 @@ def collect_api(
                     name=op.get("name", f"op{idx}"),
                     annotation="PTXOperand",
                     default=None,
-                    kind="POSITIONAL_ONLY",
+                    kind=ParameterKind.POSITIONAL_ONLY,
                     standardized_name=op.get("role", "operand"),
                     description=op.get("description", "PTX instruction operand"),
                     role=role,
@@ -619,7 +626,6 @@ def collect_api(
             GhostRef(
                 api_path=f"nvidia_ptx.inst.{mnem}",
                 name=mnem,
-                class_name=None,
                 kind="function",
                 is_public=True,
                 has_varargs=False,

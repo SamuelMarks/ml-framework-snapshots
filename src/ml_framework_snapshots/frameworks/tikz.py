@@ -5,9 +5,12 @@ Provides a static snapshot of standard TikZ drawing commands and node shapes.
 
 from typing import List
 
-from ml_switcheroo_ir.schema.ghost import GhostRef
-from ml_switcheroo_ir.schema.ghost import SemanticTier
-from ml_switcheroo_ir.schema.ghost import GhostParam
+from ml_switcheroo_ir.schema.ghost import (
+    GhostParam,
+    GhostRef,
+    ParameterKind,
+    SemanticTier,
+)
 
 _TIKZ_COMMANDS = [
     "draw",
@@ -59,8 +62,8 @@ def collect_api(
 
     for cmd in _TIKZ_COMMANDS:
         params = [
-            GhostParam(name="options", kind="KEYWORD_ONLY"),
-            GhostParam(name="path", kind="POSITIONAL_OR_KEYWORD"),
+            GhostParam(name="options", kind=ParameterKind.KEYWORD_ONLY),
+            GhostParam(name="path", kind=ParameterKind.POSITIONAL_OR_KEYWORD),
         ]
         refs.append(
             GhostRef(
@@ -75,9 +78,9 @@ def collect_api(
     for shape in _TIKZ_SHAPES:
         clean_name = shape.replace(" ", "_")
         params = [
-            GhostParam(name="name", kind="POSITIONAL_OR_KEYWORD"),
-            GhostParam(name="at", kind="KEYWORD_ONLY"),
-            GhostParam(name="options", kind="KEYWORD_ONLY"),
+            GhostParam(name="name", kind=ParameterKind.POSITIONAL_OR_KEYWORD),
+            GhostParam(name="at", kind=ParameterKind.KEYWORD_ONLY),
+            GhostParam(name="options", kind=ParameterKind.KEYWORD_ONLY),
         ]
         refs.append(
             GhostRef(

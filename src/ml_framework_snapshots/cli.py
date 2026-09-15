@@ -351,21 +351,22 @@ def cmd_check(args: argparse.Namespace) -> None:
         # Build reference map to get docstrings and signatures
         from ml_switcheroo_ir.schema.ghost import GhostRef
 
-        ref_map = {}
+        ref_map: Dict[str, GhostRef] = {}
         for cat, items in reference_snapshot.get("categories", {}).items():
             for item in items:
-                ref = GhostRef.model_validate(item)
-                ref_map[ref.api_path] = ref
-                for alias in ref.aliases:
-                    ref_map[alias] = ref
+                ref_item = GhostRef.model_validate(item)
+                ref_map[ref_item.api_path] = ref_item
+                for alias in ref_item.aliases or []:
+                    ref_map[alias] = ref_item
 
         print("|   | Framework | Namespace | Symbol | FQN | Signature | Docstring |")
         print("|---|---|---|---|---|---|---|")
 
         for fqn in sorted(missing):
-            ref = ref_map.get(fqn)
-            if not ref:
+            ref_match = ref_map.get(fqn)
+            if not ref_match:
                 continue
+            ref = ref_match
 
             parts = fqn.split(".")
             framework = parts[0]

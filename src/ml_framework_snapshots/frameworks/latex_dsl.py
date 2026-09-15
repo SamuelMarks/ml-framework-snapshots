@@ -5,9 +5,12 @@ Provides a static snapshot of standard LaTeX math environments and formatting ma
 
 from typing import List
 
-from ml_switcheroo_ir.schema.ghost import GhostRef
-from ml_switcheroo_ir.schema.ghost import SemanticTier
-from ml_switcheroo_ir.schema.ghost import GhostParam
+from ml_switcheroo_ir.schema.ghost import (
+    GhostParam,
+    GhostRef,
+    ParameterKind,
+    SemanticTier,
+)
 
 _LATEX_MACROS = [
     "frac",
@@ -145,7 +148,7 @@ def collect_api(
 
     # Macros
     for macro in _LATEX_MACROS:
-        params = [GhostParam(name="args", kind="VAR_POSITIONAL")]
+        params = [GhostParam(name="args", kind=ParameterKind.VAR_POSITIONAL)]
         refs.append(
             GhostRef(
                 name=macro,
@@ -158,7 +161,7 @@ def collect_api(
 
     # Environments
     for env in _LATEX_ENVIRONMENTS:
-        params = [GhostParam(name="content", kind="POSITIONAL_OR_KEYWORD")]
+        params = [GhostParam(name="content", kind=ParameterKind.POSITIONAL_OR_KEYWORD)]
         refs.append(
             GhostRef(
                 name=env.replace("*", "_star"),

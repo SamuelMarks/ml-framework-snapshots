@@ -33,7 +33,6 @@ def collect_api(
                 name="LogicalGraph",
                 kind="class",
                 api_path="ml_switcheroo_ir.LogicalGraph",
-                category=category,
                 docstring="Universal computation graph for Deep Learning models.",
                 params=[
                     GhostParam(
@@ -68,7 +67,6 @@ def collect_api(
                 name="LogicalNode",
                 kind="class",
                 api_path="ml_switcheroo_ir.LogicalNode",
-                category=category,
                 docstring="Individual operation node within a LogicalGraph.",
                 params=[
                     GhostParam(
@@ -113,7 +111,6 @@ def collect_api(
                 name="topological_sort",
                 kind="function",
                 api_path="ml_switcheroo_ir.topological_sort",
-                category=category,
                 docstring="Sort graph nodes in dependency order.",
                 params=[
                     GhostParam(

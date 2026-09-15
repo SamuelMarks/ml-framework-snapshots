@@ -1,4 +1,4 @@
-"""Module docstring."""
+"""Tests for utility helpers including member extraction, C-extension parsing, and TableGen utilities."""
 
 from typing import Any
 
@@ -29,7 +29,7 @@ class NoAllModule:
 
 
 def test_get_all_members_exception() -> None:
-    """Function docstring."""
+    """Test get_all_members handles inaccessible properties gracefully."""
     members = get_all_members(FaultyModule())
     assert dict(members)["good"] == 1
     assert "bad" not in dict(members)
@@ -38,8 +38,8 @@ def test_get_all_members_exception() -> None:
     assert dict(members2)["a"] == 1
 
 
-def test_extract_c_ext_coverage() -> None:
-    """Function docstring."""
+def test_extract_c_extension_signatures() -> None:
+    """Test extract_c_extension_signature across diverse docstring patterns and overloads."""
 
     def empty_doc() -> Any:
         """Function docstring."""
@@ -131,7 +131,7 @@ def test_extract_c_ext_coverage() -> None:
 
 
 def test_utils_branches() -> None:
-    """Function docstring."""
+    """Test extract_c_extension_signature on classes with whitespace docstrings."""
     from ml_framework_snapshots.utils import (
         extract_c_extension_signature,
     )
@@ -198,8 +198,8 @@ def test_normalize_c_sig_args_and_unparse_branches() -> None:
     assert sig_usage[0][0] == "valid_arg"
 
 
-def test_tablegen_utils_coverage() -> None:
-    """Test full branch coverage for TableGen list splitting and trait extraction."""
+def test_tablegen_list_and_traits() -> None:
+    """Test TableGen list splitting and trait extraction across complex syntax structures."""
     from ml_framework_snapshots.utils import (
         extract_tablegen_traits,
         split_tablegen_list,
@@ -364,7 +364,7 @@ def test_resolve_griffe_parser_has_rest() -> None:
         sphinx = "custom_sphinx_parser"
 
     mock_griffe = types.ModuleType("griffe")
-    mock_griffe.Parser = MockParser  # type: ignore
+    setattr(mock_griffe, "Parser", MockParser)
 
     with patch.dict(sys.modules, {"griffe": mock_griffe}):
         res = resolve_griffe_parser("rest")

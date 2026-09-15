@@ -42,7 +42,7 @@ def _scan_losses(include_nonpublic: bool) -> List[GhostRef]:
     """
     if not nn:
         return []
-    found = []
+    found: List[GhostRef] = []
     for name, obj in get_all_members(nn):
         if inspect.isclass(obj) and name.endswith("Loss") and name != "_Loss":
             if not include_nonpublic and name.startswith("_"):
@@ -67,7 +67,7 @@ def _scan_optimizers(include_nonpublic: bool) -> List[GhostRef]:
     """
     if not optim:
         return []
-    found = []
+    found: List[GhostRef] = []
     for name, obj in get_all_members(optim):
         if inspect.isclass(obj) and name != "Optimizer":
             if not include_nonpublic and name.startswith("_"):
@@ -120,7 +120,7 @@ def _scan_activations(include_nonpublic: bool) -> List[GhostRef]:
     """
     if not nn:
         return []
-    found = []
+    found: List[GhostRef] = []
     target_activations = _get_activation_names()
 
     for name, obj in get_all_members(nn):
@@ -147,7 +147,7 @@ def _scan_layers(include_nonpublic: bool) -> List[GhostRef]:
     """
     if not nn:
         return []
-    found = []
+    found: List[GhostRef] = []
     target_activations = _get_activation_names()
 
     for name, obj in get_all_members(nn):
@@ -175,7 +175,7 @@ def _scan_schedulers(include_nonpublic: bool) -> List[GhostRef]:
     """
     if not optim or not hasattr(optim, "lr_scheduler"):
         return []
-    found = []
+    found: List[GhostRef] = []
     for name, obj in get_all_members(optim.lr_scheduler):
         if inspect.isclass(obj) and name != "LRScheduler":
             if not include_nonpublic and name.startswith("_"):
@@ -198,7 +198,7 @@ def _scan_initializers(include_nonpublic: bool) -> List[GhostRef]:
     """
     if not nn or not hasattr(nn, "init"):
         return []
-    found = []
+    found: List[GhostRef] = []
     for name, obj in get_all_members(nn.init):
         if inspect.isfunction(obj):
             if not include_nonpublic and name.startswith("_"):
@@ -217,7 +217,7 @@ def _scan_metrics(include_nonpublic: bool) -> List[GhostRef]:
         A list of GhostRef objects representing found metrics.
 
     """
-    found = []
+    found: List[GhostRef] = []
     try:
         import torchmetrics
 
@@ -244,7 +244,7 @@ def _scan_dataloaders(include_nonpublic: bool) -> List[GhostRef]:
     """
     if not data:
         return []
-    found = []
+    found: List[GhostRef] = []
     for name, obj in get_all_members(data):
         if inspect.isclass(obj):
             if not include_nonpublic and name.startswith("_"):
@@ -269,7 +269,7 @@ def _scan_array_api(include_nonpublic: bool) -> List[GhostRef]:
     Returns:
         A list of GhostRef objects representing found array API functions.
     """
-    found = []
+    found: List[GhostRef] = []
     try:
         import torch
 

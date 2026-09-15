@@ -191,6 +191,10 @@ def test_extract_framework_and_version() -> None:
     """Test extracting framework identifier and version from filenames."""
     assert extract_framework_and_version("torch_v2.2.0.json") == ("torch", "2.2.0")
     assert extract_framework_and_version("torch_v2.2.0") == ("torch", "2.2.0")
+    assert extract_framework_and_version("amd_rdna_1.0.json") == (
+        "amd_rdna",
+        "1.0",
+    )
     assert extract_framework_and_version("amd_rdna_exhaustive.json") == (
         "amd_rdna",
         "latest",
@@ -282,6 +286,36 @@ def test_init_db_and_index_snapshot_file(tmp_path: Any) -> None:
     with open(json_list_path, "w", encoding="utf-8") as f:
         json.dump(list_snap, f)
     assert index_snapshot_file(json_list_path, conn) == 1
+
+    instructions_snap = {
+        "instructions": [
+            {
+                "mnemonic": "V_ADD",
+                "name": "v_add",
+                "kind": "function",
+                "docstring": "Vector add.",
+            }
+        ]
+    }
+    json_inst_path = str(tmp_path / "amd_rdna_v1.0.json")
+    with open(json_inst_path, "w", encoding="utf-8") as f:
+        json.dump(instructions_snap, f)
+    assert index_snapshot_file(json_inst_path, conn) == 1
+
+    operations_snap = {
+        "operations": [
+            {
+                "api_path": "stablehlo.add",
+                "name": "add",
+                "kind": "function",
+                "docstring": "Stablehlo add.",
+            }
+        ]
+    }
+    json_ops_path = str(tmp_path / "stablehlo_v1.0.json")
+    with open(json_ops_path, "w", encoding="utf-8") as f:
+        json.dump(operations_snap, f)
+    assert index_snapshot_file(json_ops_path, conn) == 1
 
     # 6. Test non-list categories and non-list items
     weird_snap = {
@@ -456,7 +490,10 @@ def test_clear_index(tmp_path: Any) -> None:
     assert clear_index(db_file) is True
 
     # Test OSError in clear_index
-    with patch("os.remove", side_effect=OSError("Permission denied")):
+    with patch(
+        "ml_framework_snapshots.index.os.remove",
+        side_effect=OSError("Permission denied"),
+    ):
         with open(db_file, "w") as f:
             f.write("dummy")
         assert clear_index(db_file) is False
@@ -509,7 +546,10 @@ def test_get_readonly_connection_and_clean_cache(tmp_path: Any) -> None:
         f.write("wal dummy")
     assert os.path.exists(wal_file)
 
-    with patch("os.remove", side_effect=OSError("Permission denied")):
+    with patch(
+        "ml_framework_snapshots.index.os.remove",
+        side_effect=OSError("Permission denied"),
+    ):
         removed_zero = clean_index_cache(db_file)
         assert removed_zero == 0
 
@@ -539,7 +579,9 @@ def test_get_readonly_connection_and_clean_cache(tmp_path: Any) -> None:
             raise sqlite3.OperationalError("Readonly open failed")
         return cast(sqlite3.Connection, orig_connect(*args, **kwargs))
 
-    with patch("sqlite3.connect", side_effect=mock_connect):
+    with patch(
+        "ml_framework_snapshots.index.sqlite3.connect", side_effect=mock_connect
+    ):
         conn_fallback = get_readonly_connection(db_file)
         assert conn_fallback is not None
         conn_fallback.close()
@@ -575,7 +617,7 @@ def test_get_readonly_connection_and_clean_cache(tmp_path: Any) -> None:
             """Exit context manager."""
             pass
 
-    with patch("sqlite3.connect", return_value=MockConn()):
+    with patch("ml_framework_snapshots.index.sqlite3.connect", return_value=MockConn()):
         conn_pragma = init_db(str(tmp_path / "pragma_test.db"))
         assert conn_pragma is not None
 

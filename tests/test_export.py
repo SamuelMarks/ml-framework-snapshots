@@ -5,8 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ml_switcheroo_ir.schema.ghost import GhostParam
-from ml_switcheroo_ir.schema.ghost import GhostRef
+from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
 from ml_framework_snapshots.export import (
     to_json_schema,
     to_openapi,
@@ -21,13 +20,13 @@ from ml_framework_snapshots.export import (
 
 
 @pytest.fixture
-def sample_ghost_ref() -> None:
+def sample_ghost_ref() -> GhostRef:
     """Function docstring.
 
     Returns:
         Return value.
     """
-    return GhostRef(  # type: ignore
+    return GhostRef(
         name="Linear",
         api_path="torch.nn.Linear",
         kind="class",
@@ -35,24 +34,28 @@ def sample_ghost_ref() -> None:
         params=[
             GhostParam(
                 name="in_features",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="int",
                 description="size of each input sample",
             ),
             GhostParam(
                 name="out_features",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="int",
                 description="size of each output sample",
             ),
             GhostParam(
                 name="bias",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="bool",
                 default="True",
                 description='If set to "False", the layer will not learn an additive bias.',
             ),
-            GhostParam(name="args", kind="VAR_POSITIONAL", annotation="Any"),
+            GhostParam(
+                name="args",
+                kind=ParameterKind.VAR_POSITIONAL,
+                annotation="Any",
+            ),
         ],
         returns_type="torch.Tensor",
         returns_description="A tensor of shape",
@@ -180,15 +183,31 @@ def test_to_protobuf_types() -> None:
         api_path="a.Types",
         kind="class",
         params=[
-            GhostParam(name="s", kind="POSITIONAL_ONLY", annotation="str"),
-            GhostParam(name="l", kind="POSITIONAL_ONLY", annotation="list[int]"),
-            GhostParam(name="d", kind="POSITIONAL_ONLY", annotation="dict[str, int]"),
-            GhostParam(name="f", kind="POSITIONAL_ONLY", annotation="float"),
-            GhostParam(name="u", kind="POSITIONAL_ONLY", annotation=None),
+            GhostParam(name="s", kind=ParameterKind.POSITIONAL_ONLY, annotation="str"),
             GhostParam(
-                name="mode", kind="POSITIONAL_ONLY", annotation="InterpolationMode"
+                name="l",
+                kind=ParameterKind.POSITIONAL_ONLY,
+                annotation="list[int]",
             ),
-            GhostParam(name="unknown", kind="POSITIONAL_ONLY", annotation="weird_type"),
+            GhostParam(
+                name="d",
+                kind=ParameterKind.POSITIONAL_ONLY,
+                annotation="dict[str, int]",
+            ),
+            GhostParam(
+                name="f", kind=ParameterKind.POSITIONAL_ONLY, annotation="float"
+            ),
+            GhostParam(name="u", kind=ParameterKind.POSITIONAL_ONLY, annotation=None),
+            GhostParam(
+                name="mode",
+                kind=ParameterKind.POSITIONAL_ONLY,
+                annotation="InterpolationMode",
+            ),
+            GhostParam(
+                name="unknown",
+                kind=ParameterKind.POSITIONAL_ONLY,
+                annotation="weird_type",
+            ),
         ],
     )
     code = to_protobuf(ref)
@@ -213,8 +232,7 @@ def test_export_branches() -> None:
     assert _py_type_to_proto(None) == "string"
     assert _py_type_to_proto("") == "string"
 
-    from ml_switcheroo_ir.schema.ghost import GhostParam
-    from ml_switcheroo_ir.schema.ghost import GhostRef
+    from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
 
     r = GhostRef(
         name="X",
@@ -222,10 +240,16 @@ def test_export_branches() -> None:
         kind="function",
         params=[
             GhostParam(
-                name="p1", kind="KEYWORD_ONLY", default="None", annotation="int"
+                name="p1",
+                kind=ParameterKind.KEYWORD_ONLY,
+                default="None",
+                annotation="int",
             ),
             GhostParam(
-                name="p2", kind="VAR_POSITIONAL", default="None", annotation="int"
+                name="p2",
+                kind=ParameterKind.VAR_POSITIONAL,
+                default="None",
+                annotation="int",
             ),
         ],
     )
@@ -236,7 +260,7 @@ def test_export_branches() -> None:
         name="Y",
         api_path="Y",
         kind="function",
-        params=[GhostParam(name="p_empty", kind="KEYWORD_ONLY")],
+        params=[GhostParam(name="p_empty", kind=ParameterKind.KEYWORD_ONLY)],
         returns_type="str",
     )  # No returns_description
     _ghost_to_cdd_ir(r_empty_anno)
@@ -264,10 +288,16 @@ def test_export_branches_more() -> None:
         docstring="doc",
         params=[
             GhostParam(
-                name="p1", kind="KEYWORD_ONLY", default="None", annotation="int"
+                name="p1",
+                kind=ParameterKind.KEYWORD_ONLY,
+                default="None",
+                annotation="int",
             ),
             GhostParam(
-                name="p2", kind="VAR_POSITIONAL", default="None", annotation="int"
+                name="p2",
+                kind=ParameterKind.VAR_POSITIONAL,
+                default="None",
+                annotation="int",
             ),
         ],
     )
@@ -284,7 +314,7 @@ def test_export_branches_more() -> None:
         params=[
             GhostParam(
                 name="p1",
-                kind="KEYWORD_ONLY",
+                kind=ParameterKind.KEYWORD_ONLY,
                 default="None",
                 annotation="int",
                 description="desc",
@@ -336,7 +366,7 @@ def test_export_sass_prompt_context() -> None:
         params=[
             ExtendedGhostParam(
                 name="op0",
-                kind="POSITIONAL_ONLY",
+                kind=ParameterKind.POSITIONAL_ONLY,
                 annotation="R",
                 standardized_name="dst",
                 direction=OperandDirection.WRITE,
@@ -344,7 +374,7 @@ def test_export_sass_prompt_context() -> None:
             ),
             ExtendedGhostParam(
                 name="op1",
-                kind="POSITIONAL_ONLY",
+                kind=ParameterKind.POSITIONAL_ONLY,
                 annotation="R",
                 standardized_name="src0",
                 direction=OperandDirection.READ,
@@ -373,7 +403,7 @@ def test_export_sass_prompt_context() -> None:
         params=[
             ExtendedGhostParam(
                 name="raw_op",
-                kind="POSITIONAL_ONLY",
+                kind=ParameterKind.POSITIONAL_ONLY,
             )
         ],
     )
@@ -415,25 +445,25 @@ def test_export_mlir_prompt_context() -> None:
         params=[
             ExtendedGhostParam(
                 name="lhs",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 annotation="FloatLike",
                 role=IRParameterRole.OPERAND,
             ),
             ExtendedGhostParam(
                 name="fastmath",
-                kind="KEYWORD_ONLY",
+                kind=ParameterKind.KEYWORD_ONLY,
                 annotation="FastMathFlagsAttr",
                 role=IRParameterRole.ATTRIBUTE,
             ),
             ExtendedGhostParam(
                 name="body_reg",
-                kind="KEYWORD_ONLY",
+                kind=ParameterKind.KEYWORD_ONLY,
                 annotation="Region",
                 role=IRParameterRole.REGION,
             ),
             GhostParam(
                 name="region_untyped",
-                kind="KEYWORD_ONLY",
+                kind=ParameterKind.KEYWORD_ONLY,
                 annotation="Region",
             ),
         ],

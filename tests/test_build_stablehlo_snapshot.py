@@ -282,8 +282,8 @@ def test_extract_ops_missing_type_column_outputs(mock_urlopen: mock.MagicMock) -
 
 
 @mock.patch("urllib.request.urlopen")
-def test_extract_ops_coverage_gaps(mock_urlopen: mock.MagicMock) -> None:
-    """Test extract ops coverage gaps.
+def test_extract_ops_unmatched_lines(mock_urlopen: mock.MagicMock) -> None:
+    """Test extract_ops handling of unmatched lines and HTTP error fallbacks.
 
     Args:
         mock_urlopen: Mocked urlopen.
@@ -414,7 +414,7 @@ def StableHLO_NoArgsOp : StableHLO_Op<"no_args"> {
     assert len(tablegen_refs) == 2
 
 
-def test_parse_stablehlo_tablegen_comprehensive_coverage() -> None:
+def test_parse_stablehlo_tablegen_edge_cases() -> None:
     """Test TableGen parsing base classes, inheritance recursion, mnemonics, traits, fallbacks, and delimiters."""
     tablegen_source = """
     // Base class with let arguments and let results in body

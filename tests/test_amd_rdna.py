@@ -118,6 +118,7 @@ def test_amd_rdna_specific_instruction(mock_load: mock.MagicMock) -> None:
     assert "AMD RDNA v_add" in (add_inst.docstring or "")
     assert len(add_inst.params) == 3
     assert add_inst.params[0].standardized_name == "dst"
+    assert add_inst.overloads is not None
     assert len(add_inst.overloads) == 1
 
 

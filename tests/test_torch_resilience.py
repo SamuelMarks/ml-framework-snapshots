@@ -1,7 +1,4 @@
-"""Coverage tests for torch framework snapshot collector.
-
-Tests missing lines and branches in ml_framework_snapshots/frameworks/torch.py.
-"""
+"""Tests for fault tolerance, fallback handling, and inspection resilience in the PyTorch framework collector."""
 
 import importlib
 import types
@@ -75,7 +72,7 @@ def test_torch_scan_metrics_inspect_exception(mocker: Any) -> None:
         pass
 
     fake_metrics = types.ModuleType("torchmetrics")
-    fake_metrics.DummyMetric = DummyMetric  # type: ignore[attr-defined]
+    setattr(fake_metrics, "DummyMetric", DummyMetric)
 
     with patch.dict("sys.modules", {"torchmetrics": fake_metrics}):
         mocker.patch.object(
@@ -99,39 +96,39 @@ def test_torch_scan_array_api_inspect_exceptions(mocker: Any) -> None:
     fake_torch = types.ModuleType("torch")
 
     # 1. Top-level callable
-    fake_torch.dummy_op = lambda x: x  # type: ignore[attr-defined]
+    setattr(fake_torch, "dummy_op", lambda x: x)
 
     # 2. linalg callable
     linalg_mod = types.ModuleType("torch.linalg")
-    linalg_mod.norm = lambda x: x  # type: ignore[attr-defined]
-    fake_torch.linalg = linalg_mod  # type: ignore[attr-defined]
+    setattr(linalg_mod, "norm", lambda x: x)
+    setattr(fake_torch, "linalg", linalg_mod)
 
     # 3. special callable
     special_mod = types.ModuleType("torch.special")
-    special_mod.erf = lambda x: x  # type: ignore[attr-defined]
-    fake_torch.special = special_mod  # type: ignore[attr-defined]
+    setattr(special_mod, "erf", lambda x: x)
+    setattr(fake_torch, "special", special_mod)
 
     # 4. fft callable
     fft_mod = types.ModuleType("torch.fft")
-    fft_mod.fft = lambda x: x  # type: ignore[attr-defined]
-    fake_torch.fft = fft_mod  # type: ignore[attr-defined]
+    setattr(fft_mod, "fft", lambda x: x)
+    setattr(fake_torch, "fft", fft_mod)
 
     # 5. nn.functional callable
     nn_mod = types.ModuleType("torch.nn")
     functional_mod = types.ModuleType("torch.nn.functional")
-    functional_mod.relu = lambda x: x  # type: ignore[attr-defined]
-    nn_mod.functional = functional_mod  # type: ignore[attr-defined]
-    fake_torch.nn = nn_mod  # type: ignore[attr-defined]
+    setattr(functional_mod, "relu", lambda x: x)
+    setattr(nn_mod, "functional", functional_mod)
+    setattr(fake_torch, "nn", nn_mod)
 
     # 6. autograd callable
     autograd_mod = types.ModuleType("torch.autograd")
-    autograd_mod.grad = lambda x: x  # type: ignore[attr-defined]
-    fake_torch.autograd = autograd_mod  # type: ignore[attr-defined]
+    setattr(autograd_mod, "grad", lambda x: x)
+    setattr(fake_torch, "autograd", autograd_mod)
 
     # 7. distributed callable
     dist_mod = types.ModuleType("torch.distributed")
-    dist_mod.all_reduce = lambda x: x  # type: ignore[attr-defined]
-    fake_torch.distributed = dist_mod  # type: ignore[attr-defined]
+    setattr(dist_mod, "all_reduce", lambda x: x)
+    setattr(fake_torch, "distributed", dist_mod)
 
     # 8. Tensor instance method
     class MockTensor:
@@ -148,7 +145,7 @@ def test_torch_scan_array_api_inspect_exceptions(mocker: Any) -> None:
             """
             return self
 
-    fake_torch.Tensor = MockTensor  # type: ignore[attr-defined]
+    setattr(fake_torch, "Tensor", MockTensor)
 
     # 9. torch.ops.aten callable
     class MockOps:
@@ -161,7 +158,7 @@ def test_torch_scan_array_api_inspect_exceptions(mocker: Any) -> None:
 
         aten = MockAten()
 
-    fake_torch.ops = MockOps()  # type: ignore[attr-defined]
+    setattr(fake_torch, "ops", MockOps())
 
     with patch.dict("sys.modules", {"torch": fake_torch}):
         mocker.patch.object(
@@ -198,7 +195,7 @@ def test_torch_scan_array_api_tensor_inplace_tags_none(mocker: Any) -> None:
             """
             return self
 
-    fake_torch.Tensor = MockTensor  # type: ignore[attr-defined]
+    setattr(fake_torch, "Tensor", MockTensor)
 
     mock_ref = GhostPythonRef(
         name="add_",
@@ -216,6 +213,7 @@ def test_torch_scan_array_api_tensor_inplace_tags_none(mocker: Any) -> None:
         )
         refs = _scan_array_api(include_nonpublic=False)
         assert len(refs) == 1
+        assert isinstance(refs[0], GhostPythonRef)
         assert refs[0].domain_metadata == {"is_in_place": True}
         assert refs[0].environment_tags == ["in_place_mutation"]
 

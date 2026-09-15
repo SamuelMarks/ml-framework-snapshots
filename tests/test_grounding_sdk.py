@@ -524,20 +524,21 @@ def test_validate_python_call(tmp_path: Any) -> None:
     assert any(d.field == "args" for d in res_too_many_args.diagnostics)
 
     # Overloads (dict & object) and accepted_kwargs coverage
+    from ml_switcheroo_ir.schema.ghost import ParameterKind
     from ml_framework_snapshots.models import ExtendedGhostRef, GhostParam, GhostRef
 
     mock_ref = ExtendedGhostRef(
         name="fn",
         api_path="mock.fn",
         kind="function",
-        params=[GhostParam(name="a", kind="POSITIONAL_OR_KEYWORD")],
+        params=[GhostParam(name="a", kind=ParameterKind.POSITIONAL_OR_KEYWORD)],
         overloads=[
             {"params": [{"name": "b"}, {"name": ""}]},
             GhostRef(
                 name="fn",
                 api_path="mock.fn",
                 kind="function",
-                params=[GhostParam(name="c", kind="KEYWORD_ONLY")],
+                params=[GhostParam(name="c", kind=ParameterKind.KEYWORD_ONLY)],
             ),
         ],
         accepted_kwargs=["extra_kw"],
@@ -554,7 +555,7 @@ def test_validate_python_call(tmp_path: Any) -> None:
     assert res_ov.is_grounded
 
 
-def test_grounding_branch_coverage(tmp_path: Any, monkeypatch: Any) -> None:
+def test_grounding_engine_edge_branches(tmp_path: Any, monkeypatch: Any) -> None:
     """Test edge branches in compiler, hardware, and engine modules."""
     # 1. Compiler: convolution with dimension_numbers present and zero expected operands
     conv_report = validate_stablehlo_op(

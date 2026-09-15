@@ -1,4 +1,4 @@
-"""Module docstring."""
+"""Tests for compliance verification, assembly checking (MLIR, SASS, RDNA), and shape validation."""
 
 from pathlib import Path
 import os
@@ -7,7 +7,7 @@ from typing import Any
 
 
 def test_align_namespace_exact_mapping() -> None:
-    """Function docstring."""
+    """Test align_namespace exact mapping for zero_jax and zero_optax prefixes."""
     from ml_framework_snapshots.compliance import align_namespace
 
     assert align_namespace("zero_jax", "target_prefix", "ref") == "jax"
@@ -15,9 +15,9 @@ def test_align_namespace_exact_mapping() -> None:
 
 
 def test_score_compliance_sig_tuple_edge_cases() -> None:
-    """Function docstring."""
+    """Test compliance scoring with signature tuple matching and sanitized defaults."""
     from ml_framework_snapshots.compliance import score_compliance
-    from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
+    from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
 
     ref_snap = {
         "categories": {
@@ -61,19 +61,19 @@ def test_score_compliance_sig_tuple_edge_cases() -> None:
             params=[
                 GhostParam(
                     name="a",
-                    kind="POSITIONAL_OR_KEYWORD",
+                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                     default="None",
                     annotation="str",
                 ),
                 GhostParam(
                     name="b",
-                    kind="POSITIONAL_OR_KEYWORD",
+                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                     default="None",
                     annotation="int",
                 ),
                 GhostParam(
                     name="c",
-                    kind="POSITIONAL_OR_KEYWORD",
+                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                     default="None",
                     annotation="float",
                 ),
@@ -88,9 +88,9 @@ def test_score_compliance_sig_tuple_edge_cases() -> None:
 
 
 def test_score_compliance_varargs_fallback_special_cases() -> None:
-    """Function docstring."""
+    """Test compliance scoring with varargs fallback and special parameter handling."""
     from ml_framework_snapshots.compliance import score_compliance
-    from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
+    from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
 
     ref_snap = {
         "categories": {
@@ -139,12 +139,15 @@ def test_score_compliance_varargs_fallback_special_cases() -> None:
             params=[
                 GhostParam(
                     name="x",
-                    kind="POSITIONAL_OR_KEYWORD",
+                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                     default=None,
                     annotation=None,
                 ),
                 GhostParam(
-                    name="args", kind="VAR_POSITIONAL", default=None, annotation=None
+                    name="args",
+                    kind=ParameterKind.VAR_POSITIONAL,
+                    default=None,
+                    annotation=None,
                 ),
             ],
             docstring="",
@@ -158,7 +161,7 @@ def test_score_compliance_varargs_fallback_special_cases() -> None:
             params=[
                 GhostParam(
                     name="x",
-                    kind="POSITIONAL_OR_KEYWORD",
+                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                     default=None,
                     annotation=None,
                 ),
@@ -188,7 +191,7 @@ def test_extract_target_refs_string_path(tmp_path: Any) -> None:
     sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     sub_mod.write_text("def my_func(a: int) -> None: pass")
 
-    refs = extract_target_refs(str(sub_mod), "str_pkg.api", "ref")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "str_pkg.api", "ref")
     assert len(refs) == 1
     assert refs[0].api_path == "ref.my_func"
 

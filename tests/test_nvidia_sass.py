@@ -51,6 +51,7 @@ def test_nvidia_sass_specific_instruction() -> None:
     # We know FADD typically takes registers/constants, check we extracted some operands
     assert len(fadd.params) > 0
     assert fadd.params[0].standardized_name == "dst"
+    assert fadd.overloads is not None
     assert len(fadd.overloads) > 0
     assert fadd.environment_tags is not None
     assert "cuda" in (fadd.environment_tags or [])
@@ -158,18 +159,26 @@ def test_modern_sass_instructions() -> None:
     op_map = {r.name: r for r in refs}
 
     assert "WGMMA" in op_map
-    assert "sm_90" in op_map["WGMMA"].environment_tags
-    assert "sm_100" in op_map["WGMMA"].environment_tags
-    assert "sm_80" not in op_map["WGMMA"].environment_tags
+    wgmma = op_map["WGMMA"]
+    assert wgmma.environment_tags is not None
+    assert "sm_90" in wgmma.environment_tags
+    assert "sm_100" in wgmma.environment_tags
+    assert "sm_80" not in wgmma.environment_tags
 
     assert "TMA" in op_map
-    assert "sm_90" in op_map["TMA"].environment_tags
+    tma = op_map["TMA"]
+    assert tma.environment_tags is not None
+    assert "sm_90" in tma.environment_tags
 
     assert "LDGSTS" in op_map
-    assert "sm_80" in op_map["LDGSTS"].environment_tags
+    ldgsts = op_map["LDGSTS"]
+    assert ldgsts.environment_tags is not None
+    assert "sm_80" in ldgsts.environment_tags
 
     assert "FADD" in op_map
-    assert "sm_70" in op_map["FADD"].environment_tags
+    fadd_op = op_map["FADD"]
+    assert fadd_op.environment_tags is not None
+    assert "sm_70" in fadd_op.environment_tags
 
 
 def test_get_sass_instruction_family() -> None:

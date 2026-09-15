@@ -90,6 +90,18 @@ def get_framework_snapshot(
                                     data = json.load(f)
                                     if "categories" in data:
                                         loaded_data = data
+                                    elif isinstance(data, dict) and (
+                                        "operations" in data or "instructions" in data
+                                    ):
+                                        items = (
+                                            data.get("operations")
+                                            or data.get("instructions")
+                                            or []
+                                        )
+                                        loaded_data = {
+                                            **data,
+                                            "categories": {"UTIL": items},
+                                        }
                                     elif isinstance(data, list):
                                         loaded_data = {"categories": {"UTIL": data}}
                                     source_kind = source_label

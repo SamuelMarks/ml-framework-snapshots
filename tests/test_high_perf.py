@@ -13,12 +13,16 @@ from ml_framework_snapshots.frameworks.deepspeed import collect_api as ds_collec
 def test_triton_collect() -> None:
     """Function docstring."""
     mock_tl = MagicMock()
-    mock_tl.__dir__ = lambda self: [  # type: ignore
-        "constexpr",
-        "tensor",
-        "_priv",
-        "not_callable",
-    ]
+    setattr(
+        mock_tl,
+        "__dir__",
+        lambda self: [
+            "constexpr",
+            "tensor",
+            "_priv",
+            "not_callable",
+        ],
+    )
 
     def constexpr() -> Any:
         """Function docstring."""
@@ -88,7 +92,7 @@ def test_triton_collect() -> None:
 def test_onnx_collect() -> None:
     """Function docstring."""
     mock_onnx = MagicMock()
-    mock_onnx.__dir__ = lambda self: ["InferenceSession", "utils"]  # type: ignore
+    setattr(mock_onnx, "__dir__", lambda self: ["InferenceSession", "utils"])
 
     class InferenceSession:
         """Class docstring."""
@@ -122,7 +126,7 @@ def test_onnx_collect() -> None:
 def test_ds_collect() -> None:
     """Function docstring."""
     mock_ds = MagicMock()
-    mock_ds.__dir__ = lambda self: ["initialize", "utils"]  # type: ignore
+    setattr(mock_ds, "__dir__", lambda self: ["initialize", "utils"])
 
     def initialize() -> Any:
         """Function docstring."""

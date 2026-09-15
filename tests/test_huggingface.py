@@ -45,11 +45,15 @@ def test_collect_transformers() -> None:
     mock_mod.DummyConfig = DummyConfig
     mock_mod.AutoModelForCausalLM = AutoModelForCausalLM
     mock_mod.DummyModel = DummyModel
-    mock_mod.__dir__ = lambda self: [  # type: ignore
-        "DummyConfig",
-        "AutoModelForCausalLM",
-        "DummyModel",
-    ]
+    setattr(
+        mock_mod,
+        "__dir__",
+        lambda self: [
+            "DummyConfig",
+            "AutoModelForCausalLM",
+            "DummyModel",
+        ],
+    )
 
     with (
         patch("importlib.import_module", return_value=mock_mod),
@@ -96,7 +100,7 @@ def test_collect_diffusers() -> None:
         pass
 
     mock_mod.DummyScheduler = DummyScheduler
-    mock_mod.__dir__ = lambda self: ["DummyScheduler"]  # type: ignore
+    setattr(mock_mod, "__dir__", lambda self: ["DummyScheduler"])
 
     with (
         patch("importlib.import_module", return_value=mock_mod),
@@ -129,7 +133,7 @@ def test_collect_tokenizers() -> None:
         pass
 
     mock_mod.DummyTokenizer = DummyTokenizer
-    mock_mod.__dir__ = lambda self: ["DummyTokenizer"]  # type: ignore
+    setattr(mock_mod, "__dir__", lambda self: ["DummyTokenizer"])
 
     with (
         patch("importlib.import_module", return_value=mock_mod),
@@ -161,7 +165,7 @@ def test_parse_pretrained_config_with_empty_annotations() -> None:
 
         __annotations__ = {}
 
-        def __init__(self, **kwargs: Any) -> Any:  # type: ignore
+        def __init__(self, **kwargs: Any) -> None:
             """Init docstring.
 
             Args:

@@ -5,6 +5,7 @@ memref, gpu, vector) via TableGen ODS parsing, live Python dialect inspection,
 or official MLIR documentation.
 """
 
+import argparse
 import importlib
 import json
 import os
@@ -1071,9 +1072,36 @@ def scrape_stablehlo() -> List[Dict[str, Any]]:
     return ops
 
 
-def main() -> None:
-    """Run the scraper and output mlir_exhaustive.json."""
-    output_path = os.path.join(
+def main(argv: Optional[List[str]] = None) -> None:
+    """Run the scraper and output enveloped mlir_exhaustive.json.
+
+    Args:
+        argv: Optional list of command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Scrape exhaustive MLIR dialect operations."
+    )
+    parser.add_argument(
+        "--tag",
+        type=str,
+        default="llvmorg-19.1.0",
+        help="Git tag or release tag for upstream LLVM.",
+    )
+    parser.add_argument(
+        "--version",
+        type=str,
+        default="19.1.0",
+        help="SemVer version for the MLIR dialect snapshot.",
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default=None,
+        help="Target output path for mlir_exhaustive.json.",
+    )
+    args, _ = parser.parse_known_args(argv)
+
+    output_path = args.output_path or os.path.join(
         os.path.dirname(__file__), "..", "frameworks", "mlir_exhaustive.json"
     )
 
@@ -1105,13 +1133,14 @@ def main() -> None:
         "llvm": "LLVMIR",
     }
 
+    tag_ref = args.tag
     for d, files in dialect_map.items():
         d_cap = capital_map[d]
         for td_file in files:
             url = (
-                f"https://raw.githubusercontent.com/llvm/llvm-project/main/mlir/include/mlir/Dialect/{d_cap}/{td_file}"
+                f"https://raw.githubusercontent.com/llvm/llvm-project/{tag_ref}/mlir/include/mlir/Dialect/{d_cap}/{td_file}"
                 if d_cap == "LLVMIR"
-                else f"https://raw.githubusercontent.com/llvm/llvm-project/main/mlir/include/mlir/Dialect/{d_cap}/IR/{td_file}"
+                else f"https://raw.githubusercontent.com/llvm/llvm-project/{tag_ref}/mlir/include/mlir/Dialect/{d_cap}/IR/{td_file}"
             )
             td_content = fetch_html(url)
             if td_content:
@@ -1161,8 +1190,18 @@ def main() -> None:
             seen_paths.add(op["api_path"])
             all_ops.append(op)
 
+    exhaustive_data = {
+        "schema_version": "2.0.0",
+        "target": "mlir",
+        "version": args.version,
+        "upstream_commit": args.tag,
+        "upstream_version": args.version,
+        "source_type": "tablegen",
+        "operations": all_ops,
+    }
+
     with open(output_path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(all_ops, f, indent=2, sort_keys=True)
+        json.dump(exhaustive_data, f, indent=2, sort_keys=True)
         f.write("\n")
     print(f"Dumped exhaustive MLIR operations to {output_path}")
 

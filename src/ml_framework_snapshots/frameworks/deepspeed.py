@@ -55,12 +55,15 @@ def collect_api(
                         # Map distributed configuration dictionaries into structured elements.
                         has_config = any(p.name == "config_params" for p in ref.params)
                         if not has_config:
-                            from ml_switcheroo_ir.schema.ghost import GhostParam
+                            from ml_switcheroo_ir.schema.ghost import (
+                                GhostParam,
+                                ParameterKind,
+                            )
 
                             ref.params.append(
                                 GhostParam(
                                     name="config_params",
-                                    kind="POSITIONAL_OR_KEYWORD",
+                                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                                     default="None",
                                     annotation="dict | str | None",
                                 )

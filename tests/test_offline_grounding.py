@@ -164,6 +164,7 @@ def test_offline_mlir_decoupled_operands_and_regions() -> None:
         validate_mlir_region,
         validate_mlir_successors,
     )
+    from ml_switcheroo_ir.schema.ghost import ParameterKind
     from ml_framework_snapshots.models import (
         ExtendedGhostParam,
         GhostMlirRef,
@@ -172,13 +173,13 @@ def test_offline_mlir_decoupled_operands_and_regions() -> None:
 
     op_param = ExtendedGhostParam(
         name="lhs",
-        kind="POSITIONAL_OR_KEYWORD",
+        kind=ParameterKind.POSITIONAL_OR_KEYWORD,
         annotation="tensor<4xf32>",
         role=IRParameterRole.OPERAND,
     )
     attr_param = ExtendedGhostParam(
         name="predicate",
-        kind="KEYWORD_ONLY",
+        kind=ParameterKind.KEYWORD_ONLY,
         annotation="i64",
         role=IRParameterRole.ATTRIBUTE,
     )

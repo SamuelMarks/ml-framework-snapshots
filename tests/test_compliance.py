@@ -144,7 +144,7 @@ def test_extract_target_refs(tmp_path: Path) -> None:
     sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     sub_mod.write_text("def my_func(a: int) -> int: return a")
 
-    refs = extract_target_refs(str(sub_mod), "mock_pkg.api", "reference")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "mock_pkg.api", "reference")
     assert len(refs) == 1
     assert refs[0].api_path == "reference.my_func"
     assert refs[0].name == "my_func"
@@ -160,8 +160,7 @@ def test_score_compliance_empty() -> None:
 
 def test_score_compliance_matches() -> None:
     """Test compliance scoring with matches and missing."""
-    from ml_switcheroo_ir.schema.ghost import GhostParam
-    from ml_switcheroo_ir.schema.ghost import GhostRef
+    from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
 
     ref_snap = {
         "categories": {
@@ -200,7 +199,11 @@ def test_score_compliance_matches() -> None:
             api_path="reference.func1",
             kind="function",
             params=[
-                GhostParam(name="a", kind="POSITIONAL_OR_KEYWORD", annotation="int")
+                GhostParam(
+                    name="a",
+                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+                    annotation="int",
+                )
             ],
             docstring="",
             aliases=[],
@@ -217,8 +220,7 @@ def test_score_compliance_matches() -> None:
 
 def test_score_compliance_mismatch() -> None:
     """Test compliance scoring with mismatch and varargs fallback."""
-    from ml_switcheroo_ir.schema.ghost import GhostParam
-    from ml_switcheroo_ir.schema.ghost import GhostRef
+    from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
 
     ref_snap = {
         "categories": {
@@ -263,7 +265,11 @@ def test_score_compliance_mismatch() -> None:
             api_path="reference.func1",
             kind="function",
             params=[
-                GhostParam(name="wrong", kind="POSITIONAL_OR_KEYWORD", annotation="str")
+                GhostParam(
+                    name="wrong",
+                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+                    annotation="str",
+                )
             ],
             docstring="",
             aliases=[],
@@ -274,8 +280,8 @@ def test_score_compliance_mismatch() -> None:
             api_path="reference.func2",
             kind="function",
             params=[
-                GhostParam(name="args", kind="VAR_POSITIONAL"),
-                GhostParam(name="kwargs", kind="VAR_KEYWORD"),
+                GhostParam(name="args", kind=ParameterKind.VAR_POSITIONAL),
+                GhostParam(name="kwargs", kind=ParameterKind.VAR_KEYWORD),
             ],
             docstring="",
             aliases=[],
@@ -304,7 +310,7 @@ def test_extract_target_refs_import_error(tmp_path: Path) -> None:
     # missing_module doesn't exist
     sub_mod.write_text("import missing_module\ndef my_func(): pass")
 
-    refs = extract_target_refs(str(sub_mod), "bad_pkg.api", "reference")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "bad_pkg.api", "reference")
     # Actually Griffe might still parse it, but dynamic import will fail.
     # It should silently skip.
     assert len(refs) == 0
@@ -363,7 +369,7 @@ def test_extract_target_refs_skip_private(tmp_path: Path) -> None:
     sub_mod = Path(os.path.join(pkg_dir, "api.py"))
     sub_mod.write_text("def _private_func(): pass\nclass _PrivateClass: pass")
 
-    refs = extract_target_refs(str(sub_mod), "priv_pkg.api", "reference")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "priv_pkg.api", "reference")
     assert len(refs) == 0
 
 
@@ -387,7 +393,7 @@ def test_extract_target_refs_nested_import_error(tmp_path: Path) -> None:
     sub_mod.write_text(
         "import sys\nsys.modules['nested_pkg.api.broken'] = None\ndef broken(): pass"
     )
-    refs = extract_target_refs(str(sub_mod), "nested_pkg.api", "reference")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "nested_pkg.api", "reference")
 
     # We only care that it doesn't crash.
     assert isinstance(refs, list)
@@ -408,7 +414,7 @@ def test_extract_target_refs_sys_path(tmp_path: Path) -> None:
     sub_mod.write_text("def my_func(): pass")
 
     sys.path.insert(0, str(tmp_path))
-    refs = extract_target_refs(str(sub_mod), "sys_pkg.api", "reference")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "sys_pkg.api", "reference")
     assert len(refs) == 1
     sys.path.remove(str(tmp_path))
 
@@ -423,7 +429,7 @@ def test_extract_target_refs_empty_members(tmp_path: Path) -> None:
     pkg_dir.mkdir()
     Path(os.path.join(pkg_dir, "__init__.py")).touch()
 
-    refs = extract_target_refs(str(pkg_dir), "empty_pkg", "reference")  # type: ignore
+    refs = extract_target_refs(str(pkg_dir), "empty_pkg", "reference")
     assert len(refs) == 0
 
 
@@ -443,7 +449,7 @@ def test_extract_target_refs_catch_all_exception(tmp_path: Path) -> None:
         "class BrokenClass:\n    @property\n    def prop(self): raise RuntimeError('Broken')"
     )
 
-    refs = extract_target_refs(str(sub_mod), "broken_pkg.api", "reference")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "broken_pkg.api", "reference")
     # Griffe parses it, GhostInspector will try to inspect and might fail, but it's wrapped in a general catch block.
     # It should survive.
     assert isinstance(refs, list)
@@ -469,7 +475,7 @@ def test_extract_target_refs_catch_inner_exception(tmp_path: Any) -> None:
 
     orig_inspect = ml_framework_snapshots.models.GhostInspector.inspect
 
-    def mock_inspect(obj: Any, api_path: Any, is_public=None) -> Any:  # type: ignore
+    def mock_inspect(obj: Any, api_path: Any, is_public: Any = None) -> Any:
         """Mock inspect to test inner node failure.
 
         Args:
@@ -491,7 +497,7 @@ def test_extract_target_refs_catch_inner_exception(tmp_path: Any) -> None:
     with patch.object(
         ml_framework_snapshots.models.GhostInspector, "inspect", mock_inspect
     ):
-        refs = extract_target_refs(str(sub_mod), "inner_broken_pkg.api", "reference")  # type: ignore
+        refs = extract_target_refs(str(sub_mod), "inner_broken_pkg.api", "reference")
         # Should have extracted Outer, skipped Inner due to exception
         assert len(refs) == 1
 
@@ -509,7 +515,7 @@ def test_extract_target_refs_no_parts(tmp_path: Any) -> None:
     sub_mod = Path(os.path.join(pkg_dir, "__init__.py"))
     sub_mod.write_text("def top_func(): pass")
 
-    refs = extract_target_refs(str(sub_mod), "top_level_pkg", "reference")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "top_level_pkg", "reference")
     assert len(refs) == 1
 
 
@@ -528,7 +534,7 @@ def test_extract_target_refs_break_loop(tmp_path: Any) -> None:
     # This will have parts "break_pkg", "api", "MyClass"
     sub_mod.write_text("class MyClass:\n    pass")
 
-    refs = extract_target_refs(str(sub_mod), "break_pkg.api", "reference")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "break_pkg.api", "reference")
     # Loop should evaluate `parts` fully.
     # It hits `except ImportError:` when it hits `MyClass`, sets object, and `break` is called.
     assert len(refs) == 1
@@ -549,7 +555,7 @@ def test_extract_target_refs_continue_loop(tmp_path: Any) -> None:
     # Provide a function that gets completely imported but isn't part of the target loop break
     sub_mod.write_text("import sys\ndef func(): pass")
 
-    refs = extract_target_refs(str(sub_mod), "cont_pkg.api", "reference")  # type: ignore
+    refs = extract_target_refs(str(sub_mod), "cont_pkg.api", "reference")
     # if `importlib.import_module` works for ALL parts, then `for i in range` finishes
     # without `break` and doesn't trigger `except ImportError`.
     # Let's ensure the `except ImportError` isn't required for correct execution.

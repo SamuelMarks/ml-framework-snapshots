@@ -14,9 +14,11 @@ from ml_framework_snapshots.frameworks.torch import (
     parse_native_functions_yaml,
 )
 from ml_framework_snapshots.mcp_server import check_hallucination, handle_mcp_message
+from ml_switcheroo_ir.schema.ghost import ParameterKind
 from ml_framework_snapshots.models import (
     ExtendedGhostParam,
     GhostInspector,
+    GhostPythonRef,
     sanitize_param_default,
 )
 
@@ -121,7 +123,7 @@ def test_extended_ghost_param_fields() -> None:
     """Test ExtendedGhostParam fields: dtypes, rank, default_factory, is_mandatory."""
     param = ExtendedGhostParam(
         name="input",
-        kind="POSITIONAL_OR_KEYWORD",
+        kind=ParameterKind.POSITIONAL_OR_KEYWORD,
         default="None",
         annotation="Tensor",
         dtypes=["float32", "bfloat16", "float16"],
@@ -346,6 +348,7 @@ def test_ghost_inspector_aten_torch_no_decay() -> None:
     assert "input" in param_names
     assert "other" in param_names
     # Verify overloads populated
+    assert ref_add.overloads is not None
     assert len(ref_add.overloads) > 0
 
     # Inspect torch.relu
@@ -638,7 +641,10 @@ def test_torch_collect_api_array_api_aten(mocker: Any) -> None:
         if r.api_path.startswith("torch.Tensor.") and r.name.endswith("_")
     ]
     if tensor_in_place:
+        assert isinstance(tensor_in_place[0], GhostPythonRef)
+        assert tensor_in_place[0].domain_metadata is not None
         assert tensor_in_place[0].domain_metadata.get("is_in_place") is True
+        assert tensor_in_place[0].environment_tags is not None
         assert "in_place_mutation" in tensor_in_place[0].environment_tags
 
 

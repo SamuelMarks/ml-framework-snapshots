@@ -18,7 +18,7 @@ def test_cli_capture(mocker: Any, capsys: Any) -> None:
     mocker.patch("sys.argv", ["ml-snapshots", "capture", "--out-dir", "test_out"])
 
     # Mock extract_snapshot and write_snapshot
-    def mock_extract(fw: Any, include_nonpublic=False) -> Any:  # type: ignore
+    def mock_extract(fw: Any, include_nonpublic: bool = False) -> Any:
         """Function docstring.
 
         Args:

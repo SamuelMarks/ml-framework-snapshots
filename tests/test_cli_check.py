@@ -178,7 +178,7 @@ def test_cmd_check_output_formatting(mocker: Any, capsys: Any, tmp_path: Any) ->
         tmp_path: Parameter.
     """
     from ml_framework_snapshots.cli import cmd_check
-    from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
+    from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
     import json
 
     ref = GhostRef(
@@ -187,9 +187,12 @@ def test_cmd_check_output_formatting(mocker: Any, capsys: Any, tmp_path: Any) ->
         kind="FUNCTION",
         params=[
             GhostParam(
-                name="p1", kind="POSITIONAL_OR_KEYWORD", annotation="int", default="0"
+                name="p1",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+                annotation="int",
+                default="0",
             ),
-            GhostParam(name="p2", kind="POSITIONAL_OR_KEYWORD"),
+            GhostParam(name="p2", kind=ParameterKind.POSITIONAL_OR_KEYWORD),
         ],
         returns_type="int",
         docstring="Long docstring that is really long and should be truncated if it exceeds one hundred characters let us see if it is",

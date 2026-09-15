@@ -878,3 +878,25 @@ def test_scrape_mlir_main_entrypoint(mocker: Any) -> None:
         return_value="<html></html>",
     )
     runpy.run_path(scrape_mlir.__file__, run_name="__main__")
+
+
+def test_parse_mlir_tablegen_unary_fallback() -> None:
+    """Test parse_mlir_tablegen falling back to Type:$in for Unary and $lhs/$rhs for Binary operations."""
+    content = """
+    def Test_NegFOp : Arith_UnaryOp<"negf", []> {
+      let summary = "negate operation";
+    }
+    """
+    ops = scrape_mlir.parse_mlir_tablegen(content, "arith")
+    assert len(ops) == 1
+    assert any(op["name"] == "in" for op in ops[0]["operands"])
+
+    content_bin = """
+    def Test_AddFOp : Arith_BinaryOp<"addf", []> {
+      let summary = "add operation";
+    }
+    """
+    ops_bin = scrape_mlir.parse_mlir_tablegen(content_bin, "arith")
+    assert len(ops_bin) == 1
+    assert any(op["name"] == "lhs" for op in ops_bin[0]["operands"])
+    assert any(op["name"] == "rhs" for op in ops_bin[0]["operands"])

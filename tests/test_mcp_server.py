@@ -1,4 +1,4 @@
-"""Unit tests for Model Context Protocol (MCP) server Section 5 capabilities.
+"""Unit tests for Model Context Protocol (MCP) server capabilities.
 
 Tests version-aware MCP queries, SQLite FTS5 index lookups,
 batch code block verification (check_code_block), and expanded semantic concept maps.
@@ -973,9 +973,18 @@ def test_stablehlo_rank_and_conv_validation() -> None:
     assert any("Spatial dimensions count mismatch" in err for err in res_conv["errors"])
 
 
-def test_explain_anti_pattern_tool() -> None:
-    """Test explain_anti_pattern tool with known cross-framework patterns and unknown fallbacks."""
+def test_explain_anti_pattern_tool(mocker: Any) -> None:
+    """Test explain_anti_pattern tool with known cross-framework patterns and unknown fallbacks.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
     from ml_framework_snapshots.mcp_server import explain_anti_pattern
+
+    mocker.patch(
+        "ml_framework_snapshots.mcp_server.get_api_signature",
+        return_value={"params": [{"name": "input"}, {"name": "dim"}]},
+    )
 
     # 1. PyTorch axis -> dim
     res_axis = explain_anti_pattern("torch", "torch.sum", "axis")
@@ -1038,7 +1047,7 @@ def test_explain_anti_pattern_tool() -> None:
     assert '"canonical_argument": "dim"' in resp["result"]["content"][0]["text"]
 
 
-def test_mcp_edge_coverage_branches(mocker: Any) -> None:
+def test_mcp_edge_error_handling(mocker: Any) -> None:
     """Test MCP server edge branches for hallucination checks, anti-patterns, and MLIR ops.
 
     Args:
@@ -1398,3 +1407,40 @@ def test_get_framework_snapshot_corrupt_file(tmp_path: Any, monkeypatch: Any) ->
     monkeypatch.setenv("ML_SNAPSHOTS_PATH", str(custom_dir))
     snap = get_framework_snapshot("corruptfw", version="1.0")
     assert snap is not None
+
+
+def test_get_framework_snapshot_list_file(tmp_path: Any, monkeypatch: Any) -> None:
+    """Test get_framework_snapshot loading a list format JSON file.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture.
+    """
+    import json
+    from ml_framework_snapshots.mcp_server import (
+        _SNAPSHOT_CACHE,
+        get_framework_snapshot,
+    )
+
+    _SNAPSHOT_CACHE.clear()
+    custom_dir = tmp_path / "list_snaps"
+    custom_dir.mkdir()
+    list_file = custom_dir / "customlist_v1.0.json"
+    with open(list_file, "w", encoding="utf-8") as f:
+        json.dump([{"name": "list_op", "api_path": "customlist.list_op"}], f)
+
+    monkeypatch.setenv("ML_SNAPSHOTS_PATH", str(custom_dir))
+    snap = get_framework_snapshot("customlist", version="1.0")
+    assert "categories" in snap
+    assert "UTIL" in snap["categories"]
+    assert snap["categories"]["UTIL"][0]["name"] == "list_op"
+
+    _SNAPSHOT_CACHE.clear()
+    ops_file = custom_dir / "customops_v1.0.json"
+    with open(ops_file, "w", encoding="utf-8") as f:
+        json.dump({"operations": [{"name": "op1", "api_path": "customops.op1"}]}, f)
+
+    snap_ops = get_framework_snapshot("customops", version="1.0")
+    assert "categories" in snap_ops
+    assert "UTIL" in snap_ops["categories"]
+    assert snap_ops["categories"]["UTIL"][0]["name"] == "op1"

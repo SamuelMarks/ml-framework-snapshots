@@ -21,7 +21,7 @@ def some_function(a: int = 1, b: str = "test", *args: Any, **kwargs: Any) -> Non
 class SomeClass:
     """A test class."""
 
-    def __init__(self, x: float, y: list = []) -> Any:  # type: ignore
+    def __init__(self, x: float, y: list[Any] = []) -> None:
         """:param x: The x coordinate.
 
         :type x: float

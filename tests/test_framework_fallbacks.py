@@ -2,7 +2,7 @@
 
 from typing import Any
 from unittest.mock import patch, MagicMock
-from ml_switcheroo_ir.schema.ghost import SemanticTier
+from ml_switcheroo_ir.schema.ghost import ParameterKind, SemanticTier
 
 
 def test_deepspeed_missing() -> None:
@@ -111,7 +111,7 @@ def test_triton_missing() -> None:
     with patch.dict("sys.modules", {"triton": mock_mod}):
         collect_api(SemanticTier.UTIL)
 
-    mock_mod.__dir__ = lambda self: ["_hidden", "fn", "not_ref"]  # type: ignore
+    setattr(mock_mod, "__dir__", lambda self: ["_hidden", "fn", "not_ref"])
 
     def fake_fn(a: Any, b: Any, c: Any) -> Any:
         """Function docstring.
@@ -234,13 +234,17 @@ def test_huggingface_missing() -> None:
             raise ValueError()
 
     mock_mod = MagicMock()
-    mock_mod.__dir__ = lambda self: [  # type: ignore
-        "_hidden",
-        "DummyConfig",
-        "AutoModel",
-        "Other",
-        "bad",
-    ]
+    setattr(
+        mock_mod,
+        "__dir__",
+        lambda self: [
+            "_hidden",
+            "DummyConfig",
+            "AutoModel",
+            "Other",
+            "bad",
+        ],
+    )
     mock_mod.DummyConfig = type("DummyConfig", (), {})()  # No __annotations__
     mock_mod.AutoModel = MagicMock()
 
@@ -413,8 +417,8 @@ def test_huggingface_missing() -> None:
                 params=[
                     GhostParam(
                         name="input",
-                        kind="POSITIONAL_OR_KEYWORD",
-                        default_value=None,
+                        kind=ParameterKind.POSITIONAL_OR_KEYWORD,
+                        default=None,
                         annotation="Any",
                     )
                 ],
@@ -513,7 +517,7 @@ def test_orbax_checkpoint_inspect_error(mocker: Any) -> None:
     assert res_outer == []
 
 
-def test_pax_import_coverage(monkeypatch: Any) -> None:
+def test_pax_import_fallback(monkeypatch: Any) -> None:
     """Test pax import logic when praxis is available and unavailable."""
     import importlib
     import sys
@@ -543,7 +547,7 @@ def test_pax_import_coverage(monkeypatch: Any) -> None:
     importlib.reload(pax_mod)
 
 
-def test_sklearn_import_coverage(monkeypatch: Any) -> None:
+def test_sklearn_import_fallback(monkeypatch: Any) -> None:
     """Test sklearn import logic when sklearn is unavailable."""
     import importlib
     import sys
@@ -560,7 +564,7 @@ def test_sklearn_import_coverage(monkeypatch: Any) -> None:
     importlib.reload(sklearn_mod)
 
 
-def test_flax_nnx_coverage(monkeypatch: Any, mocker: Any) -> None:
+def test_flax_nnx_import_fallback(monkeypatch: Any, mocker: Any) -> None:
     """Test flax.nnx import fallback and inspection exception handling."""
     import importlib
     import sys
@@ -602,7 +606,7 @@ def test_flax_nnx_coverage(monkeypatch: Any, mocker: Any) -> None:
     importlib.reload(nnx_mod)
 
 
-def test_deepspeed_coverage_edges(mocker: Any) -> None:
+def test_deepspeed_fallback_edges(mocker: Any) -> None:
     """Test deepspeed inspect exception handling and existing config_params."""
     import types
     import ml_framework_snapshots.frameworks.deepspeed as ds_mod
@@ -638,7 +642,9 @@ def test_deepspeed_coverage_edges(mocker: Any) -> None:
                 name="initialize",
                 api_path="deepspeed.initialize",
                 kind="function",
-                params=[GhostParam(name="config_params", kind="KEYWORD_ONLY")],
+                params=[
+                    GhostParam(name="config_params", kind=ParameterKind.KEYWORD_ONLY)
+                ],
             )
         return GhostRef(
             name="z_extra_util",

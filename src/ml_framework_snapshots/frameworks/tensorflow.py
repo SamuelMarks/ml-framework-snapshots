@@ -255,6 +255,8 @@ def _collect_live(category: SemanticTier, include_nonpublic: bool) -> List[Ghost
                 if callable(obj) and not inspect.isclass(obj):
                     try:
                         ref = GhostInspector.inspect(obj, f"tf.raw_ops.{name}")
+                        if ref.environment_tags is None:
+                            ref.environment_tags = []
                         ref.environment_tags.append("tf.raw_op")
                         results.append(ref)
                     except Exception:

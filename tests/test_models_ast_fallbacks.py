@@ -1,7 +1,4 @@
-"""Coverage tests for models module.
-
-Tests missing lines and branches in ml_framework_snapshots/models.py.
-"""
+"""Tests for AST analysis edge cases, parser fallbacks, and exception handling in GhostInspector."""
 
 import ast
 from typing import Any, List
@@ -120,11 +117,15 @@ def test_extract_accepted_kwargs_subscript_branches() -> None:
     """
     tree = ast.parse("def sample_fn(**kwargs):\n    kwargs[123]\n    kwargs['alpha']\n")
     fn_def = tree.body[0]
+    assert isinstance(fn_def, ast.FunctionDef)
 
     # 1. slice is Index(Constant('alpha')) -> covers hasattr(ast, 'Index') and idx_val as string Constant
     idx2: Any = ast.slice.__new__(ast.Index)
     idx2.value = ast.Constant(value="alpha")
-    fn_def.body[1].value.slice = idx2  # type: ignore[attr-defined]
+    stmt1 = fn_def.body[1]
+    assert isinstance(stmt1, ast.Expr)
+    assert isinstance(stmt1.value, ast.Subscript)
+    stmt1.value.slice = idx2
 
     # 2. slice is Index(Constant(999)) -> covers idx_val with non-string Constant
     idx3: Any = ast.slice.__new__(ast.Index)
@@ -132,7 +133,7 @@ def test_extract_accepted_kwargs_subscript_branches() -> None:
     sub3 = ast.Subscript(
         value=ast.Name(id="kwargs", ctx=ast.Load()), slice=idx3, ctx=ast.Load()
     )
-    fn_def.body.append(ast.Expr(value=sub3))  # type: ignore[attr-defined]
+    fn_def.body.append(ast.Expr(value=sub3))
 
     # 3. slice is Index(Name('x')) -> covers idx_val with non-Constant node
     idx4: Any = ast.slice.__new__(ast.Index)
@@ -140,7 +141,7 @@ def test_extract_accepted_kwargs_subscript_branches() -> None:
     sub4 = ast.Subscript(
         value=ast.Name(id="kwargs", ctx=ast.Load()), slice=idx4, ctx=ast.Load()
     )
-    fn_def.body.append(ast.Expr(value=sub4))  # type: ignore[attr-defined]
+    fn_def.body.append(ast.Expr(value=sub4))
 
     # 4. slice is Name('var') -> covers slice_node that is neither Constant nor Index
     sub5 = ast.Subscript(
@@ -148,7 +149,7 @@ def test_extract_accepted_kwargs_subscript_branches() -> None:
         slice=ast.Name(id="var", ctx=ast.Load()),
         ctx=ast.Load(),
     )
-    fn_def.body.append(ast.Expr(value=sub5))  # type: ignore[attr-defined]
+    fn_def.body.append(ast.Expr(value=sub5))
 
     with patch("inspect.getsource", return_value="def sample_fn(**kwargs): pass"):
         with patch("ml_framework_snapshots.models.ast.parse", return_value=tree):
@@ -455,6 +456,7 @@ def test_ghost_inspector_overload_without_parameters() -> None:
         overloads = [BareOverload()]
 
     ref = GhostInspector.inspect(FakeNodeWithOverload(), "bare_overload_fn")
+    assert ref.overloads is not None
     assert len(ref.overloads) == 1
     assert ref.overloads[0].returns_type == "int"
 
@@ -502,5 +504,6 @@ def test_ghost_inspector_c_ext_overload_infer_exception(mocker: Any) -> None:
         pass
 
     ref = GhostInspector.inspect(c_ext_dummy, "torch.c_ext_dummy")
+    assert ref.overloads is not None
     assert len(ref.overloads) == 1
     assert ref.overloads[0].params[0].name == "x"

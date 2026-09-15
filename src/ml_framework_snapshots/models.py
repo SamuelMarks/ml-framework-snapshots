@@ -23,7 +23,11 @@ import re
 from typing import Any, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Field, ConfigDict
-from ml_switcheroo_ir.schema.ghost import GhostParam as GhostParam, GhostRef as GhostRef
+from ml_switcheroo_ir.schema.ghost import (
+    GhostParam as GhostParam,
+    GhostRef as GhostRef,
+    ParameterKind,
+)
 
 from .utils import (
     extract_c_extension_signature,
@@ -32,6 +36,25 @@ from .utils import (
     extract_griffe_docstring_metadata,
     strip_sphinx_roles,
 )
+
+
+def to_parameter_kind(val: Any) -> ParameterKind:
+    """Normalize a parameter kind string or enum to ParameterKind.
+
+    Args:
+        val: Parameter kind string, enum, or inspect.Parameter._ParameterKind.
+
+    Returns:
+        The corresponding ParameterKind enum member.
+    """
+    if isinstance(val, ParameterKind):
+        return val
+    s = str(getattr(val, "name", val)).upper()
+    try:
+        return ParameterKind[s]
+    except KeyError:
+        return ParameterKind.POSITIONAL_OR_KEYWORD
+
 
 STANDARD_ARG_MAP: Dict[str, str] = {
     "x": "input",
@@ -241,10 +264,6 @@ class ExtendedGhostRef(GhostRef):
 
     model_config = ConfigDict(extra="allow")
 
-    params: List[Union[ExtendedGhostParam, GhostParam]] = Field(
-        default_factory=list,
-        description="List of extended parameter specifications.",
-    )
     returns: Optional[List[GhostResult]] = Field(
         default=None, description="Multiple SSA returns or results."
     )
@@ -300,6 +319,12 @@ class SnapshotEnvelope(BaseModel):
     )
     categories: Dict[str, List[Any]] = Field(
         default_factory=dict, description="Categorized symbol dictionaries."
+    )
+    operations: Optional[List[Any]] = Field(
+        default=None, description="Flat list of IR or dialect operations."
+    )
+    instructions: Optional[List[Any]] = Field(
+        default=None, description="Flat list of hardware ISA instructions."
     )
 
 
@@ -362,7 +387,7 @@ class GhostMlirRef(ExtendedGhostRef):
         default=None,
         description="Dialect verification traits (e.g. ['SameOperandsAndResultType', 'Commutative']).",
     )
-    operands: Optional[List[Union[ExtendedGhostParam, GhostParam]]] = Field(
+    operands: Optional[List[GhostParam]] = Field(
         default=None,
         description="Strictly decoupled SSA value arguments (operands).",
     )
@@ -633,7 +658,7 @@ class GhostInspector:
         is_public: Optional[bool] = None,
         environment_tags: Optional[List[str]] = None,
         kind: Optional[str] = None,
-    ) -> GhostRef:
+    ) -> GhostPythonRef:
         """Create a GhostRef from a live Python object.
 
         Gracefully handles C-Extensions and builtins that resist introspection.
@@ -696,7 +721,7 @@ class GhostInspector:
             doc = inspect.getdoc(obj)
             griffe_node = None
         kind = determined_kind
-        params = []
+        params: List[GhostParam] = []
         has_varargs = False
         is_c_ext = False
         sig_completeness: Literal["exact", "heuristic", "opaque"] = "exact"
@@ -1238,7 +1263,7 @@ class GhostInspector:
                 ExtendedGhostParam(
                     name=p_name,
                     standardized_name=STANDARD_ARG_MAP.get(p_name),
-                    kind=p_kind,
+                    kind=to_parameter_kind(p_kind),
                     default=p_default,
                     annotation=p_anno,
                     description=p_desc,
@@ -1276,7 +1301,7 @@ class GhostInspector:
                 if isinstance(overload, str):
                     continue
                 # Construct a partial GhostRef for each overload
-                overload_params = []
+                overload_params: List[GhostParam] = []
                 overload_has_varargs = False
                 if hasattr(overload, "parameters"):
                     for param in overload.parameters:
@@ -1311,7 +1336,7 @@ class GhostInspector:
                             ExtendedGhostParam(
                                 name=param.name,
                                 standardized_name=STANDARD_ARG_MAP.get(param.name),
-                                kind=p_kind_str,
+                                kind=to_parameter_kind(p_kind_str),
                                 default=default_val,
                                 annotation=anno_val,
                                 description=None,
@@ -1326,7 +1351,7 @@ class GhostInspector:
                 )
 
                 overloads_refs.append(
-                    GhostRef(
+                    ExtendedGhostRef(
                         name=name,
                         api_path=api_path,
                         kind=kind,
@@ -1344,7 +1369,7 @@ class GhostInspector:
                 )
         elif c_ext_params is not None and getattr(c_ext_params, "overloads", None):
             for ov in c_ext_params.overloads:
-                ov_params = []
+                ov_params: List[GhostParam] = []
                 ov_has_varargs = False
                 for pn, pk, pd, pa in ov:
                     if pk == "VAR_POSITIONAL":
@@ -1378,7 +1403,7 @@ class GhostInspector:
                         ExtendedGhostParam(
                             name=pn,
                             standardized_name=STANDARD_ARG_MAP.get(pn),
-                            kind=pk,
+                            kind=to_parameter_kind(pk),
                             default=pd,
                             annotation=sanitized_pa,
                             description=None,
@@ -1395,7 +1420,7 @@ class GhostInspector:
                     else None
                 )
                 overloads_refs.append(
-                    GhostRef(
+                    ExtendedGhostRef(
                         name=name,
                         api_path=api_path,
                         kind=kind,
@@ -1464,14 +1489,14 @@ class GhostInspector:
             for sig in operands_list:
                 if len(sig) > len(max_sig):
                     max_sig = sig
-            params: List[ExtendedGhostParam] = []
+            params: List[GhostParam] = []
             for i, raw_op in enumerate(max_sig):
                 role = "dst" if i == 0 else f"src{i - 1}"
                 direction = OperandDirection.WRITE if i == 0 else OperandDirection.READ
                 params.append(
                     ExtendedGhostParam(
                         name=f"op{i}",
-                        kind="POSITIONAL_ONLY",
+                        kind=ParameterKind.POSITIONAL_ONLY,
                         annotation=str(raw_op),
                         standardized_name=role,
                         direction=direction,
@@ -1485,7 +1510,7 @@ class GhostInspector:
             domain_metadata.setdefault("operand_signatures", operands_list)
             isa_overloads: List[ExtendedGhostRef] = []
             for sig_idx, sig in enumerate(operands_list):
-                sig_params: List[ExtendedGhostParam] = []
+                sig_params: List[GhostParam] = []
                 for idx, op_type in enumerate(sig):
                     role = "dst" if idx == 0 else f"src{idx - 1}"
                     direction = (
@@ -1494,7 +1519,7 @@ class GhostInspector:
                     sig_params.append(
                         ExtendedGhostParam(
                             name=f"op{idx}",
-                            kind="POSITIONAL_ONLY",
+                            kind=ParameterKind.POSITIONAL_ONLY,
                             annotation=str(op_type),
                             standardized_name=role,
                             direction=direction,
@@ -1530,13 +1555,13 @@ class GhostInspector:
         ):
             api_path = str(data.get("api_path") or "mlir.op")
             name = str(data.get("name") or api_path.split(".")[-1])
-            params = []
+            mlir_params: List[GhostParam] = []
             for op in data.get("operands", []):
                 op_name = op if isinstance(op, str) else str(op.get("name", "arg"))
-                params.append(
+                mlir_params.append(
                     ExtendedGhostParam(
                         name=op_name,
-                        kind="POSITIONAL_ONLY",
+                        kind=ParameterKind.POSITIONAL_ONLY,
                         role=IRParameterRole.OPERAND,
                     )
                 )
@@ -1544,10 +1569,10 @@ class GhostInspector:
                 attr_name = (
                     attr if isinstance(attr, str) else str(attr.get("name", "attr"))
                 )
-                params.append(
+                mlir_params.append(
                     ExtendedGhostParam(
                         name=attr_name,
-                        kind="KEYWORD_ONLY",
+                        kind=ParameterKind.KEYWORD_ONLY,
                         role=IRParameterRole.ATTRIBUTE,
                     )
                 )
@@ -1573,7 +1598,7 @@ class GhostInspector:
                 name=name,
                 api_path=api_path,
                 kind=str(data.get("kind") or "operation"),
-                params=params,
+                params=mlir_params,
                 returns=results,
                 docstring=data.get("docstring") or data.get("description"),
                 traits=raw_traits if isinstance(raw_traits, list) else None,
@@ -1595,6 +1620,13 @@ class GhostInspector:
         if "kind" not in data:
             data = dict(data)
             data["kind"] = "function"
+
+        if "params" in data and isinstance(data["params"], list):
+            data = dict(data)
+            data["params"] = [
+                ExtendedGhostParam.model_validate(p) if isinstance(p, dict) else p
+                for p in data["params"]
+            ]
 
         res = ref_cls.model_validate(data)
         assert isinstance(res, ExtendedGhostRef)

@@ -78,7 +78,8 @@ def test_scrape_ptx_end_to_end(tmp_path: os.PathLike[str]) -> None:
 
         with open(out_file, "r", encoding="utf-8") as f:
             saved = json.load(f)
-            assert len(saved) == len(catalog)
+            saved_items = saved["instructions"] if isinstance(saved, dict) else saved
+            assert len(saved_items) == len(catalog)
 
 
 def test_fetch_nvptx_td_file_candidate_not_file(tmp_path: os.PathLike[str]) -> None:

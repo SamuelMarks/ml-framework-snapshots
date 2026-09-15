@@ -4,16 +4,17 @@ Provides functions to statically introspect the Keras library using Griffe and g
 GhostRefs for layers, losses, optimizers, and activations.
 """
 
-from typing import List, Optional, Set
+from typing import Any, List, Optional, Set
 
 from ml_framework_snapshots.models import GhostInspector
 from ml_switcheroo_ir.schema.ghost import GhostRef
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 
+griffe: Any
 try:
     import griffe
 except ImportError:
-    griffe = None  # type: ignore[assignment]
+    griffe = None
 
 
 def _scan_griffe_module(
@@ -39,7 +40,7 @@ def _scan_griffe_module(
         return []
 
     block_list = block_list or set()
-    found = []
+    found: List[GhostRef] = []
 
     try:
         mod = griffe.load(module_path)
@@ -150,6 +151,8 @@ def _collect_static(category: SemanticTier, include_nonpublic: bool) -> List[Gho
             include_nonpublic=include_nonpublic,
         )
         for ref in ops_refs:
+            if ref.environment_tags is None:
+                ref.environment_tags = []
             ref.environment_tags.extend(
                 ["backend:jax", "backend:torch", "backend:tensorflow"]
             )

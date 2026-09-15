@@ -3,9 +3,12 @@
 from unittest.mock import patch
 from ml_framework_snapshots.api import _consolidate_aliases, get_pkg_version
 from ml_framework_snapshots.frameworks.optax_shim import collect_api
-from ml_switcheroo_ir.schema.ghost import GhostParam
-from ml_switcheroo_ir.schema.ghost import GhostRef
-from ml_switcheroo_ir.schema.ghost import SemanticTier
+from ml_switcheroo_ir.schema.ghost import (
+    GhostParam,
+    GhostRef,
+    ParameterKind,
+    SemanticTier,
+)
 
 
 def test_consolidate_aliases() -> None:
@@ -14,7 +17,7 @@ def test_consolidate_aliases() -> None:
         name="relu",
         api_path="torch.nn.functional.relu",
         kind="function",
-        params=[GhostParam(name="input", kind="POSITIONAL_OR_KEYWORD")],
+        params=[GhostParam(name="input", kind=ParameterKind.POSITIONAL_OR_KEYWORD)],
         docstring="ReLU",
         aliases=[],
     )
@@ -22,7 +25,7 @@ def test_consolidate_aliases() -> None:
         name="relu",
         api_path="torch.relu",
         kind="function",
-        params=[GhostParam(name="input", kind="POSITIONAL_OR_KEYWORD")],
+        params=[GhostParam(name="input", kind=ParameterKind.POSITIONAL_OR_KEYWORD)],
         docstring="ReLU",
         aliases=[],
     )
@@ -96,7 +99,7 @@ def test_consolidate_aliases_extended_params_and_metadata() -> None:
         params=[
             ExtendedGhostParam(
                 name="op0",
-                kind="POSITIONAL_ONLY",
+                kind=ParameterKind.POSITIONAL_ONLY,
                 direction=OperandDirection.WRITE,
                 role=IRParameterRole.OPERAND,
                 dtypes=["float32"],
@@ -112,7 +115,7 @@ def test_consolidate_aliases_extended_params_and_metadata() -> None:
         params=[
             ExtendedGhostParam(
                 name="op0",
-                kind="POSITIONAL_ONLY",
+                kind=ParameterKind.POSITIONAL_ONLY,
                 direction=OperandDirection.READ,
                 role=IRParameterRole.OPERAND,
                 dtypes=["float32"],
@@ -129,7 +132,7 @@ def test_consolidate_aliases_extended_params_and_metadata() -> None:
         name="MMA",
         api_path="isa.inst.MMA_sm80",
         kind="instruction",
-        params=[GhostParam(name="op0", kind="POSITIONAL_ONLY")],
+        params=[GhostParam(name="op0", kind=ParameterKind.POSITIONAL_ONLY)],
         domain_metadata={
             "arch": "sm_80",
             "features": ["tensor_core"],
@@ -141,7 +144,7 @@ def test_consolidate_aliases_extended_params_and_metadata() -> None:
         name="MMA",
         api_path="isa.inst.MMA_sm90",
         kind="instruction",
-        params=[GhostParam(name="op0", kind="POSITIONAL_ONLY")],
+        params=[GhostParam(name="op0", kind=ParameterKind.POSITIONAL_ONLY)],
         domain_metadata={"arch": "sm_90", "features": ["wgmma"], "tags": {"fast"}},
         docstring="MMA",
     )
@@ -153,7 +156,7 @@ def test_consolidate_aliases_extended_params_and_metadata() -> None:
         name="add",
         api_path="mlir.add1",
         kind="operation",
-        params=[GhostParam(name="lhs", kind="POSITIONAL_ONLY")],
+        params=[GhostParam(name="lhs", kind=ParameterKind.POSITIONAL_ONLY)],
         returns=[GhostResult(name="res1", type="tensor<f32>")],
         docstring="add op",
     )
@@ -161,7 +164,7 @@ def test_consolidate_aliases_extended_params_and_metadata() -> None:
         name="add",
         api_path="mlir.add2",
         kind="operation",
-        params=[GhostParam(name="lhs", kind="POSITIONAL_ONLY")],
+        params=[GhostParam(name="lhs", kind=ParameterKind.POSITIONAL_ONLY)],
         returns=[GhostResult(name="res2", type="tensor<f64>")],
         docstring="add op",
     )

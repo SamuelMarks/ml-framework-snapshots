@@ -53,6 +53,7 @@ def test_cdd_sphinx_raises() -> None:
     ref = GhostInspector.inspect(
         dummy_func_sphinx_docstring, "tests.dummy_func_sphinx_docstring"
     )
+    assert ref.raises is not None
     assert "TypeError" in ref.raises
 
 
@@ -93,6 +94,7 @@ def test_cdd_direct_raises(mocker: Any) -> None:
     ref = GhostInspector.inspect(
         dummy_func_with_docstring, "tests.dummy_func_with_docstring"
     )
+    assert ref.raises is not None
     assert "KeyError" in ref.raises
 
 
@@ -105,7 +107,7 @@ def test_inspect_annotation_fallback() -> None:
         # A class that lacks __name__ but is passed as annotation
         pass
 
-    def func_annotated(a: ForwardRefStr()):  # type: ignore
+    def func_annotated(a: Any) -> None:
         """Function docstring.
 
         Args:
@@ -113,7 +115,10 @@ def test_inspect_annotation_fallback() -> None:
         """
         pass
 
+    func_annotated.__annotations__["a"] = ForwardRefStr()
+
     ref = GhostInspector.inspect(func_annotated, "tests.func_annotated")
+    assert ref.params[0].annotation is not None
     assert "ForwardRefStr" in ref.params[0].annotation
 
 
@@ -214,6 +219,7 @@ def test_ghost_inspector_aten_overload_and_factory_default(mocker: Any) -> None:
         pass
 
     ref = GhostInspector.inspect(dummy_torch_fn, "torch.dummy_torch_fn")
+    assert ref.overloads is not None
     assert len(ref.overloads) == 1
     assert ref.overloads[0].params[0].default_factory == "<factory_default>"
 

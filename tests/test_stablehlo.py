@@ -6,6 +6,7 @@ from typing import Any
 from unittest import mock
 
 from ml_framework_snapshots.frameworks import stablehlo as stablehlo_fw
+from ml_framework_snapshots.models import GhostMlirRef
 from ml_switcheroo_ir.schema.ghost import SemanticTier
 
 
@@ -107,6 +108,8 @@ def test_stablehlo_regions_and_structured_schemas() -> None:
 
     assert "stablehlo.reduce" in ref_map
     reduce_op = ref_map["stablehlo.reduce"]
+    assert isinstance(reduce_op, GhostMlirRef)
+    assert reduce_op.domain_metadata is not None
     assert "regions" in reduce_op.domain_metadata
     assert "body" in reduce_op.domain_metadata["regions"]
     assert "block_arguments" in reduce_op.domain_metadata["regions"]["body"]
@@ -117,11 +120,15 @@ def test_stablehlo_regions_and_structured_schemas() -> None:
 
     assert "stablehlo.while" in ref_map
     while_op = ref_map["stablehlo.while"]
+    assert isinstance(while_op, GhostMlirRef)
+    assert while_op.domain_metadata is not None
     assert "cond" in while_op.domain_metadata["regions"]
     assert "body" in while_op.domain_metadata["regions"]
 
     assert "stablehlo.sort" in ref_map
     sort_op = ref_map["stablehlo.sort"]
+    assert isinstance(sort_op, GhostMlirRef)
+    assert sort_op.domain_metadata is not None
     assert "comparator" in sort_op.domain_metadata["regions"]
     assert sort_op.domain_metadata["regions"]["comparator"]["block_arguments"] == [
         "tensor<T>",
@@ -137,9 +144,11 @@ def test_stablehlo_regions_and_structured_schemas() -> None:
 
     # Verify attributes scoping per operation
     abs_op = ref_map["stablehlo.abs"]
+    assert isinstance(abs_op, GhostMlirRef)
     assert abs_op.attributes is None
 
     dot_op = ref_map["stablehlo.dot_general"]
+    assert isinstance(dot_op, GhostMlirRef)
     assert dot_op.attributes is not None
     assert "dot_dimension_numbers" in dot_op.attributes
     assert (

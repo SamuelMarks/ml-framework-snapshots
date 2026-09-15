@@ -26,7 +26,7 @@ def _scan_orbax_checkpoint(include_nonpublic: bool) -> List[GhostRef]:
     if not ocp:
         return []
 
-    found = []
+    found: List[GhostRef] = []
     try:
         for name, obj in get_all_members(ocp):
             if not include_nonpublic and name.startswith("_"):

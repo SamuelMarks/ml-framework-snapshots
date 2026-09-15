@@ -2,6 +2,8 @@
 
 import types
 from typing import Any
+from unittest import mock
+from unittest.mock import patch
 import pytest
 
 from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
@@ -350,7 +352,7 @@ def test_torch_collect(mocker: Any) -> None:
     priv_arrays = torch_fw.collect_api(SemanticTier.ARRAY_API, include_nonpublic=True)
     assert any(x.name == "_priv_method" for x in priv_arrays)
 
-    assert torch_fw.collect_api("unknown") == []
+    assert torch_fw.collect_api(SemanticTier.UTIL) == []
 
     # Branch coverage for missing fft and nn.functional
     mocker.patch.dict(
@@ -450,7 +452,7 @@ def test_torch_typeerror(mocker: Any) -> None:
     assert torch_fw.collect_api(SemanticTier.OPTIMIZER) == []
     assert torch_fw.collect_api(SemanticTier.ACTIVATION) == []
     assert torch_fw.collect_api(SemanticTier.LAYER) == []
-    assert torch_fw.collect_api("unknown") == []
+    assert torch_fw.collect_api(SemanticTier.UTIL) == []
 
 
 def test_tensorflow_collect(mocker: Any) -> None:
@@ -667,7 +669,82 @@ def test_tensorflow_collect(mocker: Any) -> None:
         x.name == "_PrivateDataset"
         for x in tf_fw.collect_api(SemanticTier.DATALOADER, include_nonpublic=True)
     )
-    assert tf_fw.collect_api("unknown") == []
+    assert tf_fw.collect_api(SemanticTier.MODEL) == []
+
+
+def test_tf_raw_ops_none_env_tags(mocker: Any) -> None:
+    """Test tensorflow raw_ops when ref.environment_tags is None.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    import types
+    from ml_framework_snapshots.frameworks import tensorflow as tf_fw
+    from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
+
+    fake_raw = types.ModuleType("tf.raw_ops")
+    setattr(fake_raw, "op1", lambda x: x)
+    fake_tf = types.ModuleType("tf")
+    setattr(fake_tf, "raw_ops", fake_raw)
+
+    ref = GhostRef(
+        name="op1",
+        api_path="tf.raw_ops.op1",
+        kind="function",
+        environment_tags=None,
+    )
+    mocker.patch.object(tf_fw, "tf", fake_tf)
+    mocker.patch(
+        "ml_framework_snapshots.models.GhostInspector.inspect",
+        return_value=ref,
+    )
+
+    res = tf_fw.collect_api(SemanticTier.UTIL)
+    assert len(res) == 1
+    assert res[0].environment_tags == ["tf.raw_op"]
+
+
+def test_tf_raw_ops_inspect_exception(mocker: Any) -> None:
+    """Test tensorflow raw_ops catches inspection exceptions.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    import types
+    from ml_framework_snapshots.frameworks import tensorflow as tf_fw
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+
+    fake_raw = types.ModuleType("tf.raw_ops")
+    setattr(fake_raw, "broken_op", lambda x: x)
+    fake_tf = types.ModuleType("tf")
+    setattr(fake_tf, "raw_ops", fake_raw)
+
+    mocker.patch.object(tf_fw, "tf", fake_tf)
+    mocker.patch(
+        "ml_framework_snapshots.models.GhostInspector.inspect",
+        side_effect=RuntimeError("Broken op inspect"),
+    )
+
+    res = tf_fw.collect_api(SemanticTier.UTIL)
+    assert res == []
+
+
+def test_tf_collect_outer_exception(mocker: Any) -> None:
+    """Test tensorflow outer exception handling.
+
+    Args:
+        mocker: Pytest mocker fixture.
+    """
+    from ml_framework_snapshots.frameworks import tensorflow as tf_fw
+    from ml_switcheroo_ir.schema.ghost import SemanticTier
+
+    fake_tf = mocker.MagicMock()
+    type(fake_tf).raw_ops = mocker.PropertyMock(
+        side_effect=RuntimeError("Outer failure")
+    )
+    mocker.patch.object(tf_fw, "tf", fake_tf)
+    res = tf_fw.collect_api(SemanticTier.UTIL)
+    assert res == []
 
     # Exception branch coverage
     mocker.patch(
@@ -756,7 +833,7 @@ def test_keras_collect(mocker: Any) -> None:
             return MockModule({"add": MockMember(is_function=True)})
         raise Exception("Unknown path")
 
-    mocker.patch.object(keras_fw.griffe, "load", mock_load)  # type: ignore[attr-defined]
+    mocker.patch.object(keras_fw.griffe, "load", mock_load)
 
     losses = keras_fw.collect_api(SemanticTier.LOSS)
     assert any(x.name == "MSELoss" for x in losses)
@@ -782,11 +859,12 @@ def test_keras_collect(mocker: Any) -> None:
     ops = keras_fw.collect_api(SemanticTier.ARRAY_API)
     assert any(x.name == "add" for x in ops)
     add_ref = next(x for x in ops if x.name == "add")
+    assert add_ref.environment_tags is not None
     assert "backend:jax" in add_ref.environment_tags
     assert "backend:torch" in add_ref.environment_tags
     assert "backend:tensorflow" in add_ref.environment_tags
 
-    assert keras_fw.collect_api("unknown") == []
+    assert keras_fw.collect_api(SemanticTier.UTIL) == []
 
     # Test blocklist logic: module doesn't exist, block_list skipping, etc.
     assert keras_fw._scan_griffe_module("missing.module", "foo") == []
@@ -813,7 +891,7 @@ def test_keras_collect(mocker: Any) -> None:
             )
         raise Exception("Unknown path")
 
-    mocker.patch.object(keras_fw.griffe, "load", mock_load_metrics)  # type: ignore[attr-defined]
+    mocker.patch.object(keras_fw.griffe, "load", mock_load_metrics)
     mets2 = keras_fw.collect_api(SemanticTier.METRIC)
     assert not any(x.name == "Metric" for x in mets2)
 
@@ -828,18 +906,40 @@ def test_keras_collect(mocker: Any) -> None:
         """
         return MockModule({"relu": MockMember(is_function=True)})
 
-    mocker.patch.object(keras_fw.griffe, "load", mock_load_acts)  # type: ignore[attr-defined]
+    mocker.patch.object(keras_fw.griffe, "load", mock_load_acts)
     acts2 = keras_fw.collect_api(SemanticTier.ACTIVATION)
     assert any(x.name == "relu" for x in acts2)
 
     # Exception branch coverage
-    mocker.patch.object(keras_fw.griffe, "load", side_effect=Exception)  # type: ignore[attr-defined]
+    mocker.patch.object(keras_fw.griffe, "load", side_effect=Exception)
     assert keras_fw.collect_api(SemanticTier.LAYER) == []
 
     # Missing griffe branch coverage
-    keras_fw.griffe = None  # type: ignore[attr-defined, assignment]
+    mocker.patch.object(keras_fw, "griffe", None)
     assert keras_fw._scan_griffe_module("keras.losses", "keras.losses") == []
     assert keras_fw.collect_api(SemanticTier.LOSS) == []
+
+
+def test_keras_collect_static_none_env_tags(mocker: Any) -> None:
+    """Test _collect_static for ARRAY_API when ref.environment_tags is None."""
+    from ml_framework_snapshots.frameworks import keras as keras_fw
+    from ml_framework_snapshots.frameworks.keras import _collect_static
+    from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
+
+    mocker.patch.object(keras_fw, "griffe", object())
+    ref = GhostRef(
+        name="add",
+        api_path="keras.ops.add",
+        kind="function",
+        environment_tags=None,
+    )
+    mocker.patch(
+        "ml_framework_snapshots.frameworks.keras._scan_griffe_module",
+        return_value=[ref],
+    )
+    res = _collect_static(SemanticTier.ARRAY_API, False)
+    assert res[0].environment_tags is not None
+    assert "backend:jax" in res[0].environment_tags
 
 
 def test_mlx_collect(mocker: Any) -> None:
@@ -899,7 +999,7 @@ def test_mlx_collect(mocker: Any) -> None:
     assert any("abs" in x.api_path for x in mlx_fw.collect_api(SemanticTier.ARRAY_API))
     assert any("fft" in x.api_path for x in mlx_fw.collect_api(SemanticTier.ARRAY_API))
     assert any("norm" in x.api_path for x in mlx_fw.collect_api(SemanticTier.ARRAY_API))
-    assert mlx_fw.collect_api("unknown") == []
+    assert mlx_fw.collect_api(SemanticTier.UTIL) == []
 
     # Test mlx.core without fft and linalg submodules
     core_without_submodules = create_module("mlx.core", {"abs": lambda: None})
@@ -948,7 +1048,6 @@ def test_jax_collect(mocker: Any) -> None:
     Args:
         mocker: Parameter.
     """
-    import unittest.mock as mock
     from ml_framework_snapshots.frameworks import jax as jax_fw
     from ml_framework_snapshots.frameworks.optax_shim import OptaxScanner
 
@@ -1055,6 +1154,7 @@ def test_jax_collect(mocker: Any) -> None:
     arrays = jax_fw.collect_api(SemanticTier.ARRAY_API)
     assert any("abs" in x.api_path for x in arrays)
     static_ref = next(x for x in arrays if x.name == "static_func")
+    assert static_ref.environment_tags is not None
     assert any("static_argnums:0" in t for t in static_ref.environment_tags)
     assert any("static_argnames:axis" in t for t in static_ref.environment_tags)
     assert any(x.name == "reshape" and x.kind == "method" for x in arrays)
@@ -1078,10 +1178,51 @@ def test_jax_collect(mocker: Any) -> None:
     arrays3 = jax_fw.collect_api(SemanticTier.ARRAY_API)
     assert any(x.name == "transpose" for x in arrays3)
 
-    assert jax_fw.collect_api("unknown") == []
+    assert jax_fw.collect_api(SemanticTier.UTIL) == []
 
-    # Exception branch coverage
-    with mock.patch(
+
+def test_jax_static_arg_metadata_none_environment_tags(mocker: Any) -> None:
+    """Test _attach_jax_static_arg_metadata when environment_tags is None."""
+    from ml_framework_snapshots.frameworks import jax as jax_fw
+    from ml_framework_snapshots.frameworks.jax import _attach_jax_static_arg_metadata
+    from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
+
+    class FakeObj:
+        """Fake callable with static metadata."""
+
+        _static_argnums = None
+        _static_argnames = ("axis",)
+
+    ref = GhostRef(
+        name="fn",
+        api_path="fn",
+        kind="function",
+        params=[GhostParam(name="axis", kind=ParameterKind.POSITIONAL_OR_KEYWORD)],
+        environment_tags=None,
+    )
+    res = _attach_jax_static_arg_metadata(ref, FakeObj())
+    assert res.environment_tags is not None
+    assert any("static_argnames:axis" in t for t in res.environment_tags)
+
+    class FakeObj2:
+        """Fake callable with static nums and names."""
+
+        _static_argnums = (0,)
+        _static_argnames = ("axis",)
+
+    ref2 = GhostRef(
+        name="fn",
+        api_path="fn",
+        kind="function",
+        params=[GhostParam(name="axis", kind=ParameterKind.POSITIONAL_OR_KEYWORD)],
+        environment_tags=None,
+    )
+    res2 = _attach_jax_static_arg_metadata(ref2, FakeObj2())
+    assert any("static_argnums:0" in t for t in res2.environment_tags or [])
+
+    # Exception branch coverage with jax not None
+    mocker.patch.object(jax_fw, "jax", True)
+    with patch(
         "ml_framework_snapshots.frameworks.jax.get_all_members",
         side_effect=Exception,
     ):
@@ -1092,9 +1233,9 @@ def test_jax_collect(mocker: Any) -> None:
     assert jax_fw.collect_api(SemanticTier.ACTIVATION) == []
     assert jax_fw.collect_api(SemanticTier.INITIALIZER) == []
 
-    with mock.patch.dict("sys.modules", {"jax.numpy": None}):
-        res = jax_fw.collect_api(SemanticTier.ARRAY_API)
-        assert len(res) == 0
+    with patch.dict("sys.modules", {"jax.numpy": None}):
+        res_empty = jax_fw.collect_api(SemanticTier.ARRAY_API)
+        assert len(res_empty) == 0
 
     mocker.patch.object(jax_fw, "jax", True)
     with mock.patch.dict(
@@ -1143,14 +1284,22 @@ def test_flax_nnx_collect(mocker: Any) -> None:
     mocker.patch.object(flax_fw, "nnx", fake_nnx)
     mocker.patch(
         "ml_framework_snapshots.frameworks.flax_nnx.jax_collect_api",
-        return_value=["delegated"],
+        return_value=[
+            GhostRef(
+                name="delegated",
+                api_path="flax.delegated",
+                kind="function",
+            )
+        ],
     )
 
     layers = flax_fw.collect_api(SemanticTier.LAYER)
     assert any(x.name == "Dense" for x in layers)
     assert not any(x.name == "Module" for x in layers)
-    assert flax_fw.collect_api(SemanticTier.LOSS) == ["delegated"]
-    assert flax_fw.collect_api("unknown") == []
+    delegated_res = flax_fw.collect_api(SemanticTier.LOSS)
+    assert len(delegated_res) == 1
+    assert delegated_res[0].name == "delegated"
+    assert flax_fw.collect_api(SemanticTier.UTIL) == []
 
     # Exception branch coverage
     mocker.patch(
@@ -1160,7 +1309,7 @@ def test_flax_nnx_collect(mocker: Any) -> None:
     assert flax_fw.collect_api(SemanticTier.LAYER) == []
 
     # TypeError branch coverage
-    fake_nnx.Module = 1  # type: ignore[attr-defined] # Force TypeError
+    setattr(fake_nnx, "Module", 1)  # Force TypeError
     assert flax_fw.collect_api(SemanticTier.LAYER) == []
 
     mocker.patch.object(flax_fw, "nnx", None)
@@ -1298,7 +1447,7 @@ def test_sklearn_collect(mocker: Any) -> None:
     class RandomForestClassifier(BaseEstimator):
         """Class docstring."""
 
-        def __init__(self, n_estimators: int = 100) -> Any:  # type: ignore
+        def __init__(self, n_estimators: int = 100) -> None:
             """Function docstring.
 
             Args:
@@ -1321,15 +1470,15 @@ def test_sklearn_collect(mocker: Any) -> None:
         pass
 
     mock_sklearn = types.ModuleType("sklearn")
-    mock_sklearn.base = types.ModuleType("sklearn.base")  # type: ignore
+    setattr(mock_sklearn, "base", types.ModuleType("sklearn.base"))
     setattr(mock_sklearn.base, "BaseEstimator", BaseEstimator)
 
     mock_ensemble = types.ModuleType("sklearn.ensemble")
-    mock_ensemble.RandomForestClassifier = RandomForestClassifier  # type: ignore[attr-defined]
-    mock_ensemble.NotAnEstimator = NotAnEstimator  # type: ignore
+    setattr(mock_ensemble, "RandomForestClassifier", RandomForestClassifier)
+    setattr(mock_ensemble, "NotAnEstimator", NotAnEstimator)
 
     mock_metrics = types.ModuleType("sklearn.metrics")
-    mock_metrics.accuracy_score = accuracy_score  # type: ignore
+    setattr(mock_metrics, "accuracy_score", accuracy_score)
 
     sys_modules = {
         "sklearn": mock_sklearn,
@@ -1455,7 +1604,7 @@ def test_sklearn_scan_module_edge_cases(mocker: Any) -> None:
             """
             raise RuntimeError("Bad")
 
-    mock_mod.bad_obj = BadObj()  # type: ignore
+    setattr(mock_mod, "bad_obj", BadObj())
     mocker.patch(
         "ml_framework_snapshots.frameworks.tensorflow.get_all_members",
         side_effect=Exception("mocked"),
@@ -1470,8 +1619,8 @@ def test_sklearn_scan_module_edge_cases(mocker: Any) -> None:
 
         pass
 
-    mock_mod2._private = ValidObj  # type: ignore
-    mock_mod2.blocked = ValidObj  # type: ignore
+    setattr(mock_mod2, "_private", ValidObj)
+    setattr(mock_mod2, "blocked", ValidObj)
 
     mocker.patch(
         "ml_framework_snapshots.frameworks.tensorflow.get_all_members",
@@ -1502,8 +1651,8 @@ def test_sklearn_scan_module_branches(mocker: Any) -> None:
         pass
 
     # 1. kind="class", is_estimator=False
-    mock_mod.ValidObj = ValidObj  # type: ignore
-    mock_mod.valid_func = valid_func  # type: ignore
+    setattr(mock_mod, "ValidObj", ValidObj)
+    setattr(mock_mod, "valid_func", valid_func)
 
     mocker.patch(
         "ml_framework_snapshots.frameworks.tensorflow.get_all_members",
@@ -2424,7 +2573,7 @@ def test_keras_griffe_missing(monkeypatch: Any) -> None:
     assert getattr(k_fw, "griffe") is not None
 
 
-def test_maxtext_import_coverage(monkeypatch: Any) -> None:
+def test_maxtext_import_fallback(monkeypatch: Any) -> None:
     """Test maxtext import logic when module is available and unavailable."""
     import importlib
     import sys

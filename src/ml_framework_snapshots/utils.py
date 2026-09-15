@@ -150,16 +150,19 @@ def _parse_c_extension_sig_str(
     ret_type_str = match.group(3).strip() if match.group(3) else None
 
     dummy_code = f"def dummy_func({args_str}): pass"
+    args: ast.arguments
     try:
         tree = ast.parse(dummy_code)
         func_def = tree.body[0]
-        args = func_def.args  # type: ignore
+        assert isinstance(func_def, ast.FunctionDef)
+        args = func_def.args
     except SyntaxError:
         norm_args = _normalize_c_sig_args(args_str)
         try:
             tree = ast.parse(f"def dummy_func({norm_args}): pass")
             func_def = tree.body[0]
-            args = func_def.args  # type: ignore
+            assert isinstance(func_def, ast.FunctionDef)
+            args = func_def.args
         except SyntaxError:
             return None
 

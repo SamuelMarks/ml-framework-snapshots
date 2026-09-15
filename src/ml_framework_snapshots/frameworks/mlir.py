@@ -11,7 +11,12 @@ import os
 import re
 from typing import Any, Dict, List, Optional
 
-from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
+from ml_switcheroo_ir.schema.ghost import (
+    GhostParam,
+    GhostRef,
+    ParameterKind,
+    SemanticTier,
+)
 
 from ..models import (
     ExtendedGhostParam,
@@ -589,7 +594,12 @@ def _load_mlir_exhaustive() -> List[GhostRef]:
                             all_ops.extend(cat_ops)
                     ops_list = all_ops
                 else:
-                    ops_list = data.get("operations", [])
+                    ops_list = (
+                        data.get("operations")
+                        or data.get("instructions")
+                        or data.get("items")
+                        or []
+                    )
             else:
                 ops_list = data
         except (json.JSONDecodeError, OSError):
@@ -601,7 +611,7 @@ def _load_mlir_exhaustive() -> List[GhostRef]:
 
     refs: List[GhostRef] = []
     for op in ops_list:
-        params: List[ExtendedGhostParam] = []
+        params: List[GhostParam] = []
 
         # 1. SSA Operands
         for operand in op.get("operands", []):
@@ -612,7 +622,7 @@ def _load_mlir_exhaustive() -> List[GhostRef]:
             params.append(
                 ExtendedGhostParam(
                     name=op_name,
-                    kind="POSITIONAL_OR_KEYWORD",
+                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                     annotation=op_type,
                     standardized_name="operand",
                     description=f"SSA operand {op_name} of type {op_type}",
@@ -634,7 +644,7 @@ def _load_mlir_exhaustive() -> List[GhostRef]:
             params.append(
                 ExtendedGhostParam(
                     name=attr_name,
-                    kind="KEYWORD_ONLY",
+                    kind=ParameterKind.KEYWORD_ONLY,
                     annotation=attr_type,
                     standardized_name="attribute",
                     description=f"Buildable attribute {attr_name} of type {attr_type}",
@@ -648,7 +658,7 @@ def _load_mlir_exhaustive() -> List[GhostRef]:
             params.append(
                 ExtendedGhostParam(
                     name=reg_name,
-                    kind="KEYWORD_ONLY",
+                    kind=ParameterKind.KEYWORD_ONLY,
                     annotation="Region",
                     standardized_name="region",
                     description=f"Op region {reg_name}",
@@ -685,7 +695,7 @@ def _load_mlir_exhaustive() -> List[GhostRef]:
             "regions": op.get("regions", []),
         }
 
-        ssa_operands = [
+        ssa_operands: List[GhostParam] = [
             p for p in params if getattr(p, "role", None) == IRParameterRole.OPERAND
         ]
 

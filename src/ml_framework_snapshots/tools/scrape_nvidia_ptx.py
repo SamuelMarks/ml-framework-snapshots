@@ -6,6 +6,7 @@ asynchronous data movement, tensor core matrix operations, barriers,
 and memory qualifiers across PTX ISA 7.x and 8.x.
 """
 
+import argparse
 import json
 import os
 import re
@@ -1163,13 +1164,18 @@ def build_exhaustive_ptx_catalog(
 
 
 def scrape_ptx(
-    td_dir: Optional[str] = None, output_path: Optional[str] = None
+    td_dir: Optional[str] = None,
+    output_path: Optional[str] = None,
+    isa_version: str = "8.5",
+    cuda_version: str = "12.6.0",
 ) -> List[Dict[str, Any]]:
     """Scrape NVPTX TableGen definitions and write the exhaustive PTX ISA dump.
 
     Args:
         td_dir: Optional directory containing local NVPTX TableGen files.
         output_path: Target path to write exhaustive JSON.
+        isa_version: Target PTX ISA version string (e.g. '8.5').
+        cuda_version: Target CUDA toolkit version string (e.g. '12.6.0').
 
     Returns:
         List of generated instruction metadata records.
@@ -1189,16 +1195,74 @@ def scrape_ptx(
         "nvidia_ptx_exhaustive.json",
     )
 
+    exhaustive_data = {
+        "schema_version": "2.0.0",
+        "target": "nvidia_ptx",
+        "version": isa_version,
+        "upstream_version": f"cuda-{cuda_version}",
+        "upstream_commit": f"cuda-{cuda_version}",
+        "source_type": "tablegen",
+        "supported_microarchitectures": [
+            "sm_50",
+            "sm_60",
+            "sm_70",
+            "sm_75",
+            "sm_80",
+            "sm_86",
+            "sm_89",
+            "sm_90",
+            "sm_100",
+        ],
+        "instructions": catalog,
+    }
+
     with open(resolved_output, "w", encoding="utf-8") as f:
-        json.dump(catalog, f, indent=2, sort_keys=True)
+        json.dump(exhaustive_data, f, indent=2, sort_keys=True)
         f.write("\n")
 
     return catalog
 
 
-def main() -> None:
-    """Entrypoint script for running the PTX ISA scraper."""
-    scrape_ptx()
+def main(argv: Optional[List[str]] = None) -> None:
+    """Entrypoint script for running the PTX ISA scraper.
+
+    Args:
+        argv: Optional list of command-line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="Scrape exhaustive NVIDIA PTX ISA definitions."
+    )
+    parser.add_argument(
+        "--isa-version",
+        type=str,
+        default="8.5",
+        help="PTX ISA version (default: '8.5').",
+    )
+    parser.add_argument(
+        "--cuda-version",
+        type=str,
+        default="12.6.0",
+        help="CUDA toolkit version (default: '12.6.0').",
+    )
+    parser.add_argument(
+        "--td-dir",
+        type=str,
+        default=None,
+        help="Local directory with LLVM NVPTX TableGen files.",
+    )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default=None,
+        help="Target output path for nvidia_ptx_exhaustive.json.",
+    )
+    args, _ = parser.parse_known_args(argv)
+    scrape_ptx(
+        td_dir=args.td_dir,
+        output_path=args.output_path,
+        isa_version=args.isa_version,
+        cuda_version=args.cuda_version,
+    )
 
 
 if __name__ == "__main__":

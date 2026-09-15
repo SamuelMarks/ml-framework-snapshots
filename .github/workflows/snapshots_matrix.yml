@@ -38,6 +38,7 @@ jobs:
           - latex_dsl
           - tikz
           - nvidia_sass
+          - nvidia_ptx
           - amd_rdna
     steps:
     - uses: actions/checkout@v7
@@ -99,7 +100,8 @@ jobs:
           onnxruntime) PKGS="onnxruntime" ;;
           pax) PKGS="paxml jaxlib==0.4.26" ;;
           maxtext) PKGS="maxtext" ;;
-          mlir) PKGS="jaxlib" ;;
+          mlir) PKGS="" ;;
+          nvidia_ptx) PKGS="" ;;
           *) PKGS="" ;;
         esac
 

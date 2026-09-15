@@ -175,7 +175,10 @@ def S_MOV_B32 : SOP1_32 <"s_mov_b32">;
 
         assert os.path.exists(output_path)
         with open(output_path, "r") as f:
-            result_data = json.load(f)
+            raw_data = json.load(f)
+            result_data = (
+                raw_data["instructions"] if isinstance(raw_data, dict) else raw_data
+            )
 
         assert len(result_data) == 3
 

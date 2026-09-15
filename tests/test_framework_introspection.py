@@ -1,4 +1,4 @@
-"""Coverage tests for framework collectors: ir, onnxruntime, numpy, mlx, huggingface, tensorflow, and jax."""
+"""Tests for multi-framework collectors: IR, ONNX Runtime, NumPy, MLX, HuggingFace, TensorFlow, and JAX."""
 
 import builtins
 import importlib
@@ -9,7 +9,12 @@ import typing
 from typing import Any
 from unittest.mock import patch
 
-from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, SemanticTier
+from ml_switcheroo_ir.schema.ghost import (
+    GhostParam,
+    GhostRef,
+    ParameterKind,
+    SemanticTier,
+)
 from ml_framework_snapshots.frameworks import (
     huggingface as hf_mod,
     ir as ir_mod,
@@ -97,13 +102,13 @@ def test_onnxruntime_collect_api_edge_branches(mocker: Any) -> None:
         """Private function."""
         pass
 
-    fake_mod.InferenceSession = InferenceSession  # type: ignore[attr-defined]
-    fake_mod.OtherSession = OtherSession  # type: ignore[attr-defined]
-    fake_mod.dummy_util = dummy_util  # type: ignore[attr-defined]
-    fake_mod._private_func = _private_func  # type: ignore[attr-defined]
-    fake_mod.none_obj = None  # type: ignore[attr-defined]
-    fake_mod.raise_exc = lambda: None  # type: ignore[attr-defined]
-    fake_mod.return_none_ref = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_mod, "InferenceSession", InferenceSession)
+    setattr(fake_mod, "OtherSession", OtherSession)
+    setattr(fake_mod, "dummy_util", dummy_util)
+    setattr(fake_mod, "_private_func", _private_func)
+    setattr(fake_mod, "none_obj", None)
+    setattr(fake_mod, "raise_exc", lambda: None)
+    setattr(fake_mod, "return_none_ref", lambda: None)
 
     def mock_import_fake(name: str, *args: Any, **kwargs: Any) -> Any:
         """Mock import returning fake onnxruntime.
@@ -141,7 +146,7 @@ def test_onnxruntime_collect_api_edge_branches(mocker: Any) -> None:
                 name="InferenceSession",
                 api_path=path,
                 kind="class",
-                params=[GhostParam(name="providers", kind="KEYWORD_ONLY")],
+                params=[GhostParam(name="providers", kind=ParameterKind.KEYWORD_ONLY)],
             )
         return GhostRef(
             name=path.split(".")[-1],
@@ -211,9 +216,9 @@ def test_numpy_collect_api_all_branches(mocker: Any) -> None:
         """Fake exp."""
         pass
 
-    fake_np.tanh = tanh  # type: ignore[attr-defined]
-    fake_np.exp = exp  # type: ignore[attr-defined]
-    fake_np.maximum = 42  # type: ignore[attr-defined] # non-callable
+    setattr(fake_np, "tanh", tanh)
+    setattr(fake_np, "exp", exp)
+    setattr(fake_np, "maximum", 42)
     # minimum is omitted so hasattr is False
 
     original_inspect = GhostInspector.inspect
@@ -250,9 +255,9 @@ def test_numpy_collect_api_all_branches(mocker: Any) -> None:
         """Fake add."""
         pass
 
-    fake_np_array.abs = abs  # type: ignore[attr-defined]
-    fake_np_array.add = add  # type: ignore[attr-defined]
-    fake_np_array.all = "not_callable"  # type: ignore[attr-defined]
+    setattr(fake_np_array, "abs", abs)
+    setattr(fake_np_array, "add", add)
+    setattr(fake_np_array, "all", "not_callable")
     # remaining array_ops not defined -> hasattr False
 
     # linalg submodule:
@@ -275,12 +280,12 @@ def test_numpy_collect_api_all_branches(mocker: Any) -> None:
         pass
 
     fake_linalg = types.ModuleType("numpy.linalg")
-    fake_linalg._private = lambda: None  # type: ignore[attr-defined]
-    fake_linalg.LinAlgClass = LinAlgClass  # type: ignore[attr-defined]
-    fake_linalg.non_callable = 123  # type: ignore[attr-defined]
-    fake_linalg.det = det  # type: ignore[attr-defined]
-    fake_linalg.inv = inv  # type: ignore[attr-defined]
-    fake_np_array.linalg = fake_linalg  # type: ignore[attr-defined]
+    setattr(fake_linalg, "_private", lambda: None)
+    setattr(fake_linalg, "LinAlgClass", LinAlgClass)
+    setattr(fake_linalg, "non_callable", 123)
+    setattr(fake_linalg, "det", det)
+    setattr(fake_linalg, "inv", inv)
+    setattr(fake_np_array, "linalg", fake_linalg)
 
     # fft submodule:
     # - private member
@@ -302,12 +307,12 @@ def test_numpy_collect_api_all_branches(mocker: Any) -> None:
         pass
 
     fake_fft_mod = types.ModuleType("numpy.fft")
-    fake_fft_mod._private = lambda: None  # type: ignore[attr-defined]
-    fake_fft_mod.FFTClass = FFTClass  # type: ignore[attr-defined]
-    fake_fft_mod.non_callable = 456  # type: ignore[attr-defined]
-    fake_fft_mod.fft = fft  # type: ignore[attr-defined]
-    fake_fft_mod.ifft = ifft  # type: ignore[attr-defined]
-    fake_np_array.fft = fake_fft_mod  # type: ignore[attr-defined]
+    setattr(fake_fft_mod, "_private", lambda: None)
+    setattr(fake_fft_mod, "FFTClass", FFTClass)
+    setattr(fake_fft_mod, "non_callable", 456)
+    setattr(fake_fft_mod, "fft", fft)
+    setattr(fake_fft_mod, "ifft", ifft)
+    setattr(fake_np_array, "fft", fake_fft_mod)
 
     def mock_inspect_arr(obj: Any, name: str, is_public: bool = True) -> Any:
         """Mock inspect for array api.
@@ -335,13 +340,13 @@ def test_numpy_collect_api_all_branches(mocker: Any) -> None:
 
     # Also test when np does not have linalg or fft attributes
     fake_np_bare = types.ModuleType("numpy")
-    fake_np_bare.abs = abs  # type: ignore[attr-defined]
+    setattr(fake_np_bare, "abs", abs)
     mocker.patch.object(numpy_mod, "np", fake_np_bare)
     res_bare = numpy_mod.collect_api(SemanticTier.ARRAY_API)
     assert len(res_bare) == 1
 
 
-def test_numpy_import_error_coverage() -> None:
+def test_numpy_import_error_handling() -> None:
     """Test numpy module import failure fallback branch."""
     saved_np = numpy_mod.np
     saved_sys_np = sys.modules.get("numpy")
@@ -396,9 +401,9 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
     fake_fft = types.ModuleType("mlx.core.fft")
     fake_linalg = types.ModuleType("mlx.core.linalg")
 
-    fake_mlx.nn = fake_nn  # type: ignore[attr-defined]
-    fake_mlx.optimizers = fake_optimizers  # type: ignore[attr-defined]
-    fake_mlx.core = fake_core  # type: ignore[attr-defined]
+    setattr(fake_mlx, "nn", fake_nn)
+    setattr(fake_mlx, "optimizers", fake_optimizers)
+    setattr(fake_mlx, "core", fake_core)
 
     # LAYER category
     class UpperLayer:
@@ -420,15 +425,15 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
         """Function not a class."""
         pass
 
-    fake_nn.UpperLayer = UpperLayer  # type: ignore[attr-defined]
-    fake_nn.lower_layer = lower_layer  # type: ignore[attr-defined]
-    fake_nn._PrivateLayer = _PrivateLayer  # type: ignore[attr-defined]
-    fake_nn.not_a_class = not_a_class  # type: ignore[attr-defined]
+    setattr(fake_nn, "UpperLayer", UpperLayer)
+    setattr(fake_nn, "lower_layer", lower_layer)
+    setattr(fake_nn, "_PrivateLayer", _PrivateLayer)
+    setattr(fake_nn, "not_a_class", not_a_class)
 
     # ACTIVATION category
-    fake_nn.relu = lambda x: x  # type: ignore[attr-defined]
-    fake_nn._relu = lambda x: x  # type: ignore[attr-defined]
-    fake_nn.unrelated_act = lambda x: x  # type: ignore[attr-defined]
+    setattr(fake_nn, "relu", lambda x: x)
+    setattr(fake_nn, "_relu", lambda x: x)
+    setattr(fake_nn, "unrelated_act", lambda x: x)
 
     # LOSS category
     def cross_entropy_loss() -> None:
@@ -444,12 +449,12 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
         """Private loss function."""
         pass
 
-    fake_losses.cross_entropy_loss = cross_entropy_loss  # type: ignore[attr-defined]
-    fake_losses.CustomLoss = CustomLoss  # type: ignore[attr-defined]
-    fake_losses._private_loss = _private_loss  # type: ignore[attr-defined]
-    fake_losses.something_else = lambda: None  # type: ignore[attr-defined]
-    fake_losses.number_loss = 999  # type: ignore[attr-defined] # non-callable non-class
-    fake_nn.losses = fake_losses  # type: ignore[attr-defined]
+    setattr(fake_losses, "cross_entropy_loss", cross_entropy_loss)
+    setattr(fake_losses, "CustomLoss", CustomLoss)
+    setattr(fake_losses, "_private_loss", _private_loss)
+    setattr(fake_losses, "something_else", lambda: None)
+    setattr(fake_losses, "number_loss", 999)
+    setattr(fake_nn, "losses", fake_losses)
 
     # OPTIMIZER category
     class Adam:
@@ -467,10 +472,10 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
 
         pass
 
-    fake_optimizers.Adam = Adam  # type: ignore[attr-defined]
-    fake_optimizers.adam_lower = adam_lower  # type: ignore[attr-defined]
-    fake_optimizers._PrivateOptimizer = _PrivateOptimizer  # type: ignore[attr-defined]
-    fake_optimizers.optim_func = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_optimizers, "Adam", Adam)
+    setattr(fake_optimizers, "adam_lower", adam_lower)
+    setattr(fake_optimizers, "_PrivateOptimizer", _PrivateOptimizer)
+    setattr(fake_optimizers, "optim_func", lambda: None)
 
     # ARRAY_API category
     def fake_abs() -> None:
@@ -486,10 +491,10 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
 
         pass
 
-    fake_core.abs = fake_abs  # type: ignore[attr-defined]
-    fake_core.fake_core_exc = fake_core_exc  # type: ignore[attr-defined]
-    fake_core.CoreClass = CoreClass  # type: ignore[attr-defined]
-    fake_core._private_core = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_core, "abs", fake_abs)
+    setattr(fake_core, "fake_core_exc", fake_core_exc)
+    setattr(fake_core, "CoreClass", CoreClass)
+    setattr(fake_core, "_private_core", lambda: None)
 
     def fake_fft_fn() -> None:
         """Fake fft function."""
@@ -499,11 +504,11 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
         """FFT function that triggers inspect exception."""
         pass
 
-    fake_fft.fft = fake_fft_fn  # type: ignore[attr-defined]
-    fake_fft.fake_fft_exc = fake_fft_exc  # type: ignore[attr-defined]
-    fake_fft.ClassFFT = CoreClass  # type: ignore[attr-defined]
-    fake_fft._private_fft = lambda: None  # type: ignore[attr-defined]
-    fake_core.fft = fake_fft  # type: ignore[attr-defined]
+    setattr(fake_fft, "fft", fake_fft_fn)
+    setattr(fake_fft, "fake_fft_exc", fake_fft_exc)
+    setattr(fake_fft, "ClassFFT", CoreClass)
+    setattr(fake_fft, "_private_fft", lambda: None)
+    setattr(fake_core, "fft", fake_fft)
 
     def fake_linalg_fn() -> None:
         """Fake linalg function."""
@@ -513,11 +518,11 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
         """Linalg function that triggers inspect exception."""
         pass
 
-    fake_linalg.norm = fake_linalg_fn  # type: ignore[attr-defined]
-    fake_linalg.fake_linalg_exc = fake_linalg_exc  # type: ignore[attr-defined]
-    fake_linalg.ClassLinalg = CoreClass  # type: ignore[attr-defined]
-    fake_linalg._private_linalg = lambda: None  # type: ignore[attr-defined]
-    fake_core.linalg = fake_linalg  # type: ignore[attr-defined]
+    setattr(fake_linalg, "norm", fake_linalg_fn)
+    setattr(fake_linalg, "fake_linalg_exc", fake_linalg_exc)
+    setattr(fake_linalg, "ClassLinalg", CoreClass)
+    setattr(fake_linalg, "_private_linalg", lambda: None)
+    setattr(fake_core, "linalg", fake_linalg)
 
     mocker.patch.object(mlx_mod, "mlx", fake_mlx)
 
@@ -569,7 +574,7 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
 
     del fake_nn.losses
     assert mlx_mod.collect_api(SemanticTier.LOSS) == []
-    fake_nn.losses = fake_losses  # type: ignore[attr-defined]
+    setattr(fake_nn, "losses", fake_losses)
 
     # OPTIMIZER: public vs nonpublic
     opt_pub = mlx_mod.collect_api(SemanticTier.OPTIMIZER, include_nonpublic=False)
@@ -599,7 +604,7 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
     # Test ARRAY_API when fft and linalg submodules are missing from core (branches 117->131, 132->150)
     fake_mlx_no_sub = types.ModuleType("mlx")
     fake_core_no_sub = types.ModuleType("mlx.core")
-    fake_mlx_no_sub.core = fake_core_no_sub  # type: ignore[attr-defined]
+    setattr(fake_mlx_no_sub, "core", fake_core_no_sub)
     mocker.patch.object(mlx_mod, "mlx", fake_mlx_no_sub)
     assert mlx_mod.collect_api(SemanticTier.ARRAY_API) == []
 
@@ -612,7 +617,7 @@ def test_mlx_collect_api_all_branches(mocker: Any) -> None:
     assert mlx_mod.collect_api(SemanticTier.LAYER) == []
 
 
-def test_mlx_import_error_coverage() -> None:
+def test_mlx_import_error_handling() -> None:
     """Test mlx module import success and failure fallback branches."""
     # 1. Test simulated import success of mlx
     mock_mlx_root = types.ModuleType("mlx")
@@ -748,7 +753,9 @@ def test_huggingface_collect_api_all_branches(mocker: Any) -> None:
         name="DummyGenFull",
         api_path="DummyGenFull",
         kind="class",
-        params=[GhostParam(name="existing_param", kind="POSITIONAL_OR_KEYWORD")],
+        params=[
+            GhostParam(name="existing_param", kind=ParameterKind.POSITIONAL_OR_KEYWORD)
+        ],
     )
     mocker.stopall()
     hf_mod._extract_generation_kwargs(DummyGenFull(), ref_gen)
@@ -785,7 +792,7 @@ def test_huggingface_collect_api_all_branches(mocker: Any) -> None:
         name="AnnotatedConfig",
         api_path="AnnotatedConfig",
         kind="class",
-        params=[GhostParam(name="existing", kind="POSITIONAL_OR_KEYWORD")],
+        params=[GhostParam(name="existing", kind=ParameterKind.POSITIONAL_OR_KEYWORD)],
     )
     hf_mod._parse_pretrained_config(AnnotatedConfig, ref3)
     param_names = [p.name for p in ref3.params]
@@ -800,7 +807,7 @@ def test_huggingface_collect_api_all_branches(mocker: Any) -> None:
         name="AutoModel",
         api_path="AutoModel",
         kind="class",
-        params=[GhostParam(name="config", kind="POSITIONAL_OR_KEYWORD")],
+        params=[GhostParam(name="config", kind=ParameterKind.POSITIONAL_OR_KEYWORD)],
     )
     hf_mod._handle_automodel_factory(None, "AutoModel", ref4)
     assert len([p for p in ref4.params if p.name == "config"]) == 1
@@ -971,10 +978,10 @@ def test_huggingface_collect_api_all_branches(mocker: Any) -> None:
         assert len(res_tr) > 0
 
     fake_diff_lib = types.ModuleType("diffusers")
-    fake_diff_lib.DiffusionPipeline = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_diff_lib, "DiffusionPipeline", lambda: None)
 
     fake_tok_lib = types.ModuleType("tokenizers")
-    fake_tok_lib.TokenizerModel = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_tok_lib, "TokenizerModel", lambda: None)
 
     def mock_import_helpers(name: str, *args: Any, **kwargs: Any) -> Any:
         """Mock import for helper functions.
@@ -1010,13 +1017,13 @@ def test_tensorflow_collect_api_inspection_failures(mocker: Any) -> None:
         None.
     """
     fake_math = types.ModuleType("tf.math")
-    fake_math.abs = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_math, "abs", lambda: None)
 
     fake_linalg = types.ModuleType("tf.linalg")
-    fake_linalg.matmul = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_linalg, "matmul", lambda: None)
 
     fake_raw_ops = types.ModuleType("tf.raw_ops")
-    fake_raw_ops.raw_add = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_raw_ops, "raw_add", lambda: None)
 
     class FakeTensor:
         """Fake Tensor class."""
@@ -1033,13 +1040,13 @@ def test_tensorflow_collect_api_inspection_failures(mocker: Any) -> None:
             pass
 
     fake_tf = types.ModuleType("tf")
-    fake_tf.math = fake_math  # type: ignore[attr-defined]
-    fake_tf.linalg = fake_linalg  # type: ignore[attr-defined]
-    fake_tf.raw_ops = fake_raw_ops  # type: ignore[attr-defined]
-    fake_tf.concat = lambda: None  # type: ignore[attr-defined]
-    fake_tf.custom_tensor_op = lambda: None  # type: ignore[attr-defined]
-    fake_tf.Tensor = FakeTensor  # type: ignore[attr-defined]
-    fake_tf.Variable = FakeVariable  # type: ignore[attr-defined]
+    setattr(fake_tf, "math", fake_math)
+    setattr(fake_tf, "linalg", fake_linalg)
+    setattr(fake_tf, "raw_ops", fake_raw_ops)
+    setattr(fake_tf, "concat", lambda: None)
+    setattr(fake_tf, "custom_tensor_op", lambda: None)
+    setattr(fake_tf, "Tensor", FakeTensor)
+    setattr(fake_tf, "Variable", FakeVariable)
 
     mocker.patch.object(tf_fw, "tf", fake_tf)
     mocker.patch(
@@ -1091,10 +1098,10 @@ def test_jax_sharding_and_pallas_collection(mocker: Any) -> None:
         pass
 
     fake_sharding = types.ModuleType("jax.sharding")
-    fake_sharding.Mesh = Mesh  # type: ignore[attr-defined]
-    fake_sharding.shard_map = shard_map  # type: ignore[attr-defined]
-    fake_sharding._priv_sharding = _priv_sharding  # type: ignore[attr-defined]
-    fake_sharding.not_callable = 42  # type: ignore[attr-defined]
+    setattr(fake_sharding, "Mesh", Mesh)
+    setattr(fake_sharding, "shard_map", shard_map)
+    setattr(fake_sharding, "_priv_sharding", _priv_sharding)
+    setattr(fake_sharding, "not_callable", 42)
 
     def pallas_call() -> None:
         """Mock pallas_call kernel."""
@@ -1105,23 +1112,23 @@ def test_jax_sharding_and_pallas_collection(mocker: Any) -> None:
         pass
 
     fake_pallas = types.ModuleType("jax.experimental.pallas")
-    fake_pallas.pallas_call = pallas_call  # type: ignore[attr-defined]
-    fake_pallas._priv_pallas = _priv_pallas  # type: ignore[attr-defined]
-    fake_pallas.not_callable = 99  # type: ignore[attr-defined]
+    setattr(fake_pallas, "pallas_call", pallas_call)
+    setattr(fake_pallas, "_priv_pallas", _priv_pallas)
+    setattr(fake_pallas, "not_callable", 99)
 
     fake_experimental = types.ModuleType("jax.experimental")
-    fake_experimental.pallas = fake_pallas  # type: ignore[attr-defined]
+    setattr(fake_experimental, "pallas", fake_pallas)
 
     fake_jax = types.ModuleType("jax")
-    fake_jax.sharding = fake_sharding  # type: ignore[attr-defined]
-    fake_jax.experimental = fake_experimental  # type: ignore[attr-defined]
-    fake_jax.lax = types.ModuleType("jax.lax")  # type: ignore[attr-defined]
-    fake_jax.random = types.ModuleType("jax.random")  # type: ignore[attr-defined]
-    fake_jax.Array = type("Array", (), {})  # type: ignore[attr-defined]
+    setattr(fake_jax, "sharding", fake_sharding)
+    setattr(fake_jax, "experimental", fake_experimental)
+    setattr(fake_jax, "lax", types.ModuleType("jax.lax"))
+    setattr(fake_jax, "random", types.ModuleType("jax.random"))
+    setattr(fake_jax, "Array", type("Array", (), {}))
 
     fake_jnp = types.ModuleType("jax.numpy")
     fake_numpy = types.ModuleType("numpy")
-    fake_numpy.float32 = float  # type: ignore[attr-defined]
+    setattr(fake_numpy, "float32", float)
 
     mocker.patch.dict(
         "sys.modules",
@@ -1162,13 +1169,13 @@ def test_jax_array_ops_inspect_exceptions(mocker: Any) -> None:
         None.
     """
     fake_jnp = types.ModuleType("jax.numpy")
-    fake_jnp.abs = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_jnp, "abs", lambda: None)
 
     fake_lax = types.ModuleType("jax.lax")
-    fake_lax.add = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_lax, "add", lambda: None)
 
     fake_random = types.ModuleType("jax.random")
-    fake_random.uniform = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_random, "uniform", lambda: None)
 
     class FakeArray:
         """Fake Array class."""
@@ -1178,28 +1185,28 @@ def test_jax_array_ops_inspect_exceptions(mocker: Any) -> None:
             pass
 
     fake_sharding = types.ModuleType("jax.sharding")
-    fake_sharding.shard_map = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_sharding, "shard_map", lambda: None)
 
     fake_pallas = types.ModuleType("jax.experimental.pallas")
-    fake_pallas.pallas_call = lambda: None  # type: ignore[attr-defined]
+    setattr(fake_pallas, "pallas_call", lambda: None)
 
     fake_experimental = types.ModuleType("jax.experimental")
-    fake_experimental.pallas = fake_pallas  # type: ignore[attr-defined]
+    setattr(fake_experimental, "pallas", fake_pallas)
 
     fake_jax = types.ModuleType("jax")
-    fake_jax.lax = fake_lax  # type: ignore[attr-defined]
-    fake_jax.random = fake_random  # type: ignore[attr-defined]
-    fake_jax.sharding = fake_sharding  # type: ignore[attr-defined]
-    fake_jax.experimental = fake_experimental  # type: ignore[attr-defined]
-    fake_jax.jit = lambda fn: fn  # type: ignore[attr-defined]
-    fake_jax.grad = lambda fn: fn  # type: ignore[attr-defined]
-    fake_jax.vmap = lambda fn: fn  # type: ignore[attr-defined]
-    fake_jax.pmap = lambda fn: fn  # type: ignore[attr-defined]
-    fake_jax.checkpoint = lambda fn: fn  # type: ignore[attr-defined]
-    fake_jax.Array = FakeArray  # type: ignore[attr-defined]
+    setattr(fake_jax, "lax", fake_lax)
+    setattr(fake_jax, "random", fake_random)
+    setattr(fake_jax, "sharding", fake_sharding)
+    setattr(fake_jax, "experimental", fake_experimental)
+    setattr(fake_jax, "jit", lambda fn: fn)
+    setattr(fake_jax, "grad", lambda fn: fn)
+    setattr(fake_jax, "vmap", lambda fn: fn)
+    setattr(fake_jax, "pmap", lambda fn: fn)
+    setattr(fake_jax, "checkpoint", lambda fn: fn)
+    setattr(fake_jax, "Array", FakeArray)
 
     fake_numpy = types.ModuleType("numpy")
-    fake_numpy.float32 = float  # type: ignore[attr-defined]
+    setattr(fake_numpy, "float32", float)
 
     mocker.patch.dict(
         "sys.modules",
@@ -1250,12 +1257,12 @@ def test_jax_pallas_import_failure(mocker: Any) -> None:
         None.
     """
     fake_jax = types.ModuleType("jax")
-    fake_jax.lax = types.ModuleType("jax.lax")  # type: ignore[attr-defined]
-    fake_jax.random = types.ModuleType("jax.random")  # type: ignore[attr-defined]
-    fake_jax.Array = type("Array", (), {})  # type: ignore[attr-defined]
+    setattr(fake_jax, "lax", types.ModuleType("jax.lax"))
+    setattr(fake_jax, "random", types.ModuleType("jax.random"))
+    setattr(fake_jax, "Array", type("Array", (), {}))
     fake_jnp = types.ModuleType("jax.numpy")
     fake_numpy = types.ModuleType("numpy")
-    fake_numpy.float32 = float  # type: ignore[attr-defined]
+    setattr(fake_numpy, "float32", float)
 
     mocker.patch.dict(
         "sys.modules",

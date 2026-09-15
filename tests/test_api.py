@@ -25,7 +25,7 @@ def test_get_all_members() -> None:
     class LazyModule:
         """Class docstring."""
 
-        def __init__(self) -> Any:  # type: ignore
+        def __init__(self) -> None:
             """Function docstring."""
             self.__all__ = ["hidden_func", "VisibleClass", "broken_all"]
             self.VisibleClass = int
@@ -103,7 +103,7 @@ def test_extract_snapshot(mocker: Any) -> None:
 
     mock_ref = GhostRef(name="MSELoss", api_path="torch.nn.MSELoss", kind="class")
 
-    def fake_collect(cat: Any, include_nonpublic=False) -> Any:  # type: ignore
+    def fake_collect(cat: Any, include_nonpublic: bool = False) -> Any:
         """Function docstring.
 
         Args:
@@ -132,7 +132,7 @@ def test_extract_snapshot(mocker: Any) -> None:
     assert res["categories"]["loss"][0]["name"] == "MSELoss"
 
     # test no data found
-    def fake_empty(cat: Any, include_nonpublic=False) -> Any:  # type: ignore
+    def fake_empty(cat: Any, include_nonpublic: bool = False) -> Any:
         """Function docstring.
 
         Args:
@@ -333,7 +333,24 @@ def test_consolidate_aliases_shorter() -> None:
     res = _consolidate_aliases([r1, r2])
     assert len(res) == 1
     assert res[0].api_path == "short.func"
+    assert res[0].aliases is not None
     assert set(res[0].aliases) == {"a", "b", "long.path.func"}
+
+
+def test_consolidate_aliases_none_aliases() -> None:
+    """Test _consolidate_aliases handling None aliases and standalone ref."""
+    from ml_framework_snapshots.api import _consolidate_aliases
+    from ml_switcheroo_ir.schema.ghost import GhostRef
+
+    r0 = GhostRef(name="alone", api_path="alone.func", kind="function", aliases=None)
+    res0 = _consolidate_aliases([r0])
+    assert res0[0].aliases == []
+
+    r1 = GhostRef(name="f", api_path="longer.f", kind="function", aliases=None)
+    r2 = GhostRef(name="f", api_path="f", kind="function", aliases=None)
+    res = _consolidate_aliases([r1, r2])
+    assert len(res) == 1
+    assert res[0].aliases == ["longer.f"]
 
 
 def test_extract_all_snapshots_no_data() -> None:
@@ -418,6 +435,7 @@ def test_consolidate_aliases_same_length() -> None:
     res = _consolidate_aliases([r1, r2])
     assert len(res) == 1
     assert res[0].api_path == "a.func"
+    assert res[0].aliases is not None
     assert "b.func" in res[0].aliases
 
 
@@ -446,13 +464,13 @@ def test_get_pkg_version_extra() -> None:
     with mock.patch("importlib.metadata.version") as mock_version:
         mock_version.return_value = "1.2.3"
         assert get_pkg_version("mlir") == "1.2.3"
-        mock_version.assert_called_with("jaxlib")
+        mock_version.assert_called_with("mlir")
 
-    assert get_pkg_version("html_dsl") == "1.0.0"
-    assert get_pkg_version("latex_dsl") == "1.0.0"
-    assert get_pkg_version("tikz") == "1.0.0"
+    assert get_pkg_version("html_dsl") == "0.0.2"
+    assert get_pkg_version("latex_dsl") == "0.0.2"
+    assert get_pkg_version("tikz") == "0.0.2"
     assert get_pkg_version("nvidia_sass") == "12.6.0"
-    assert get_pkg_version("amd_rdna") == "llvm-19"
+    assert get_pkg_version("amd_rdna") == "19.1.0"
 
 
 def test_get_pkg_version_more() -> None:
@@ -596,10 +614,10 @@ def test_get_pkg_version_keras(mocker: Any) -> None:
 
 
 def test_extract_snapshot_stablehlo_zero_dep() -> None:
-    """Verify that extract_snapshot('stablehlo') returns non-empty categories and version 1.0.0."""
-    assert get_pkg_version("stablehlo") == "1.0.0"
+    """Verify that extract_snapshot('stablehlo') returns non-empty categories and version 1.9.0."""
+    assert get_pkg_version("stablehlo") == "1.9.0"
     snap = extract_snapshot("stablehlo")
-    assert snap["version"] == "1.0.0"
+    assert snap["version"] == "1.9.0"
     assert "categories" in snap
     assert len(snap["categories"]) > 0
     total_ops = sum(len(ops) for ops in snap["categories"].values())
@@ -613,7 +631,7 @@ def test_validate_snapshot_envelope_and_extraction_metadata() -> None:
 
     # Test invalid type
     with pytest.raises(ValueError, match="Snapshot must be a dictionary"):
-        validate_snapshot_envelope("not a dict")  # type: ignore
+        validate_snapshot_envelope("not a dict")
 
     # Test valid envelope conversion
     valid_data = {
@@ -650,17 +668,19 @@ def test_get_pkg_version_hardware_and_mlir_fallbacks(mocker: Any) -> None:
     import unittest.mock as mock
     from ml_framework_snapshots.api import get_pkg_version
 
-    # mlir with jaxlib raising exception -> reads mlir_exhaustive.json
-    mocker.patch("importlib.metadata.version", side_effect=Exception("no jaxlib"))
-    assert get_pkg_version("mlir") == "llvm-19"
+    # mlir with importlib raising exception -> reads mlir_exhaustive.json
+    mocker.patch(
+        "importlib.metadata.version", side_effect=Exception("no mlir metadata")
+    )
+    assert get_pkg_version("mlir") == "19.1.0"
 
-    # mlir with missing json file -> falls back to llvm-19
+    # mlir with missing json file -> falls back to 19.1.0
     with mock.patch("os.path.exists", return_value=False):
-        assert get_pkg_version("mlir") == "llvm-19"
+        assert get_pkg_version("mlir") == "19.1.0"
 
     # mlir with json file corrupt
     with mock.patch("builtins.open", side_effect=OSError("read err")):
-        assert get_pkg_version("mlir") == "llvm-19"
+        assert get_pkg_version("mlir") == "19.1.0"
 
     # mlir with json file present and valid version
     with mock.patch("os.path.exists", return_value=True):
@@ -673,23 +693,23 @@ def test_get_pkg_version_hardware_and_mlir_fallbacks(mocker: Any) -> None:
         ):
             assert get_pkg_version("nvidia_sass") == "13.0.0"
         with mock.patch("builtins.open", mock.mock_open(read_data="{corrupted_json")):
-            assert get_pkg_version("mlir") == "llvm-19"
+            assert get_pkg_version("mlir") == "19.1.0"
             assert get_pkg_version("nvidia_sass") == "12.6.0"
         with mock.patch("builtins.open", mock.mock_open(read_data='{"other": 123}')):
-            assert get_pkg_version("mlir") == "llvm-19"
+            assert get_pkg_version("mlir") == "19.1.0"
             assert get_pkg_version("nvidia_sass") == "12.6.0"
 
     # json file has None/empty version
     with mock.patch("builtins.open", mock.mock_open(read_data='{"version": null}')):
-        assert get_pkg_version("mlir") == "llvm-19"
+        assert get_pkg_version("mlir") == "19.1.0"
         assert get_pkg_version("nvidia_sass") == "12.6.0"
 
     # hardware target with missing json file -> falls back to defaults dict
     with mock.patch("os.path.exists", return_value=False):
         assert get_pkg_version("nvidia_sass") == "12.6.0"
-        assert get_pkg_version("amd_rdna") == "llvm-19"
-        assert get_pkg_version("nvidia_ptx") == "8.5.0"
-        assert get_pkg_version("stablehlo") == "1.0.0"
+        assert get_pkg_version("amd_rdna") == "19.1.0"
+        assert get_pkg_version("nvidia_ptx") == "8.5"
+        assert get_pkg_version("stablehlo") == "1.9.0"
 
     # hardware target with corrupt json file
     with mock.patch("builtins.open", side_effect=OSError("read err")):

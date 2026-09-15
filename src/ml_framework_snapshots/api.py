@@ -170,21 +170,23 @@ def get_pkg_version(package_name: str) -> str:
                 except Exception:
                     return importlib.metadata.version("tensorflow-cpu")
         elif package_name == "mlir":
-            try:
-                return importlib.metadata.version("jaxlib")
-            except Exception:
-                json_file = os.path.join(
-                    os.path.dirname(__file__), "frameworks", "mlir_exhaustive.json"
-                )
-                if os.path.exists(json_file):
-                    try:
-                        with open(json_file, "r", encoding="utf-8") as f:
-                            h = json.load(f)
-                            if h.get("version"):
-                                return str(h["version"])
-                    except Exception:
-                        pass
-                return "llvm-19"
+            for mlir_pkg in ("mlir", "mlir-native"):
+                try:
+                    return importlib.metadata.version(mlir_pkg)
+                except Exception:
+                    pass
+            json_file = os.path.join(
+                os.path.dirname(__file__), "frameworks", "mlir_exhaustive.json"
+            )
+            if os.path.exists(json_file):
+                try:
+                    with open(json_file, "r", encoding="utf-8") as f:
+                        h = json.load(f)
+                        if isinstance(h, dict) and h.get("version"):
+                            return str(h["version"])
+                except Exception:
+                    pass
+            return "19.1.0"
         elif package_name in [
             "nvidia_sass",
             "amd_rdna",
@@ -200,15 +202,15 @@ def get_pkg_version(package_name: str) -> str:
                 try:
                     with open(json_file, "r", encoding="utf-8") as f:
                         h = json.load(f)
-                        if h.get("version"):
+                        if isinstance(h, dict) and h.get("version"):
                             return str(h["version"])
                 except Exception:
                     pass
             defaults = {
                 "nvidia_sass": "12.6.0",
-                "amd_rdna": "llvm-19",
-                "nvidia_ptx": "8.5.0",
-                "stablehlo": "1.0.0",
+                "amd_rdna": "19.1.0",
+                "nvidia_ptx": "8.5",
+                "stablehlo": "1.9.0",
             }
             return defaults.get(package_name, "1.0.0")
         elif package_name in [
@@ -216,7 +218,8 @@ def get_pkg_version(package_name: str) -> str:
             "latex_dsl",
             "tikz",
         ]:
-            return "1.0.0"
+            # DSL dialects are sourced from ml-switcheroo v0.0.2
+            return "0.0.2"
 
         return importlib.metadata.version(package_name)
     except Exception:
@@ -308,6 +311,10 @@ def _consolidate_aliases(refs: List[GhostRef]) -> List[GhostRef]:
             consolidated[key] = ref
         else:
             existing = consolidated[key]
+            if ref.aliases is None:
+                ref.aliases = []
+            if existing.aliases is None:
+                existing.aliases = []
             # Keep the shorter api_path as primary
             if len(ref.api_path) < len(existing.api_path):
                 ref.aliases.append(existing.api_path)
@@ -321,7 +328,10 @@ def _consolidate_aliases(refs: List[GhostRef]) -> List[GhostRef]:
 
     # Deduplicate and sort aliases
     for ref in consolidated.values():
-        ref.aliases = sorted(list(set(ref.aliases)))
+        if ref.aliases is not None:
+            ref.aliases = sorted(list(set(ref.aliases)))
+        else:
+            ref.aliases = []
 
     return list(consolidated.values())
 
@@ -367,6 +377,22 @@ def extract_snapshot(
         ]
         snapshot_data["source_type"] = "binary_disassembly"
         snapshot_data["upstream_commit"] = "cuda-12.6-toolkit"
+        snapshot_data["upstream_version"] = "12.6.0"
+    elif framework_name == "nvidia_ptx":
+        snapshot_data["supported_microarchitectures"] = [
+            "sm_50",
+            "sm_60",
+            "sm_70",
+            "sm_75",
+            "sm_80",
+            "sm_86",
+            "sm_89",
+            "sm_90",
+            "sm_100",
+        ]
+        snapshot_data["source_type"] = "tablegen"
+        snapshot_data["upstream_commit"] = "cuda-12.6"
+        snapshot_data["upstream_version"] = "8.5"
     elif framework_name == "amd_rdna":
         snapshot_data["supported_microarchitectures"] = [
             "GFX9/CDNA",
@@ -378,6 +404,20 @@ def extract_snapshot(
         ]
         snapshot_data["source_type"] = "tablegen"
         snapshot_data["upstream_commit"] = "llvm-project-19.1.0"
+        snapshot_data["upstream_version"] = "19.1.0"
+    elif framework_name == "stablehlo":
+        snapshot_data["source_type"] = "tablegen"
+        snapshot_data["upstream_commit"] = "v1.9.0"
+        snapshot_data["upstream_version"] = "1.9.0"
+    elif framework_name == "mlir":
+        snapshot_data["source_type"] = "tablegen"
+        snapshot_data["upstream_commit"] = "llvmorg-19.1.0"
+        snapshot_data["upstream_version"] = "19.1.0"
+    elif framework_name in ("html_dsl", "latex_dsl", "tikz"):
+        # DSL dialects are sourced from ml-switcheroo v0.0.2
+        snapshot_data["source_type"] = "python_dsl"
+        snapshot_data["upstream_commit"] = "ml-switcheroo-v0.0.2"
+        snapshot_data["upstream_version"] = "0.0.2"
     found_any = False
 
     def _process_category(cat: SemanticTier) -> Tuple[str, List[Dict[str, Any]]]:
@@ -523,7 +563,7 @@ def write_snapshot(
     return str(file_path)
 
 
-def validate_snapshot_envelope(snapshot_dict: Dict[str, Any]) -> SnapshotEnvelope:
+def validate_snapshot_envelope(snapshot_dict: Any) -> SnapshotEnvelope:
     """Validate and normalize a snapshot dictionary into a SnapshotEnvelope.
 
     Args:

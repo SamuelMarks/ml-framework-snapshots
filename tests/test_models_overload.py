@@ -40,6 +40,7 @@ def my_overloaded_func(a: Any, b: Any = None) -> Any:
     )
 
     assert hasattr(ref, "overloads")
+    assert ref.overloads is not None
     assert len(ref.overloads) == 2
     assert ref.overloads[0].params[0].name == "a"
     assert ref.overloads[0].params[0].annotation == "int"
@@ -90,6 +91,7 @@ class OverloadedClass:
     )
 
     assert hasattr(ref, "overloads")
+    assert ref.overloads is not None
     assert len(ref.overloads) == 2
     assert ref.overloads[0].params[0].name == "dim"
     assert ref.overloads[0].params[0].annotation == "int"

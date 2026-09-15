@@ -212,6 +212,21 @@ def extract_framework_and_version(file_name: str) -> Tuple[str, str]:
     if "_exhaustive" in base:
         fw = base.replace("_exhaustive", "")
         return fw, "latest"
+
+    multiword_frameworks = [
+        "nvidia_sass",
+        "nvidia_ptx",
+        "amd_rdna",
+        "html_dsl",
+        "latex_dsl",
+        "flax_nnx",
+        "optax_shim",
+        "orbax_checkpoint",
+    ]
+    for mw in multiword_frameworks:
+        if base.startswith(mw + "_"):
+            return mw, base[len(mw) + 1 :]
+
     if "_" in base:
         parts = base.split("_", 1)
         return parts[0], parts[1]
@@ -263,6 +278,10 @@ def index_snapshot_file(json_path: str, conn: sqlite3.Connection) -> int:
             for _cat, cat_items in data["categories"].items():
                 if isinstance(cat_items, list):
                     items.extend(cat_items)
+        elif "operations" in data and isinstance(data["operations"], list):
+            items.extend(data["operations"])
+        elif "instructions" in data and isinstance(data["instructions"], list):
+            items.extend(data["instructions"])
         elif "items" in data and isinstance(data["items"], list):
             items.extend(data["items"])
     elif isinstance(data, list):

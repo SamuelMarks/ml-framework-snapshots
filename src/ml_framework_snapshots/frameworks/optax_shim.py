@@ -43,7 +43,7 @@ class OptaxScanner:
         if not optax:
             return []
 
-        results = []
+        results: List[GhostRef] = []
         known_optimizers = {
             "adam",
             "adamw",
@@ -89,7 +89,7 @@ class OptaxScanner:
         if not optax or not hasattr(optax, "losses"):
             return []
 
-        results = []
+        results: List[GhostRef] = []
 
         for name, obj in get_all_members(optax.losses):
             if not include_nonpublic and name.startswith("_"):
@@ -124,7 +124,7 @@ class OptaxScanner:
         if not optax or not hasattr(optax, "schedules"):
             return []
 
-        results = []
+        results: List[GhostRef] = []
         for name, obj in get_all_members(optax.schedules):
             if not include_nonpublic and name.startswith("_"):
                 continue

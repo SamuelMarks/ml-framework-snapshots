@@ -10,7 +10,12 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
-from ml_switcheroo_ir.schema.ghost import GhostRef, SemanticTier
+from ml_switcheroo_ir.schema.ghost import (
+    GhostParam,
+    GhostRef,
+    ParameterKind,
+    SemanticTier,
+)
 
 from ..models import (
     ExtendedGhostParam,
@@ -1008,7 +1013,13 @@ def _load_exhaustive_sass() -> List[Dict[str, Any]]:
                     if isinstance(cat_ops, list):
                         all_ops.extend(cat_ops)
                 return all_ops
-            return cast(List[Dict[str, Any]], data.get("instructions", []))
+            return cast(
+                List[Dict[str, Any]],
+                data.get("instructions")
+                or data.get("operations")
+                or data.get("items")
+                or [],
+            )
         return cast(List[Dict[str, Any]], data)
 
 
@@ -1059,7 +1070,7 @@ def collect_api(
             if len(sig) > len(max_sig):
                 max_sig = sig
 
-        params: List[ExtendedGhostParam] = []
+        params: List[GhostParam] = []
         for i, raw_op in enumerate(max_sig):
             op_type = normalize_sass_operand_type(raw_op)
             role = "dst" if i == 0 else f"src{i - 1}"
@@ -1067,7 +1078,7 @@ def collect_api(
             params.append(
                 ExtendedGhostParam(
                     name=f"op{i}",
-                    kind="POSITIONAL_ONLY",
+                    kind=ParameterKind.POSITIONAL_ONLY,
                     annotation=op_type,
                     standardized_name=role,
                     description=f"Operand {i} ({role}) of type {op_type}",
@@ -1088,7 +1099,7 @@ def collect_api(
         # Build overloads for all operand variations
         overloads: List[ExtendedGhostRef] = []
         for sig_idx, sig in enumerate(operands_list):
-            overload_params: List[ExtendedGhostParam] = []
+            overload_params: List[GhostParam] = []
             for i, raw_op in enumerate(sig):
                 op_type = normalize_sass_operand_type(raw_op)
                 role = "dst" if i == 0 else f"src{i - 1}"
@@ -1096,7 +1107,7 @@ def collect_api(
                 overload_params.append(
                     ExtendedGhostParam(
                         name=f"op{i}",
-                        kind="POSITIONAL_ONLY",
+                        kind=ParameterKind.POSITIONAL_ONLY,
                         annotation=op_type,
                         standardized_name=role,
                         description=f"Operand {i} ({role}) of type {op_type}",

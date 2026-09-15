@@ -2,7 +2,7 @@
 
 import inspect
 from typing import Dict, List, Any
-from ml_switcheroo_ir.schema.ghost import SemanticTier
+from ml_switcheroo_ir.schema.ghost import ParameterKind, SemanticTier
 from ml_switcheroo_ir.schema.ghost import GhostRef, GhostParam
 from ml_framework_snapshots.models import GhostInspector, sanitize_type_str
 
@@ -38,7 +38,7 @@ def _extract_generation_kwargs(obj: Any, ref: GhostRef) -> None:
                 ref.params.append(
                     GhostParam(
                         name=param.name,
-                        kind="KEYWORD_ONLY",
+                        kind=ParameterKind.KEYWORD_ONLY,
                         default=default_str,
                         annotation=anno_str,
                     )
@@ -67,7 +67,7 @@ def _parse_pretrained_config(obj: Any, ref: GhostRef) -> None:
             ref.params.append(
                 GhostParam(
                     name=attr_name,
-                    kind="POSITIONAL_OR_KEYWORD",
+                    kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                     default=None,
                     annotation=final_anno,
                 )
@@ -86,7 +86,7 @@ def _handle_automodel_factory(obj: Any, name: str, ref: GhostRef) -> None:
         ref.params.append(
             GhostParam(
                 name="config",
-                kind="POSITIONAL_OR_KEYWORD",
+                kind=ParameterKind.POSITIONAL_OR_KEYWORD,
                 default=None,
                 annotation="PreTrainedConfig",
             )

@@ -31,6 +31,7 @@ from ml_framework_snapshots.mcp_server import (
     handle_mcp_message,
     run_mcp_server,
 )
+from ml_framework_snapshots.models import ExtendedGhostRef
 from ml_framework_snapshots.stubs import validate_pyi_stub
 from ml_switcheroo_ir.schema.ghost import GhostParam, GhostRef, ParameterKind
 
@@ -2173,17 +2174,15 @@ def test_opaque_c_extension_guardrails(mocker: Any) -> None:
     )
     assert res_strict_c["is_hallucinated"] is True
     assert "hallucinated_kwarg" in res_strict_c["invalid_kwargs"]
-
     # 3. Test compliance.score_compliance with strict_c_extensions
-    target_opaque = [
-        GhostRef(
+    target_opaque: List[GhostRef] = [
+        ExtendedGhostRef(
             name="opaque_func",
             api_path="torch.opaque_func",
             kind="function",
             signature_completeness="opaque",
             is_c_extension=True,
             environment_tags=["opaque_c_extension"],
-            has_varargs=True,
             params=[
                 GhostParam(name="args", kind=ParameterKind.VAR_POSITIONAL),
                 GhostParam(name="kwargs", kind=ParameterKind.VAR_KEYWORD),
